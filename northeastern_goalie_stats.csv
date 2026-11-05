@@ -1,0 +1,1041 @@
+date,opponent,nu_goals,opp_goals,goalie_name,decision,minutes,goals_against,empty_net_goals,saves,shots_against,save_pct
+11/10/2012,ALABAMA-HUNTSVILLE,3,0,"Rawlings, Chris",W,60:00,0,0,19,19,1.000
+11/11/2012,ALABAMA-HUNTSVILLE,3,1,"Rawlings, Chris",W,59:57,1,0,24,25,0.960
+1/5/2013,BENTLEY,3,6,"Rawlings, Chris",L,58:42,5,0,26,31,0.839
+10/13/2012,BOSTON COLLEGE,3,1,"Rawlings, Chris",W,60:00,1,0,31,32,0.969
+10/20/2012,Boston College,0,3,"Rawlings, Chris",L,60:00,3,0,24,27,0.889
+1/19/2013,BOSTON COLLEGE,3,9,"Rawlings, Chris",L,28:52,6,0,10,16,0.625
+1/19/2013,BOSTON COLLEGE,3,9,"Mountain, Bryan",,31:08,3,0,12,15,0.800
+2/11/2013,Boston College,3,6,"Rawlings, Chris",L,59:50,5,0,24,29,0.828
+1/18/2013,Boston University,6,5,"Rawlings, Chris",W,60:00,5,0,29,34,0.853
+2/4/2013,Boston University,3,2,"Rawlings, Chris",W,59:59,2,0,32,34,0.941
+3/8/2013,BOSTON UNIVERSITY,2,4,"Rawlings, Chris",L,58:30,4,0,33,37,0.892
+3/9/2013,Boston University,0,5,"Rawlings, Chris",L,59:54,5,0,27,32,0.844
+12/29/2012,Harvard,5,1,"Rawlings, Chris",W,59:58,1,0,34,35,0.971
+1/11/2013,MAINE,1,1,"Rawlings, Chris",,65:00,1,0,42,43,0.977
+3/1/2013,Maine,1,3,"Rawlings, Chris",L,59:35,2,0,31,33,0.939
+3/2/2013,Maine,4,4,"Rawlings, Chris",,25:12,4,0,13,17,0.765
+3/2/2013,Maine,4,4,"Mountain, Bryan",,39:48,0,0,34,34,1.000
+11/30/2012,Massachusetts,1,0,"Rawlings, Chris",W,59:59,0,0,31,31,1.000
+12/1/2012,MASSACHUSETTS,3,6,"Rawlings, Chris",L,59:52,5,0,40,45,0.889
+2/19/2013,Massachusetts,5,4,"Rawlings, Chris",,40:00,4,0,28,32,0.875
+2/19/2013,Massachusetts,5,4,"Mountain, Bryan",W,24:04,0,0,7,7,1.000
+10/10/2012,MERRIMACK,4,2,"Rawlings, Chris",W,60:00,2,0,32,34,0.941
+11/2/2012,MERRIMACK,2,5,"Mountain, Bryan",L,58:54,4,0,27,31,0.871
+11/3/2012,Merrimack,2,4,"Rawlings, Chris",L,59:03,3,0,29,32,0.906
+10/26/2012,New Hampshire,3,4,"Rawlings, Chris",,26:40,3,0,11,14,0.786
+10/26/2012,New Hampshire,3,4,"Mountain, Bryan",L,32:42,1,0,18,19,0.947
+10/27/2012,NEW HAMPSHIRE,0,0,"Mountain, Bryan",,65:00,0,0,44,44,1.000
+2/1/2013,NEW HAMPSHIRE,1,3,"Rawlings, Chris",L,57:46,3,0,24,27,0.889
+11/16/2012,Providence,2,6,"Rawlings, Chris",L,22:51,3,0,10,13,0.769
+11/16/2012,Providence,2,6,"Witt, Clay",,37:02,3,0,17,20,0.850
+2/22/2013,Providence,2,6,"Mountain, Bryan",L,60:00,6,0,28,34,0.824
+2/23/2013,PROVIDENCE,2,3,"Rawlings, Chris",L,58:59,3,0,36,39,0.923
+11/23/2012,ST. LAWRENCE,2,5,"Mountain, Bryan",L,59:47,5,0,34,39,0.872
+12/8/2012,UMass Lowell,0,2,"Rawlings, Chris",L,58:32,2,0,27,29,0.931
+1/25/2013,UMASS LOWELL,4,4,"Mountain, Bryan",,65:00,4,0,41,45,0.911
+1/26/2013,UMass Lowell,4,5,"Mountain, Bryan",L,63:07,5,0,33,38,0.868
+11/18/2012,Vermont,2,3,"Mountain, Bryan",L,56:50,3,0,22,25,0.880
+2/15/2013,VERMONT,1,2,"Rawlings, Chris",L,59:18,2,0,32,34,0.941
+2/16/2013,VERMONT,1,3,"Mountain, Bryan",L,59:37,2,0,26,28,0.929
+12/29/2013,Air Force,2,5,"Witt, Clay",L,59:43,4,0,24,28,0.857
+10/11/2013,Alabama-Huntsville,9,1,"Witt, Clay",W,59:39,1,0,26,27,0.963
+10/12/2013,Alabama-Huntsville,3,2,"Roy, Derick",W,59:58,2,0,27,29,0.931
+11/1/2013,Boston College,2,4,"Witt, Clay",L,59:02,3,0,29,32,0.906
+11/2/2013,Boston College,3,4,"Witt, Clay",L,61:36,4,0,36,40,0.900
+2/10/2014,Boston College,1,4,"Witt, Clay",L,59:45,3,0,37,40,0.925
+2/28/2014,Boston University,1,4,"Witt, Clay",L,59:03,3,0,23,26,0.885
+3/1/2014,Boston University,2,4,"Witt, Clay",L,56:42,4,0,17,21,0.810
+10/5/2013,Dalhousie University (Exh),5,0,"Witt, Clay",W,20:00,0,0,9,9,1.000
+10/5/2013,Dalhousie University (Exh),5,0,"Roy, Derick",,20:00,0,0,4,4,1.000
+10/5/2013,Dalhousie University (Exh),5,0,"Mountain, Bryan",,20:00,0,0,6,6,1.000
+12/30/2013,Dartmouth,8,8,"Roy, Derick",,39:56,6,0,22,28,0.786
+12/30/2013,Dartmouth,8,8,"Mountain, Bryan",,23:44,2,0,5,7,0.714
+2/3/2014,Harvard,6,0,"Witt, Clay",W,59:46,0,0,27,27,1.000
+10/18/2013,Holy Cross,3,1,"Roy, Derick",W,60:00,1,0,26,27,0.963
+10/19/2013,Holy Cross,5,2,"Witt, Clay",W,60:00,2,0,27,29,0.931
+2/21/2014,Maine,4,4,"Witt, Clay",,65:00,4,0,23,27,0.852
+2/22/2014,Maine,4,3,"Witt, Clay",W,59:55,3,0,35,38,0.921
+1/4/2014,Massachusetts,4,3,"Witt, Clay",W,59:50,3,0,26,29,0.897
+2/7/2014,Massachusetts,0,3,"Witt, Clay",L,57:30,2,0,45,47,0.957
+2/15/2014,Massachusetts,5,4,"Witt, Clay",W,59:54,4,0,32,36,0.889
+11/22/2013,Merrimack,5,2,"Witt, Clay",W,59:43,2,0,29,31,0.935
+11/23/2013,Merrimack,2,0,"Witt, Clay",W,60:00,0,0,38,38,1.000
+11/15/2013,New Hampshire,0,3,"Witt, Clay",L,60:00,3,0,36,39,0.923
+11/16/2013,New Hampshire,1,4,"Roy, Derick",L,59:59,4,0,28,32,0.875
+3/14/2014,New Hampshire,0,1,"Witt, Clay",L,58:30,1,0,34,35,0.971
+3/15/2014,New Hampshire,5,4,"Witt, Clay",W,63:39,4,0,31,35,0.886
+3/16/2014,New Hampshire,4,5,"Witt, Clay",L,58:34,5,0,21,26,0.808
+11/30/2013,Notre Dame,3,2,"Witt, Clay",W,60:00,2,0,31,33,0.939
+1/24/2014,Notre Dame,4,0,"Witt, Clay",W,60:00,0,0,30,30,1.000
+1/25/2014,Notre Dame,0,3,"Witt, Clay",L,60:00,3,0,30,33,0.909
+12/6/2013,Providence,3,3,"Witt, Clay",,65:00,3,0,52,55,0.945
+1/7/2014,Providence,2,1,"Witt, Clay",W,59:49,1,0,38,39,0.974
+10/25/2013,St. Lawrence,6,3,"Witt, Clay",W,60:00,3,0,39,42,0.929
+10/26/2013,St. Lawrence,4,6,"Roy, Derick",L,58:29,5,0,25,30,0.833
+11/9/2013,UMass Lowell,4,2,"Witt, Clay",W,60:00,2,0,32,34,0.941
+1/11/2014,UMass Lowell,4,1,"Witt, Clay",W,60:00,1,0,47,48,0.979
+12/17/2013,Vermont,3,0,"Witt, Clay",W,60:00,0,0,44,44,1.000
+1/17/2014,Vermont,3,2,"Witt, Clay",W,59:48,2,0,46,48,0.958
+1/18/2014,Vermont,1,4,"Witt, Clay",L,58:25,3,0,28,31,0.903
+11/29/2013,Western Michigan,1,1,"Witt, Clay",,65:00,1,0,30,31,0.968
+10/5/2014,Acadia (Exh),2,3,"Witt, Clay",,31:17,1,0,9,10,0.900
+10/5/2014,Acadia (Exh),2,3,"Roy, Derick",L,27:27,2,0,15,17,0.882
+1/9/2015,Boston College,1,1,"Witt, Clay",,65:00,1,0,32,33,0.970
+1/10/2015,Boston College,2,4,"Witt, Clay",L,59:12,4,0,21,25,0.840
+2/3/2015,Boston College,3,2,"Witt, Clay",W,60:00,2,0,21,23,0.913
+2/23/2015,Boston University,3,4,"Witt, Clay",L,60:51,4,0,30,34,0.882
+2/27/2015,Boston University,6,5,"Witt, Clay",W,60:00,5,0,24,29,0.828
+2/28/2015,Boston University,1,6,"Witt, Clay",L,60:00,6,0,29,35,0.829
+10/17/2014,Colgate,0,3,"Witt, Clay",L,56:32,2,0,18,20,0.900
+10/18/2014,Colgate,0,3,"Roy, Derick",L,60:00,3,0,38,41,0.927
+2/13/2015,Connecticut,9,0,"Witt, Clay",W,60:00,0,0,27,27,1.000
+2/14/2015,Connecticut,6,1,"Roy, Derick",W,60:00,1,0,30,31,0.968
+10/24/2014,Massachusetts,2,3,"Roy, Derick",L,58:57,3,0,25,28,0.893
+12/16/2014,Massachusetts,8,3,"Witt, Clay",W,60:00,3,0,31,34,0.912
+2/6/2015,Massachusetts,5,3,"Witt, Clay",W,60:00,3,0,19,22,0.864
+11/21/2014,Merrimack,2,4,"Witt, Clay",L,58:43,3,0,26,29,0.897
+11/22/2014,Merrimack,3,1,"Witt, Clay",W,60:00,1,0,24,25,0.960
+3/6/2015,Merrimack,2,3,"Witt, Clay",L,62:24,3,0,26,29,0.897
+3/7/2015,Merrimack,1,2,"Witt, Clay",L,95:37,2,0,47,49,0.959
+11/29/2014,Minnesota,3,2,"Witt, Clay",W,60:00,2,0,25,27,0.926
+11/14/2014,New Hampshire,3,5,"Witt, Clay",L,59:24,4,0,27,31,0.871
+11/15/2014,New Hampshire,2,1,"Witt, Clay",W,60:00,1,0,35,36,0.972
+1/23/2015,Notre Dame,3,2,"Roy, Derick",W,60:00,2,0,23,25,0.920
+1/24/2015,Notre Dame,4,2,"Witt, Clay",W,59:46,2,0,21,23,0.913
+12/3/2014,Providence,1,5,"Witt, Clay",L,60:00,5,0,26,31,0.839
+12/6/2014,Providence,2,1,"Witt, Clay",W,59:38,1,0,37,38,0.974
+11/1/2014,Quinnipiac,2,3,"Roy, Derick",L,57:25,3,0,31,34,0.912
+11/2/2014,Quinnipiac,3,4,"Roy, Derick",L,58:42,4,0,23,27,0.852
+1/2/2015,St. Lawrence,3,3,"Witt, Clay",,63:58,3,0,28,31,0.903
+1/3/2015,St. Lawrence,4,2,"Roy, Derick",W,60:00,2,0,21,23,0.913
+11/7/2014,UMass Lowell,3,3,"Roy, Derick",,65:00,3,0,38,41,0.927
+11/8/2014,UMass Lowell,0,5,"Roy, Derick",L,60:00,5,0,23,28,0.821
+10/11/2014,Vermont,2,6,"Witt, Clay",L,40:00,5,0,21,26,0.808
+10/11/2014,Vermont,2,6,"Roy, Derick",,20:00,1,0,10,11,0.909
+1/16/2015,Vermont,4,1,"Roy, Derick",W,60:00,1,0,23,24,0.958
+1/17/2015,Vermont,2,2,"Roy, Derick",,65:00,2,0,30,32,0.938
+1/6/2015,Yale,3,2,"Roy, Derick",W,60:00,2,0,28,30,0.933
+10/16/2015,Bentley,2,3,"Roy, Derick",L,58:36,3,0,8,11,0.727
+10/17/2015,Bentley,1,4,"Roy, Derick",L,43:28,4,0,17,21,0.810
+10/17/2015,Bentley,1,4,"Ruck, Ryan",,16:32,0,0,6,6,1.000
+12/6/2015,Boston College,3,4,"Ruck, Ryan",L,58:58,4,0,26,30,0.867
+12/5/2015,Boston College,3,3,"Ruck, Ryan",,64:32,3,0,23,26,0.885
+3/18/2016,Boston College,5,4,"Ruck, Ryan",W,59:48,4,0,21,25,0.840
+11/6/2015,Boston University,4,5,"Ruck, Ryan",L,57:50,5,0,24,29,0.828
+11/7/2015,Boston University,1,4,"Ruck, Ryan",L,58:56,2,0,30,32,0.938
+2/1/2016,Boston University,1,3,"Ruck, Ryan",L,58:40,2,0,31,33,0.939
+10/10/2015,Colgate,2,1,"Roy, Derick",W,59:57,1,0,16,17,0.941
+11/28/2015,Colgate,7,1,"Roy, Derick",W,59:55,1,0,11,12,0.917
+2/19/2016,Connecticut,5,2,"Ruck, Ryan",W,60:00,2,0,16,18,0.889
+2/20/2016,Connecticut,4,1,"Ruck, Ryan",W,60:00,1,0,23,24,0.958
+2/8/2016,Harvard,5,1,"Ruck, Ryan",W,59:51,1,0,19,20,0.950
+2/26/2016,Maine,5,3,"Ruck, Ryan",W,60:00,3,0,34,37,0.919
+2/27/2016,Maine,7,1,"Ruck, Ryan",W,51:11,1,0,22,23,0.957
+2/27/2016,Maine,7,1,"Roy, Derick",,7:50,0,0,4,4,1.000
+3/4/2016,Maine,3,2,"Ruck, Ryan",W,64:30,2,0,19,21,0.905
+3/5/2016,Maine,4,3,"Ruck, Ryan",W,73:38,3,0,33,36,0.917
+2/12/2016,Massachusetts,5,0,"Ruck, Ryan",W,59:51,0,0,16,16,1.000
+2/13/2016,Massachusetts,4,2,"Ruck, Ryan",W,59:58,2,0,28,30,0.933
+1/22/2016,Merrimack,5,2,"Ruck, Ryan",W,60:00,2,0,22,24,0.917
+1/23/2016,Merrimack,4,1,"Ruck, Ryan",W,59:42,1,0,15,16,0.938
+12/19/2015,Michigan State,2,1,"Ruck, Ryan",W,59:49,1,0,26,27,0.963
+10/23/2015,Minnesota,0,4,"Roy, Derick",L,11:50,3,0,1,4,0.250
+10/23/2015,Minnesota,0,4,"Ruck, Ryan",,48:08,1,0,21,22,0.955
+10/24/2015,Minnesota,3,4,"Ruck, Ryan",L,58:41,4,0,28,32,0.875
+1/15/2016,New Hampshire,4,2,"Ruck, Ryan",W,60:00,2,0,23,25,0.920
+1/16/2016,New Hampshire,6,2,"Ruck, Ryan",W,60:00,2,0,30,32,0.938
+3/25/2016,North Dakota,2,6,"Ruck, Ryan",L,60:00,6,0,30,36,0.833
+11/12/2015,Notre Dame,2,3,"Ruck, Ryan",L,59:55,3,0,28,31,0.903
+11/13/2015,Notre Dame,2,2,"Ruck, Ryan",,65:00,2,0,23,25,0.920
+3/11/2016,Notre Dame,3,1,"Ruck, Ryan",W,60:00,1,0,20,21,0.952
+3/12/2016,Notre Dame,6,4,"Ruck, Ryan",W,60:00,4,0,25,29,0.862
+11/21/2015,Providence,0,3,"Ruck, Ryan",L,59:43,2,0,27,29,0.931
+11/20/2015,Providence,2,5,"Ruck, Ryan",L,60:00,5,0,24,29,0.828
+1/2/2016,Quinnipiac,3,3,"Ruck, Ryan",,65:00,3,0,20,23,0.870
+10/4/2015,Simon Fraser (Exh.),10,2,"Roy, Derick",W,20:00,0,0,3,3,1.000
+10/4/2015,Simon Fraser (Exh.),10,2,"Theut, Jake",,20:00,0,0,2,2,1.000
+10/4/2015,Simon Fraser (Exh.),10,2,"Ruck, Ryan",,20:00,2,0,4,6,0.667
+1/8/2016,St. Lawrence,3,0,"Ruck, Ryan",W,60:00,0,0,24,24,1.000
+1/9/2016,St. Lawrence,4,2,"Ruck, Ryan",W,60:00,2,0,27,29,0.931
+11/27/2015,UMass Lowell,2,3,"Ruck, Ryan",L,61:13,3,0,17,20,0.850
+2/5/2016,UMass Lowell,2,2,"Ruck, Ryan",,65:00,2,0,24,26,0.923
+3/19/2016,UMass Lowell,3,2,"Ruck, Ryan",W,60:00,2,0,21,23,0.913
+10/29/2015,Vermont,2,3,"Ruck, Ryan",L,58:58,3,0,18,21,0.857
+10/31/2015,Vermont,3,3,"Roy, Derick",,65:00,3,0,22,25,0.880
+10/1/2016,Acadia (EXH),3,1,"Ruck, Ryan",W,29:25,1,0,13,14,0.929
+10/1/2016,Acadia (EXH),3,1,"Theut, Jake",,30:33,0,0,9,9,1.000
+10/21/2016,Arizona State,5,2,"Ruck, Ryan",W,60:00,2,0,23,25,0.920
+10/22/2016,Arizona State,6,1,"Ruck, Ryan",W,59:48,1,0,21,22,0.955
+10/14/2016,Bentley,1,1,"Ruck, Ryan",,65:00,1,0,22,23,0.957
+10/15/2016,Bentley,7,3,"Ruck, Ryan",W,59:54,3,0,15,18,0.833
+11/29/2016,Boston College,1,2,"Ruck, Ryan",L,59:22,2,0,27,29,0.931
+12/6/2016,Boston College,3,5,"Ruck, Ryan",L,57:46,5,0,30,35,0.857
+2/13/2017,Boston College,4,2,"Ruck, Ryan",W,59:55,2,0,30,32,0.938
+11/4/2016,Boston University,4,4,"Ruck, Ryan",,64:24,4,0,32,36,0.889
+11/5/2016,Boston University,0,3,"Ruck, Ryan",L,60:00,3,0,20,23,0.870
+3/10/2017,Boston University,2,3,"Ruck, Ryan",L,63:05,3,0,32,35,0.914
+3/11/2017,Boston University,2,3,"Ruck, Ryan",L,59:07,3,0,25,28,0.893
+12/30/2016,Clarkson,8,2,"Ruck, Ryan",W,60:00,2,0,38,40,0.950
+2/17/2017,Connecticut,3,0,"Ruck, Ryan",W,59:45,0,0,20,20,1.000
+2/18/2017,Connecticut,4,1,"Ruck, Ryan",W,59:54,1,0,24,25,0.960
+3/3/2017,Connecticut,3,1,"Ruck, Ryan",W,60:00,1,0,30,31,0.968
+3/4/2017,Connecticut,6,2,"Ruck, Ryan",W,60:00,2,0,32,34,0.941
+2/6/2017,Harvard,3,4,"Ruck, Ryan",L,57:28,4,0,25,29,0.862
+2/24/2017,Maine,5,4,"Ruck, Ryan",W,60:12,4,0,19,23,0.826
+2/25/2017,Maine,4,5,"Ruck, Ryan",L,59:27,5,0,19,24,0.792
+1/31/2017,Massachusetts,6,5,"Ruck, Ryan",W,59:42,5,0,30,35,0.857
+2/10/2017,Massachusetts,6,2,"Ruck, Ryan",W,59:03,2,0,25,27,0.926
+1/20/2017,Merrimack,4,1,"Ruck, Ryan",W,60:00,1,0,33,34,0.971
+1/21/2017,Merrimack,4,2,"Ruck, Ryan",W,60:00,2,0,33,35,0.943
+12/18/2016,Michigan State,6,2,"Ruck, Ryan",W,60:00,2,0,24,26,0.923
+11/25/2016,Minnesota,6,4,"Ruck, Ryan",W,60:00,4,0,27,31,0.871
+1/12/2017,New Hampshire,3,5,"Ruck, Ryan",L,58:42,4,0,25,29,0.862
+1/14/2017,New Hampshire,2,2,"Ruck, Ryan",,65:00,2,0,33,35,0.943
+11/12/2016,Notre Dame,2,5,"Ruck, Ryan",L,54:51,5,0,22,27,0.815
+11/12/2016,Notre Dame,2,5,"Theut, Jake",,5:05,0,0,1,1,1.000
+11/13/2016,Notre Dame,0,0,"Theut, Jake",,40:00,0,0,22,22,1.000
+11/18/2016,Providence,5,4,"Ruck, Ryan",W,59:57,4,0,26,30,0.867
+11/19/2016,Providence,4,5,"Ruck, Ryan",,40:14,3,0,16,19,0.842
+11/19/2016,Providence,4,5,"Theut, Jake",L,17:19,2,0,6,8,0.750
+10/7/2016,Quinnipiac,2,2,"Ruck, Ryan",,64:39,2,0,20,22,0.909
+10/8/2016,Quinnipiac,2,5,"Ruck, Ryan",L,58:34,4,0,23,27,0.852
+1/27/2017,UMass Lowell,4,3,"Ruck, Ryan",W,60:00,3,0,21,24,0.875
+2/3/2017,UMass Lowell,4,6,"Ruck, Ryan",L,59:42,5,0,20,25,0.800
+10/30/2016,Vermont,2,3,"Ruck, Ryan",L,58:22,3,0,26,29,0.897
+1/7/2017,Vermont,3,4,"Ruck, Ryan",L,58:46,4,0,20,24,0.833
+1/3/2017,Yale,4,5,"Ruck, Ryan",L,58:56,5,0,29,34,0.853
+12/30/2017,AIC,3,1,"Primeau, Cayden",W,60:00,1,0,24,25,0.960
+1/5/2018,Bentley,3,3,"Primeau, Cayden",,65:00,3,0,22,25,0.880
+1/6/2018,Bentley,6,1,"Primeau, Cayden",W,55:47,1,0,12,13,0.923
+1/6/2018,Bentley,6,1,"Theut, Jake",,4:00,0,0,1,1,1.000
+11/18/2017,Boston College,1,4,"Primeau, Cayden",L,60:00,4,0,26,30,0.867
+12/9/2017,Boston College,5,2,"Primeau, Cayden",W,58:21,2,0,26,28,0.929
+2/5/2018,Boston College,3,0,"Primeau, Cayden",W,60:00,0,0,37,37,1.000
+11/4/2017,Boston University,4,1,"Ruck, Ryan",W,30:12,1,0,14,15,0.933
+11/4/2017,Boston University,4,1,"Primeau, Cayden",,29:48,0,0,19,19,1.000
+11/10/2017,Boston University,6,1,"Primeau, Cayden",W,60:00,1,0,33,34,0.971
+2/12/2018,Boston University,5,2,"Primeau, Cayden",W,60:00,2,0,38,40,0.950
+11/28/2017,Connecticut,1,4,"Ruck, Ryan",L,20:00,3,0,5,8,0.625
+11/28/2017,Connecticut,1,4,"Primeau, Cayden",,40:00,1,0,9,10,0.900
+2/9/2018,Connecticut,2,4,"Primeau, Cayden",L,57:57,3,0,30,33,0.909
+1/12/2018,Maine,5,3,"Primeau, Cayden",W,59:37,3,0,30,33,0.909
+1/13/2018,Maine,5,3,"Primeau, Cayden",W,60:00,3,0,17,20,0.850
+1/19/2018,Massachusetts,0,3,"Primeau, Cayden",L,60:00,3,0,29,32,0.906
+1/20/2018,Massachusetts,5,0,"Primeau, Cayden",W,59:35,0,0,19,19,1.000
+3/9/2018,Massachusetts,3,2,"Primeau, Cayden",W,60:00,2,0,29,31,0.935
+3/10/2018,Massachusetts,7,2,"Primeau, Cayden",W,60:00,2,0,28,30,0.933
+12/1/2017,Merrimack,3,1,"Primeau, Cayden",W,59:36,1,0,28,29,0.966
+12/2/2017,Merrimack,3,1,"Primeau, Cayden",W,60:00,1,0,28,29,0.966
+12/16/2017,Merrimack,1,1,"Primeau, Cayden",,65:00,1,0,29,30,0.967
+3/24/2018,Michigan,2,3,"Primeau, Cayden",L,58:54,3,0,29,32,0.906
+2/2/2018,New Hampshire,1,1,"Primeau, Cayden",,64:11,1,0,18,19,0.947
+2/23/2018,New Hampshire,8,0,"Primeau, Cayden",W,51:48,0,0,29,29,1.000
+2/23/2018,New Hampshire,8,0,"Theut, Jake",,8:09,0,0,0,0,.000
+2/24/2018,New Hampshire,4,0,"Primeau, Cayden",W,59:19,0,0,34,34,1.000
+3/16/2018,No. 9/9 Providence,2,3,"Primeau, Cayden",L,69:55,3,0,31,34,0.912
+9/30/2017,Prince Edward Island (exh),9,1,"Ruck, Ryan",,19:26,0,0,6,6,1.000
+9/30/2017,Prince Edward Island (exh),9,1,"Theut, Jake",,20:00,1,0,15,16,0.938
+9/30/2017,Prince Edward Island (exh),9,1,"Primeau, Cayden",,18:55,0,0,10,10,1.000
+1/26/2018,Providence,4,4,"Primeau, Cayden",,64:26,4,0,29,33,0.879
+1/27/2018,Providence,1,2,"Primeau, Cayden",L,62:11,2,0,27,29,0.931
+10/20/2017,Quinnipiac,4,6,"Primeau, Cayden",L,57:51,6,0,9,15,0.600
+10/21/2017,Quinnipiac,2,3,"Ruck, Ryan",L,64:19,3,0,43,46,0.935
+10/14/2017,RIT,3,3,"Primeau, Cayden",,64:25,3,0,24,27,0.889
+10/6/2017,Sacred Heart,7,3,"Ruck, Ryan",W,60:00,3,0,19,22,0.864
+10/7/2017,Sacred Heart,7,0,"Primeau, Cayden",W,59:34,0,0,18,18,1.000
+10/27/2017,UMass Lowell,3,1,"Ruck, Ryan",W,60:00,1,0,23,24,0.958
+10/28/2017,UMass Lowell,5,4,"Ruck, Ryan",W,62:10,4,0,23,27,0.852
+11/11/2017,UMass Lowell,2,4,"Primeau, Cayden",L,59:46,3,0,26,29,0.897
+11/17/2017,Vermont,2,1,"Primeau, Cayden",W,59:44,1,0,20,21,0.952
+2/16/2018,Vermont,4,3,"Primeau, Cayden",W,61:57,3,0,32,35,0.914
+2/17/2018,Vermont,4,1,"Primeau, Cayden",W,59:14,1,0,29,30,0.967
+12/29/2018,Alabama Huntsville,2,0,"Ruck, Ryan",W,59:47,0,0,13,13,1.000
+2/11/2019,Boston College,4,2,"Primeau, Cayden",W,60:00,2,0,33,35,0.943
+3/1/2019,Boston College,1,3,"Primeau, Cayden",L,59:12,2,0,30,32,0.938
+3/2/2019,Boston College,4,2,"Primeau, Cayden",W,60:00,2,0,41,43,0.953
+3/23/2019,Boston College,3,2,"Primeau, Cayden",W,60:00,2,0,38,40,0.950
+11/1/2018,Boston University,5,5,"Primeau, Cayden",,65:00,5,0,45,50,0.900
+11/3/2018,Boston University,1,4,"Primeau, Cayden",L,60:00,4,0,25,29,0.862
+2/4/2019,Boston University,2,1,"Primeau, Cayden",W,60:51,1,0,26,27,0.963
+3/22/2019,Boston University,2,1,"Primeau, Cayden",W,75:44,1,0,29,30,0.967
+11/9/2018,Connecticut,3,2,"Primeau, Cayden",W,60:00,2,0,22,24,0.917
+2/7/2019,Connecticut,2,3,"Primeau, Cayden",L,60:48,3,0,29,32,0.906
+3/30/2019,Cornell,1,5,"Primeau, Cayden",L,59:38,5,0,14,19,0.737
+1/11/2019,Maine,3,2,"Primeau, Cayden",W,60:00,2,0,19,21,0.905
+1/12/2019,Maine,4,0,"Primeau, Cayden",W,60:00,0,0,33,33,1.000
+3/15/2019,Maine,2,1,"Primeau, Cayden",W,64:15,1,0,41,42,0.976
+3/16/2019,Maine,2,1,"Primeau, Cayden",W,59:51,1,0,33,34,0.971
+1/18/2019,Massachusetts,1,6,"Primeau, Cayden",L,29:48,5,0,17,22,0.773
+1/18/2019,Massachusetts,1,6,"Ruck, Ryan",,30:12,1,0,15,16,0.938
+1/19/2019,Massachusetts,2,1,"Primeau, Cayden",W,61:15,1,0,45,46,0.978
+11/30/2018,Merrimack,9,1,"Primeau, Cayden",W,40:00,1,0,19,20,0.950
+11/30/2018,Merrimack,9,1,"Ruck, Ryan",,20:00,0,0,3,3,1.000
+12/8/2018,Merrimack,7,2,"Primeau, Cayden",W,59:39,2,0,27,29,0.931
+1/5/2019,Merrimack,0,1,"Ruck, Ryan",L,58:47,1,0,21,22,0.955
+2/22/2019,New Hampshire,6,3,"Primeau, Cayden",W,60:00,3,0,33,36,0.917
+2/23/2019,New Hampshire,6,0,"Primeau, Cayden",W,60:00,0,0,23,23,1.000
+3/8/2019,New Hampshire,4,0,"Primeau, Cayden",W,55:58,0,0,32,32,1.000
+3/8/2019,New Hampshire,4,0,"Ruck, Ryan",,4:02,0,0,3,3,1.000
+1/25/2019,Providence,1,4,"Primeau, Cayden",L,57:51,3,0,34,37,0.919
+1/26/2019,Providence,0,3,"Primeau, Cayden",L,59:56,3,0,26,29,0.897
+11/24/2018,RIT,4,3,"Primeau, Cayden",W,59:55,3,0,28,31,0.903
+12/28/2018,RPI,3,2,"Ruck, Ryan",W,64:21,2,0,31,33,0.939
+10/12/2018,Sacred Heart,5,2,"Primeau, Cayden",W,60:00,2,0,24,26,0.923
+10/13/2018,Sacred Heart,5,0,"Primeau, Cayden",W,60:00,0,0,25,25,1.000
+10/27/2018,St. Cloud State,3,2,"Primeau, Cayden",W,60:00,2,0,25,27,0.926
+10/26/2018,UMass Lowell,4,1,"Primeau, Cayden",W,60:00,1,0,16,17,0.941
+11/10/2018,UMass Lowell,5,4,"Primeau, Cayden",W,61:14,4,0,33,37,0.892
+2/1/2019,UMass Lowell,1,3,"Primeau, Cayden",L,58:34,2,0,26,28,0.929
+10/19/2018,Union,3,4,"Primeau, Cayden",L,60:12,4,0,25,29,0.862
+10/20/2018,Union,1,3,"Primeau, Cayden",L,59:06,3,0,29,32,0.906
+11/16/2018,Vermont,1,0,"Primeau, Cayden",W,60:00,0,0,26,26,1.000
+2/15/2019,Vermont,4,1,"Primeau, Cayden",W,60:00,1,0,32,33,0.970
+2/16/2019,Vermont,2,1,"Primeau, Cayden",W,60:00,1,0,23,24,0.958
+1/6/2020,Bentley,4,2,"Pantano, Craig",W,60:00,2,0,26,28,0.929
+12/7/2019,Boston University,3,6,"Pantano, Craig",L,59:11,5,0,21,26,0.808
+2/10/2020,Boston University,4,4,"Pantano, Craig",,64:51,4,0,30,34,0.882
+3/6/2020,Boston University,0,3,"Pantano, Craig",L,57:30,3,0,28,31,0.903
+3/7/2020,Boston University,2,1,"Pantano, Craig",W,59:56,1,0,29,30,0.967
+11/30/2019,Colgate University,4,3,"Pantano, Craig",W,60:00,3,0,24,27,0.889
+1/18/2020,Connecticut,2,3,"Pantano, Craig",L,62:56,3,0,41,44,0.932
+1/3/2020,Connecticut,5,2,"Pantano, Craig",W,60:00,2,0,26,28,0.929
+12/14/2019,Dartmouth,6,4,"Pantano, Craig",W,59:34,4,0,23,27,0.852
+2/3/2020,Harvard,3,1,"Pantano, Craig",W,59:49,1,0,27,28,0.964
+10/19/2019,Holy Cross,2,2,"Pantano, Craig",,64:42,2,0,22,24,0.917
+11/22/2019,Maine,5,2,"Pantano, Craig",W,60:00,2,0,22,24,0.917
+11/23/2019,Maine,3,2,"Pantano, Craig",W,60:00,2,0,26,28,0.929
+2/7/2020,Maine,2,4,"Pantano, Craig",L,58:33,4,0,32,36,0.889
+11/8/2019,Merrimack,1,1,"Pantano, Craig",,65:00,1,0,37,38,0.974
+11/9/2019,Merrimack,3,1,"Pantano, Craig",W,59:44,1,0,19,20,0.950
+11/29/2019,New Hampshire,4,0,"Pantano, Craig",W,59:35,0,0,25,25,1.000
+1/11/2020,New Hampshire,4,5,"Pantano, Craig",L,62:28,5,0,27,32,0.844
+11/15/2019,No. 10 Providence,2,3,"Pantano, Craig",L,57:35,3,0,35,38,0.921
+11/16/2019,No. 10 Providence,7,3,"Pantano, Craig",W,60:00,3,0,16,19,0.842
+2/14/2020,No. 11 UMass Lowell,3,0,"Pantano, Craig",W,60:00,0,0,24,24,1.000
+2/15/2020,No. 11 UMass Lowell,2,1,"Pantano, Craig",W,59:55,1,0,30,31,0.968
+10/25/2019,No. 14 St. Cloud State,4,1,"Pantano, Craig",W,59:59,1,0,19,20,0.950
+10/26/2019,No. 14 St. Cloud State,1,2,"Pantano, Craig",L,58:56,2,0,31,33,0.939
+11/1/2019,No. 3 Massachusetts,3,6,"Pantano, Craig",L,40:00,5,0,15,20,0.750
+11/1/2019,No. 3 Massachusetts,3,6,"Murphy, Connor",,19:21,0,0,2,2,1.000
+11/2/2019,No. 3 Massachusetts,2,4,"Pantano, Craig",L,59:01,3,0,30,33,0.909
+10/15/2019,No. 4 Massachusetts,3,1,"Pantano, Craig",W,59:24,1,0,34,35,0.971
+2/20/2020,No. 5 Boston College,2,3,"Pantano, Craig",L,58:07,3,0,31,34,0.912
+2/21/2020,No. 5 Boston College,1,10,"Pantano, Craig",L,27:27,4,0,16,20,0.800
+2/21/2020,No. 5 Boston College,1,10,"Frye, Curtis",,9:16,1,0,2,3,0.667
+2/21/2020,No. 5 Boston College,1,10,"Murphy, Connor",,23:17,5,0,9,14,0.643
+1/31/2020,No. 8 Providence,4,3,"Pantano, Craig",W,59:49,3,0,30,33,0.909
+10/11/2019,Union,2,1,"Pantano, Craig",W,59:52,1,0,18,19,0.947
+10/12/2019,Union,2,1,"Pantano, Craig",W,60:00,1,0,20,21,0.952
+2/28/2020,Vermont,2,4,"Pantano, Craig",L,58:01,4,0,30,34,0.882
+2/29/2020,Vermont,1,3,"Pantano, Craig",L,58:04,3,0,24,27,0.889
+2/2/2021,Boston College,2,6,"Murphy, Connor",L,44:16,4,0,20,24,0.833
+2/2/2021,Boston College,2,6,"Frye, Curtis",,15:19,2,0,7,9,0.778
+3/5/2021,Boston College,2,4,"Murphy, Connor",L,59:58,4,0,38,42,0.905
+12/12/2020,Merrimack,8,2,"Murphy, Connor",W,59:46,2,0,20,22,0.909
+12/12/2020,Merrimack,8,2,"Scarpa, Nick",,00:00,0,0,0,0,.000
+12/12/2020,Merrimack,8,2,"Frye, Curtis",,00:00,0,0,0,0,.000
+12/13/2020,Merrimack,6,3,"Murphy, Connor",W,59:45,3,0,27,30,0.900
+1/9/2021,Merrimack,3,2,"Murphy, Connor",W,62:05,2,0,37,39,0.949
+1/10/2021,Merrimack,3,2,"Murphy, Connor",W,60:00,2,0,26,28,0.929
+2/12/2021,New Hampshire,6,2,"Murphy, Connor",W,59:17,2,0,21,23,0.913
+2/13/2021,New Hampshire,5,4,"Murphy, Connor",W,60:00,4,0,20,24,0.833
+1/13/2021,New Hampshire,7,0,"Murphy, Connor",W,60:00,0,0,37,37,1.000
+1/13/2021,New Hampshire,7,0,"Scarpa, Nick",,00:00,0,0,0,0,.000
+1/13/2021,New Hampshire,7,0,"Frye, Curtis",,00:00,0,0,0,0,.000
+12/19/2020,Providence,3,3,"Murphy, Connor",,64:59,3,0,36,39,0.923
+12/19/2020,Providence,3,3,"Scarpa, Nick",,00:00,0,0,0,0,.000
+12/19/2020,Providence,3,3,"Frye, Curtis",,00:00,0,0,0,0,.000
+12/20/2020,Providence,0,5,"Murphy, Connor",L,59:35,4,0,30,34,0.882
+12/20/2020,Providence,0,5,"Scarpa, Nick",,00:00,0,0,0,0,.000
+12/20/2020,Providence,0,5,"Frye, Curtis",,00:00,0,0,0,0,.000
+2/27/2021,Providence,2,4,"Murphy, Connor",L,58:57,3,0,19,22,0.864
+2/27/2021,Providence,2,4,"Scarpa, Nick",,00:00,0,0,0,0,.000
+2/27/2021,Providence,2,4,"Frye, Curtis",,00:00,0,0,0,0,.000
+2/28/2021,Providence,3,3,"Murphy, Connor",,64:58,3,0,31,34,0.912
+2/28/2021,Providence,3,3,"Scarpa, Nick",,00:00,0,0,0,0,.000
+2/28/2021,Providence,3,3,"Frye, Curtis",,00:00,0,0,0,0,.000
+2/5/2021,UConn,1,4,"Murphy, Connor",L,59:47,3,0,38,41,0.927
+2/19/2021,UMass Lowell,1,4,"Murphy, Connor",L,58:25,3,0,18,21,0.857
+2/19/2021,UMass Lowell,1,4,"Scarpa, Nick",,00:00,0,0,0,0,.000
+2/19/2021,UMass Lowell,1,4,"Frye, Curtis",,00:00,0,0,0,0,.000
+2/20/2021,UMass Lowell,4,0,"Murphy, Connor",W,60:00,0,0,32,32,1.000
+1/1/2021,UMass,3,4,"Murphy, Connor",L,59:46,4,0,26,30,0.867
+1/2/2021,UMass,3,5,"Murphy, Connor",L,59:43,4,0,32,36,0.889
+3/14/2021,UMass,1,4,"Murphy, Connor",L,60:00,4,0,24,28,0.857
+12/26/2020,Vermont,4,1,"Murphy, Connor",W,59:32,1,0,19,20,0.950
+12/27/2020,Vermont,2,2,"Murphy, Connor",,41:02,2,0,24,26,0.923
+1/11/2022,Arizona State,2,6,"Levi, Devon",L,59:39,5,0,40,45,0.889
+10/2/2021,Bentley University,4,0,"Levi, Devon",W,58:14,0,0,29,29,1.000
+10/15/2021,Boston College,3,5,"Levi, Devon",L,59:26,4,0,32,36,0.889
+2/7/2022,Boston College,3,1,"Semptimphelter, TJ",W,60:00,1,0,41,42,0.976
+2/18/2022,Boston College,1,4,"Semptimphelter, TJ",L,60:00,4,0,24,28,0.857
+2/19/2022,Boston College,4,1,"Semptimphelter, TJ",W,60:00,1,0,23,24,0.958
+3/12/2022,Boston College,3,2,"Levi, Devon",W,60:00,2,0,46,48,0.958
+11/19/2021,Boston University,1,0,"Levi, Devon",W,60:55,0,0,38,38,1.000
+11/20/2021,Boston University,2,2,"Levi, Devon",,65:00,2,0,33,35,0.943
+2/14/2022,Boston University,0,1,"Semptimphelter, TJ",L,60:00,1,0,28,29,0.966
+10/23/2021,Colorado College,1,0,"Levi, Devon",W,60:00,0,0,25,25,1.000
+11/8/2021,Harvard,2,1,"Levi, Devon",W,60:19,1,0,20,21,0.952
+10/8/2021,Holy Cross,3,0,"Levi, Devon",W,60:00,0,0,20,20,1.000
+1/7/2022,Long Island,1,0,"Levi, Devon",W,60:00,0,0,18,18,1.000
+1/8/2022,Long Island,6,0,"Levi, Devon",W,59:57,0,0,26,26,1.000
+10/29/2021,Maine,5,0,"Levi, Devon",W,60:00,0,0,32,32,1.000
+10/30/2021,Maine,3,2,"Levi, Devon",W,60:00,2,0,19,21,0.905
+3/4/2022,Merrimack,6,1,"Levi, Devon",W,60:00,1,0,30,31,0.968
+3/5/2022,Merrimack,1,0,"Levi, Devon",W,60:00,0,0,29,29,1.000
+11/5/2021,New Hampshire,4,1,"Levi, Devon",W,60:00,1,0,19,20,0.950
+11/6/2021,New Hampshire,4,1,"Levi, Devon",W,60:00,1,0,34,35,0.971
+12/3/2021,Providence,2,0,"Levi, Devon",W,60:00,0,0,37,37,1.000
+12/4/2021,Providence,4,1,"Levi, Devon",W,60:00,1,0,34,35,0.971
+10/9/2021,Quinnipiac University,0,3,"Levi, Devon",L,60:00,3,0,28,31,0.903
+11/26/2021,RPI,2,1,"Levi, Devon",W,60:00,1,0,25,26,0.962
+11/28/2021,RPI,2,1,"Levi, Devon",W,60:00,1,0,20,21,0.952
+10/26/2021,UConn,3,5,"Levi, Devon",L,58:49,5,0,36,41,0.878
+2/25/2022,UConn,3,1,"Levi, Devon",W,60:00,1,0,60,61,0.984
+2/26/2022,UConn,5,2,"Levi, Devon",W,60:00,2,0,40,42,0.952
+3/18/2022,UConn,1,4,"Levi, Devon",L,58:10,3,0,33,36,0.917
+11/12/2021,UMass Lowell,1,2,"Levi, Devon",L,61:26,2,0,23,25,0.920
+1/28/2022,UMass Lowell,1,2,"Semptimphelter, TJ",L,58:21,2,0,30,32,0.938
+2/11/2022,UMass Lowell,4,2,"Semptimphelter, TJ",W,60:00,2,0,25,27,0.926
+1/21/2022,UMass,2,3,"Levi, Devon",L,58:51,3,0,31,34,0.912
+1/22/2022,UMass,0,6,"Levi, Devon",L,13:22,4,0,8,12,0.667
+1/22/2022,UMass,0,6,"Semptimphelter, TJ",,20:00,0,0,11,11,1.000
+1/22/2022,UMass,0,6,"Fear, Evan",,26:38,2,0,9,11,0.818
+1/18/2022,Vermont,4,0,"Levi, Devon",W,60:00,0,0,27,27,1.000
+3/1/2022,Vermont,0,1,"Levi, Devon",L,57:57,1,0,26,27,0.963
+2/4/2022,Vermont,5,4,"Semptimphelter, TJ",W,60:00,4,0,29,33,0.879
+3/25/2022,Western Michigan,1,2,"Levi, Devon",L,61:33,2,0,34,36,0.944
+11/18/2022,#11/9 Boston University,2,0,"Levi, Devon",W,60:00,0,0,41,41,1.000
+11/19/2022,#11/9 Boston University,3,4,"Levi, Devon",L,62:38,4,0,28,32,0.875
+1/20/2023,#11 Merrimack,5,1,"Levi, Devon",W,60:00,1,0,33,34,0.971
+1/21/2023,#11 Merrimack,1,0,"Levi, Devon",W,60:00,0,0,37,37,1.000
+1/14/2023,#11 UConn,4,3,"Levi, Devon",W,60:00,3,0,30,33,0.909
+2/3/2023,#14 UConn,3,4,"Levi, Devon",L,64:31,4,0,45,49,0.918
+10/15/2022,#15 Providence,1,2,"Levi, Devon",L,58:57,2,0,49,51,0.961
+11/25/2022,#15 Western Michigan,4,6,"Levi, Devon",L,59:27,5,0,33,38,0.868
+10/22/2022,#19/20 UMass Lowell,2,3,"Riley, Grant",L,58:35,3,0,14,17,0.824
+2/6/2023,#3 Boston University,3,1,"Levi, Devon",W,60:00,1,0,33,34,0.971
+3/11/2023,[7] Providence,1,2,"Levi, Devon",L,64:00,2,0,32,34,0.941
+2/13/2023,#9/10 Harvard (Championship Game),2,2,"Levi, Devon",,65:00,2,0,32,34,0.941
+1/7/2023,#9/10 UConn,4,1,"Levi, Devon",W,60:00,1,0,29,30,0.967
+1/1/2023,#9 Harvard,4,8,"Levi, Devon",L,59:40,8,0,26,34,0.765
+1/1/2023,#9 Harvard,4,8,"Riley, Grant",,00:20,0,0,0,0,.000
+12/30/2022,Bentley,1,3,"Levi, Devon",L,58:59,3,0,23,26,0.885
+10/18/2022,Boston College,3,3,"Levi, Devon",,64:53,3,0,30,33,0.909
+11/11/2022,Boston College,4,4,"Levi, Devon",,63:11,4,0,36,40,0.900
+11/12/2022,Boston College,2,3,"Levi, Devon",L,58:26,3,0,33,36,0.917
+1/31/2023,Boston College,2,1,"Levi, Devon",W,60:00,1,0,28,29,0.966
+10/1/2022,Long Island,3,2,"Levi, Devon",W,61:11,2,0,31,33,0.939
+12/18/2022,Long Island,4,3,"Levi, Devon",W,61:04,3,0,33,36,0.917
+10/28/2022,Maine,2,2,"Levi, Devon",,64:52,2,0,24,26,0.923
+10/29/2022,Maine,4,1,"Levi, Devon",W,60:00,1,0,35,36,0.972
+11/4/2022,New Hampshire,6,2,"Levi, Devon",W,60:00,2,0,25,27,0.926
+11/5/2022,New Hampshire,3,0,"Levi, Devon",W,60:00,0,0,33,33,1.000
+2/10/2023,Providence,3,3,"Levi, Devon",,64:53,3,0,54,57,0.947
+12/6/2022,Sacred Heart,2,4,"Levi, Devon",L,58:54,3,0,27,30,0.900
+3/3/2023,UMass Lowell,1,3,"Levi, Devon",L,57:29,3,0,17,20,0.850
+3/4/2023,UMass Lowell,7,3,"Levi, Devon",W,60:00,3,0,41,44,0.932
+2/24/2023,UMass,2,3,"Levi, Devon",L,58:31,3,0,23,26,0.885
+2/25/2023,UMass,4,0,"Levi, Devon",W,60:00,0,0,32,32,1.000
+12/3/2022,Union,2,3,"Levi, Devon",L,58:29,3,0,13,16,0.812
+10/7/2022,Vermont,5,2,"Levi, Devon",W,60:00,2,0,15,17,0.882
+10/8/2022,Vermont,5,0,"Levi, Devon",W,59:54,0,0,23,23,1.000
+10/8/2022,Vermont,5,0,"Chesney, Harrison",,00:00,0,0,0,0,.000
+10/8/2022,Vermont,5,0,"Riley, Grant",,00:00,0,0,0,0,.000
+2/18/2023,Vermont,3,0,"Levi, Devon",W,59:38,0,0,42,42,1.000
+12/1/2023,#1 Boston College,5,3,"Whitehead, Cameron",W,60:00,3,0,24,27,0.889
+12/2/2023,#1 Boston College,1,3,"Whitehead, Cameron",L,59:11,3,0,31,34,0.912
+3/13/2024,[10] Merrimack,4,0,"Whitehead, Cameron",W,60:00,0,0,22,22,1.000
+3/9/2024,#11/10 Providence,3,3,"Whitehead, Cameron",,65:00,3,0,43,46,0.935
+1/20/2024,#12 UMass,1,2,"Whitehead, Cameron",L,59:19,2,0,33,35,0.943
+11/17/2023,#13 New Hampshire,2,4,"Whitehead, Cameron",L,40:00,4,0,13,17,0.765
+11/17/2023,#13 New Hampshire,2,4,"Hopkins, Connor",,14:01,0,0,6,6,1.000
+11/18/2023,#13 New Hampshire,0,4,"Hopkins, Connor",L,59:22,4,0,15,19,0.789
+11/3/2023,#18 UMass,1,2,"Whitehead, Cameron",L,61:45,2,0,19,21,0.905
+3/16/2024,#2 [2] Boston University,2,4,"Whitehead, Cameron",L,58:53,4,0,28,32,0.875
+10/8/2023,#2/3 Quinnipiac (exh.),2,2,"Whitehead, Cameron",,40:00,1,0,19,20,0.950
+10/8/2023,#2/3 Quinnipiac (exh.),2,2,"Hopkins, Connor",,25:00,1,0,11,12,0.917
+1/9/2024,#2 Boston University,3,4,"Whitehead, Cameron",L,61:18,4,0,36,40,0.900
+10/28/2023,#20 Merrimack,1,4,"Whitehead, Cameron",L,59:45,3,0,31,34,0.912
+1/30/2024,#3 Boston University,4,3,"Whitehead, Cameron",W,64:18,3,0,38,41,0.927
+2/12/2024,#3 Boston University,4,3,"Whitehead, Cameron",W,64:31,3,0,33,36,0.917
+1/6/2024,#3 Quinnipiac,3,3,"Whitehead, Cameron",,65:00,3,0,34,37,0.919
+11/10/2023,#5/6 Providence,1,2,"Whitehead, Cameron",L,61:27,2,0,38,40,0.950
+11/11/2023,#5/6 Providence,2,5,"Whitehead, Cameron",L,60:00,5,0,36,41,0.878
+2/2/2024,#6/5 Maine,6,3,"Whitehead, Cameron",W,59:52,3,0,37,40,0.925
+12/29/2023,#6 Wisconsin,0,3,"Whitehead, Cameron",L,60:00,3,0,35,38,0.921
+2/23/2024,#9 Maine,1,5,"Whitehead, Cameron",L,60:00,5,0,30,35,0.857
+2/24/2024,#9 Maine,4,0,"Whitehead, Cameron",W,59:58,0,0,39,39,1.000
+10/14/2023,Bentley,5,2,"Whitehead, Cameron",W,59:26,2,0,19,21,0.905
+12/9/2023,Brown,4,1,"Whitehead, Cameron",W,60:00,1,0,35,36,0.972
+2/5/2024,Harvard,3,2,"Whitehead, Cameron",W,60:33,2,0,21,23,0.913
+1/26/2024,Merrimack,5,3,"Whitehead, Cameron",W,59:21,3,0,20,23,0.870
+1/27/2024,Merrimack,4,1,"Whitehead, Cameron",W,60:00,1,0,25,26,0.962
+12/28/2023,Minnesota Duluth,4,3,"Whitehead, Cameron",W,61:45,3,0,33,36,0.917
+10/26/2023,New Hampshire,1,4,"Whitehead, Cameron",L,60:00,4,0,21,25,0.840
+11/25/2023,RPI,3,3,"Whitehead, Cameron",,64:50,3,0,23,26,0.885
+11/26/2023,RPI,9,2,"Whitehead, Cameron",W,54:01,2,0,25,27,0.926
+11/26/2023,RPI,9,2,"Chesney, Harrison",,05:41,0,0,1,1,1.000
+10/7/2023,Stonehill,7,0,"Whitehead, Cameron",W,59:48,0,0,13,13,1.000
+3/1/2024,UConn,3,4,"Whitehead, Cameron",L,58:11,4,0,22,26,0.846
+3/2/2024,UConn,4,2,"Whitehead, Cameron",W,59:50,2,0,38,40,0.950
+2/16/2024,UMass Lowell,2,4,"Whitehead, Cameron",L,58:06,4,0,28,32,0.875
+2/17/2024,UMass Lowell,4,0,"Whitehead, Cameron",W,60:00,0,0,42,42,1.000
+1/12/2024,Vermont,4,5,"Whitehead, Cameron",,45:37,4,0,9,13,0.692
+1/12/2024,Vermont,4,5,"Hopkins, Connor",L,13:06,1,0,5,6,0.833
+1/13/2024,Vermont,3,1,"Whitehead, Cameron",W,59:35,1,0,31,32,0.969
+3/15/2025,#1 [1] Boston College,3,1,"Whitehead, Cameron",W,60:00,1,0,30,31,0.968
+2/3/2025,#1 Boston College,2,8,"Whitehead, Cameron",L,60:00,8,0,23,31,0.742
+10/18/2024,#1 University of Denver,2,5,"Whitehead, Cameron",L,60:00,5,0,40,45,0.889
+10/19/2024,#1 University of Denver,2,5,"Whitehead, Cameron",L,59:25,4,0,27,31,0.871
+11/8/2024,#11 Providence College,2,2,"Whitehead, Cameron",,65:00,2,0,36,38,0.947
+11/9/2024,#11 Providence College,5,6,"Whitehead, Cameron",L,62:18,6,0,34,40,0.850
+2/14/2025,#13 University of Massachusetts Lowell,2,0,"Sigurdson, Quentin",W,60:00,0,0,34,34,1.000
+2/15/2025,#13 University of Massachusetts Lowell,1,3,"Sigurdson, Quentin",L,58:41,2,0,23,25,0.920
+1/4/2025,#18/17 Quinnipiac University,5,1,"Whitehead, Cameron",W,60:00,1,0,35,36,0.972
+11/22/2024,#3 Boston College,0,3,"Whitehead, Cameron",L,60:00,3,0,29,32,0.906
+11/23/2024,#3 Boston College,4,2,"Whitehead, Cameron",W,60:00,2,0,30,32,0.938
+3/20/2025,#4 [2] University of Maine,3,4,"Whitehead, Cameron",L,91:02,4,0,57,61,0.934
+3/8/2025,#6 Providence College,2,3,"Whitehead, Cameron",L,58:44,3,0,27,30,0.900
+10/25/2024,#6 University of Maine,1,4,"Whitehead, Cameron",L,58:49,2,0,30,32,0.938
+10/26/2024,#6 University of Maine,2,2,"Whitehead, Cameron",,65:00,2,0,34,36,0.944
+1/31/2025,#6 University of Maine,1,3,"Whitehead, Cameron",L,59:26,2,0,29,31,0.935
+12/28/2024,#7 Providence College,1,3,"Whitehead, Cameron",L,60:00,3,0,32,35,0.914
+10/6/2024,#8/7 Quinnipiac University (exh.),4,2,"Whitehead, Cameron",W,59:20,2,0,25,27,0.926
+10/6/2024,#8/7 Quinnipiac University (exh.),4,2,"Sigurdson, Quentin",,00:06,0,0,0,0,.000
+3/12/2025,[8] Merrimack College,3,2,"Whitehead, Cameron",W,84:39,2,0,44,46,0.957
+2/21/2025,#9/8 Boston University,5,1,"Whitehead, Cameron",W,60:00,1,0,24,25,0.960
+2/22/2025,#9/8 Boston University,1,3,"Whitehead, Cameron",L,58:53,2,0,26,28,0.929
+2/28/2025,#9 University of Connecticut,2,5,"Whitehead, Cameron",L,57:38,4,0,28,32,0.875
+3/1/2025,#9 University of Connecticut,1,7,"Sigurdson, Quentin",L,19:48,3,0,9,12,0.750
+3/1/2025,#9 University of Connecticut,1,7,"Whitehead, Cameron",,40:00,4,0,13,17,0.765
+12/1/2024,Bentley University,3,1,"Whitehead, Cameron",W,60:00,1,0,34,35,0.971
+12/7/2024,Brown University,4,3,"Whitehead, Cameron",W,60:00,3,0,22,25,0.880
+2/10/2025,Harvard,3,4,"Whitehead, Cameron",,26:03,3,0,4,7,0.571
+2/10/2025,Harvard,3,4,"Sigurdson, Quentin",L,32:59,1,0,11,12,0.917
+12/14/2024,Merrimack College,1,4,"Whitehead, Cameron",L,57:09,3,0,17,20,0.850
+1/25/2025,Merrimack College,3,4,"Whitehead, Cameron",L,57:31,4,0,30,34,0.882
+3/6/2025,Merrimack College,2,1,"Whitehead, Cameron",W,59:32,1,0,28,29,0.966
+10/12/2024,Stonehill College,5,1,"Whitehead, Cameron",W,60:00,1,0,17,18,0.944
+12/29/2024,University of Alaska Anchorage,4,3,"Whitehead, Cameron",W,59:12,3,0,20,23,0.870
+12/29/2024,University of Alaska Anchorage,4,3,"Sigurdson, Quentin",,03:16,0,0,1,1,1.000
+1/10/2025,University of Massachusetts,0,5,"Whitehead, Cameron",L,59:37,4,0,25,29,0.862
+1/11/2025,University of Massachusetts,3,0,"Whitehead, Cameron",W,60:00,0,0,35,35,1.000
+11/15/2024,University of New Hampshire,1,4,"Whitehead, Cameron",L,59:00,3,0,27,30,0.900
+11/16/2024,University of New Hampshire,1,1,"Whitehead, Cameron",,65:00,1,0,29,30,0.967
+12/6/2024,University of New Hampshire,3,5,"Whitehead, Cameron",L,36:08,4,0,10,14,0.714
+12/6/2024,University of New Hampshire,3,5,"Sigurdson, Quentin",,22:42,1,0,3,4,0.750
+1/17/2025,University of Vermont,2,1,"Whitehead, Cameron",W,61:59,1,0,27,28,0.964
+1/18/2025,University of Vermont,3,2,"Whitehead, Cameron",W,60:00,2,0,20,22,0.909
+3/11/2026,[10] New Hampshire,7,3,"Zacher, Lawton",W,60:00,3,0,24,27,0.889
+10/31/2025,#11/10 Boston College,3,0,"Zacher, Lawton",W,60:00,0,0,32,32,1.000
+10/30/2025,#11/10 Boston College,4,1,"Zacher, Lawton",W,60:00,1,0,40,41,0.976
+10/17/2025,#11 UMass,4,2,"Zacher, Lawton",W,60:00,2,0,25,27,0.926
+2/6/2026,#12 UConn,0,2,"Zacher, Lawton",L,58:22,2,0,22,24,0.917
+3/7/2026,#13 Boston College,4,2,"Zacher, Lawton",W,60:00,2,0,25,27,0.926
+11/15/2025,#14/13 UConn,3,4,"Zacher, Lawton",L,62:29,4,0,30,34,0.882
+11/14/2025,#14/13 UConn,2,4,"Zacher, Lawton",L,58:45,3,0,31,34,0.912
+3/14/2026,#15 [2] UMass,1,4,"Zacher, Lawton",L,57:51,3,0,23,26,0.885
+11/21/2025,#18/19 Boston University,3,2,"Sigurdson, Quentin",W,60:00,2,0,32,34,0.941
+11/22/2025,#18/19 Boston University,3,4,"Sigurdson, Quentin",L,63:38,4,0,43,47,0.915
+12/13/2025,#20 Boston University,3,4,"Zacher, Lawton",L,58:32,4,0,31,35,0.886
+2/27/2026,#20/RV Maine,0,4,"Zacher, Lawton",L,58:48,4,0,42,46,0.913
+2/28/2026,#20/RV Maine,2,3,"Zacher, Lawton",L,57:58,3,0,29,32,0.906
+2/13/2026,#7/6 Providence,4,2,"Zacher, Lawton",W,60:00,2,0,25,27,0.926
+2/14/2026,#7/6 Providence,1,4,"Zacher, Lawton",L,59:42,2,0,41,43,0.953
+10/25/2025,#7 Denver,1,0,"Zacher, Lawton",W,60:00,0,0,35,35,1.000
+10/10/2025,Army West Point,1,2,"Zacher, Lawton",L,58:20,2,0,21,23,0.913
+1/2/2026,Army,2,5,"Zacher, Lawton",L,57:10,4,0,34,38,0.895
+2/2/2026,Boston University,2,2,"Zacher, Lawton",,65:00,2,0,36,38,0.947
+11/29/2025,Brown,4,1,"Sigurdson, Quentin",W,60:00,1,0,27,28,0.964
+10/18/2025,Harvard (exh.),2,4,"Sigurdson, Quentin",,51:18,2,0,26,28,0.929
+10/18/2025,Harvard (exh.),2,4,"DellaRusso, Matt",L,07:16,1,0,2,3,0.667
+2/9/2026,Harvard,1,4,"Zacher, Lawton",L,58:15,3,0,36,39,0.923
+10/4/2025,Holy Cross,6,4,"Zacher, Lawton",W,59:50,4,0,25,29,0.862
+1/23/2026,Merrimack,1,3,"Zacher, Lawton",L,58:16,2,0,29,31,0.935
+1/22/2026,Merrimack,1,4,"Zacher, Lawton",L,60:00,4,0,25,29,0.862
+1/16/2026,New Hampshire,4,0,"Zacher, Lawton",W,60:00,0,0,26,26,1.000
+1/18/2026,New Hampshire,5,2,"Zacher, Lawton",W,60:00,2,0,30,32,0.938
+11/7/2025,Stonehill,2,0,"Zacher, Lawton",W,60:00,0,0,36,36,1.000
+11/8/2025,Stonehill,4,2,"Zacher, Lawton",W,60:00,2,0,25,27,0.926
+2/20/2026,UMass Lowell,2,0,"Zacher, Lawton",W,60:00,0,0,32,32,1.000
+2/21/2026,UMass Lowell,8,2,"Zacher, Lawton",W,57:11,1,0,31,32,0.969
+2/21/2026,UMass Lowell,8,2,"DellaRusso, Matt",,02:49,1,0,2,3,0.667
+12/6/2025,UMass,3,2,"Zacher, Lawton",W,63:44,2,0,22,24,0.917
+12/7/2025,UMass,0,2,"Zacher, Lawton",L,58:32,1,0,14,15,0.933
+1/30/2026,UMass,2,3,"Zacher, Lawton",L,64:38,3,0,24,27,0.889
+1/9/2026,Vermont,2,3,"Zacher, Lawton",L,57:23,3,0,21,24,0.875
+1/10/2026,Vermont,3,5,"Sigurdson, Quentin",L,58:44,4,0,25,29,0.862
+10/10/2026,Bentley,5,1,"Zacher, Lawton",W,60:00,1,0,19,20,0.950
+10/30/2026,Boston College,2,3,"Zacher, Lawton",L,60:49,3,0,45,48,0.938
+10/31/2026,Boston College,4,3,"Zacher, Lawton",W,62:06,3,0,46,49,0.939
+10/23/2026,Harvard (exh.),1,4,"Caulfield, Sam",L,40:00,3,0,14,17,0.824
+10/23/2026,Harvard (exh.),1,4,"DellaRusso, Matt",,19:54,1,0,12,13,0.923
+10/16/2026,UMass,1,4,"Zacher, Lawton",L,45:08,3,0,16,19,0.842
+10/16/2026,UMass,1,4,"Caulfield, Sam",,14:52,1,0,6,7,0.857
+10/17/2026,UMass,4,1,"Caulfield, Sam",W,60:00,1,0,34,35,0.971
+"Oct 13, 2000",St. Lawrence,4,3,Mike Gilhooly,W,60:00,3,0,10,13,0.769
+"Oct 20, 2000",Notre Dame,4,6,Mike Gilhooly,L,60:00,6,0,32,38,0.842
+"Oct 21, 2000",Notre Dame,5,3,Jason Braun,W,60:00,3,0,34,37,0.919
+"Oct.27, 2000",UMass Lowell,5,2,Jason Braun,W,60:00,2,0,19,21,0.905
+"Oct 28, 2000",Wisconsin,5,4,Mike Gilhooly,W,63:44,4,0,20,24,0.833
+"Nov 03, 2000",Boston College,3,6,Jason Braun,L,60:00,6,0,31,37,0.838
+"Nov 04, 2000",Maine,1,1,Mike Gilhooly,T,65:00,1,0,27,28,0.964
+"Nov 12, 2000",Boston University,4,1,Jason Braun,W,60:00,1,0,34,35,0.971
+"Nov 17, 2000",Providence College,1,3,Mike Gilhooly,L,59:07,3,0,29,32,0.906
+"Nov 18, 2000",Providence College,2,4,Jason Braun,L,60:00,4,0,30,34,0.882
+"Nov 24, 2000",St. Cloud State,1,4,Mike Gilhooly,L,57:56,4,0,25,29,0.862
+"Dec 01, 2000",Maine,1,5,Jason Braun,L,60:00,5,0,25,30,0.833
+"Dec 03, 2000",Maine,3,3,Mike Gilhooly,T,64:24,3,0,23,26,0.885
+"Dec 06, 2000",Boston College,0,0,Jason Braun,,0:00,0,0,0,0,.000
+"Dec 06, 2000",Boston College,0,0,Mike Gilhooly,T,65:00,0,0,28,28,1.000
+"Dec 09, 2000",Dartmouth,3,2,Mike Gilhooly,W,60:00,2,0,35,37,0.946
+"Dec 29, 2000",Rensselaer,3,2,Mike Gilhooly,W,77:20,2,0,37,39,0.949
+"Dec 30, 2000",St. Lawrence,3,4,Mike Gilhooly,L,59:38,4,0,28,32,0.875
+"Jan 04, 2001",UMass Lowell,1,2,Mike Gilhooly,L,59:00,2,0,19,21,0.905
+"Jan 12, 2001",UMass-Amherst,4,2,Mike Gilhooly,W,60:00,2,0,35,37,0.946
+"Jan 13, 2001",UMass-Amherst,0,2,Mike Gilhooly,L,59:13,1,0,16,17,0.941
+"Jan 19, 2001",U. of New Hampshire,1,4,Mike Gilhooly,L,60:00,4,0,28,32,0.875
+"Jan 20, 2001",U. of New Hampshire,5,3,Mike Gilhooly,W,60:00,3,0,37,40,0.925
+"Jan 25, 2001",Merrimack,3,1,Mike Gilhooly,W,60:00,1,0,21,22,0.955
+"Jan 27, 2001",UMass-Amherst,2,2,Mike Gilhooly,T,65:00,2,0,35,37,0.946
+"Feb 02, 2001",Providence College,3,4,Mike Gilhooly,L,56:59,4,0,19,23,0.826
+"Feb. 5, 2001",Boston University,4,6,Mike Gilhooly,L,59:33,5,0,16,21,0.762
+"Feb. 9, 2001",U. of New Hampshire,2,5,Mike Gilhooly,L,32:11,4,0,18,22,0.818
+"Feb. 9, 2001",U. of New Hampshire,2,5,Jason Braun,,26:45,1,0,11,12,0.917
+"Feb 12, 2001",Harvard,8,7,Mike Gilhooly,W,40:00,3,0,18,21,0.857
+"Feb 12, 2001",Harvard,8,7,Jason Braun,,20:00,4,0,9,13,0.692
+"Feb 16, 2001",Merrimack,2,4,Mike Gilhooly,L,57:42,4,0,26,30,0.867
+"Feb 17, 2001",Merrimack,5,2,Mike Gilhooly,,22:31,2,0,21,23,0.913
+"Feb 17, 2001",Merrimack,5,2,Jason Braun,W,37:29,0,0,17,17,1.000
+"Feb 23, 2001",Boston University,1,2,Jason Braun,L,58:12,2,0,36,38,0.947
+"Feb 24, 2001",Boston University,4,3,Jason Braun,W,60:00,3,0,31,34,0.912
+"Mar 01, 2001",Boston College,3,6,Jason Braun,L,59:53,6,0,39,45,0.867
+"Mar 03, 2001",UMass Lowell,2,6,Mike Gilhooly,L,40:20,5,0,16,21,0.762
+"Mar 03, 2001",UMass Lowell,2,6,Matt Coates,,18:46,1,0,5,6,0.833
+"Mar 08, 2001",Maine,1,2,Mike Gilhooly,L,59:48,2,0,23,25,0.920
+"Mar 09, 2001",Maine,3,6,Mike Gilhooly,L,58:17,5,0,16,21,0.762
+"Oct 12, 2001",Alaska-Anchorage,3,5,Mike Gilhooly,L,59:10,5,0,28,33,0.848
+"Oct 13, 2001",Denver,0,3,Jason Braun,L,58:44,3,0,26,29,0.897
+"Oct 19, 2001",Mercyhurst,5,2,Keni Gibson,W,60:00,2,0,17,19,0.895
+"Oct 20, 2001",Boston College,4,3,Mike Gilhooly,W,60:00,3,0,35,38,0.921
+"Oct 26, 2001",New Hampshire,2,2,Jason Braun,T,65:00,2,0,35,37,0.946
+"Oct 27, 2001",Notre Dame,3,3,Jason Braun,T,65:00,3,0,19,22,0.864
+"Nov 02, 2001",Boston University,3,4,Jason Braun,L,59:00,4,0,40,44,0.909
+"Nov 03, 2001",Massachusetts,2,4,Mike Gilhooly,L,40:00,3,0,9,12,0.750
+"Nov 03, 2001",Massachusetts,2,4,Jason Braun,,19:36,0,0,8,8,1.000
+"Nov 09, 2001",Providence College,3,1,Jason Braun,W,60:00,1,0,33,34,0.971
+"Nov 10, 2001",Providence College,3,5,Jason Braun,L,59:35,4,0,16,20,0.800
+"Nov 16, 2001",Univ. of Maine,4,8,Mike Gilhooly,,20:00,2,0,8,10,0.800
+"Nov 16, 2001",Univ. of Maine,4,8,Jason Braun,L,39:43,5,0,16,21,0.762
+"Nov 23, 2001",Clarkson,4,1,Keni Gibson,W,60:00,1,0,26,27,0.963
+"Nov 24, 2001",St. Lawrence,4,1,Jason Braun,W,60:00,1,0,24,25,0.960
+"Nov 27, 2001",Princeton,3,1,Keni Gibson,W,60:00,1,0,30,31,0.968
+"Nov 30, 2001",Holy Cross,7,2,Keni Gibson,W,60:00,2,0,18,20,0.900
+"Dec. 8, 2001",Merrimack College,1,2,Keni Gibson,L,58:47,2,0,24,26,0.923
+"Dec 15, 2001",Iona,7,2,Keni Gibson,W,60:00,2,0,16,18,0.889
+"Dec. 29, 200",Union,3,5,Jason Braun,,29:10,1,0,9,10,0.900
+"Dec. 29, 200",Union,3,5,Keni Gibson,L,29:40,4,0,8,12,0.667
+"Jan 04, 2002",Boston University,2,3,Keni Gibson,L,59:04,3,0,30,33,0.909
+"Jan 06, 2002",Boston University,3,0,Keni Gibson,W,60:00,0,0,38,38,1.000
+"Jan 11, 2002",Maine,2,1,Keni Gibson,W,62:31,1,0,24,25,0.960
+"Jan 12, 2002",Maine,2,2,Keni Gibson,T,65:00,2,0,39,41,0.951
+"Jan 18, 2002",UMass Lowell,5,3,Keni Gibson,W,60:00,3,0,22,25,0.880
+"Jan 20, 2002",UMass Lowell,5,1,Keni Gibson,W,60:00,1,0,23,24,0.958
+"Jan 25, 2002",Massachusetts,3,2,Keni Gibson,W,60:00,2,0,20,22,0.909
+"Jan 26, 2002",Massachusetts,3,4,Keni Gibson,OTL,61:20,4,0,14,18,0.778
+"Feb 01, 2002",Providence College,3,2,Keni Gibson,W,60:00,2,0,23,25,0.920
+"Feb 04, 2002",Harvard,5,2,Keni Gibson,W,60:00,2,0,22,24,0.917
+"Feb 08, 2002",Merrimack College,5,2,Keni Gibson,W,60:00,2,0,30,32,0.938
+"Feb 11, 2002",Boston University,3,5,Keni Gibson,L,59:12,4,0,26,30,0.867
+"Feb 15, 2002",New Hampshire,5,4,Keni Gibson,W,61:34,4,0,30,34,0.882
+"Feb 16, 2002",New Hampshire,2,6,Keni Gibson,L,59:47,5,0,42,47,0.894
+"Feb 22, 2002",Boston College,2,7,Keni Gibson,L,35:50,4,0,7,11,0.636
+"Feb 22, 2002",Boston College,2,7,Jason Braun,,24:10,3,0,5,8,0.625
+"Feb 24, 2002",Boston College,1,3,Keni Gibson,L,58:46,3,0,31,34,0.912
+"Feb 27, 2002",UMass Lowell,1,4,Keni Gibson,L,60:00,4,0,35,39,0.897
+"Mar 01, 2002",Merrimack College,3,1,Jason Braun,W,60:00,1,0,23,24,0.958
+"Mar 07, 2002",UMass Lowell,2,5,Keni Gibson,L,59:43,4,0,18,22,0.818
+"Mar 08, 2002",UMass Lowell,4,2,Jason Braun,W,60:00,2,0,31,33,0.939
+"Mar 9, 2002",UMass Lowell,1,3,Jason Braun,L,59:03,2,1,32,34,0.941
+"Oct 5, 2002",Vermont,3,3,Keni Gibson,T,65:00,3,0,36,39,0.923
+"Oct 11, 2002",Connecticut,10,1,Mike Gilhooly,W,60:00,1,0,22,23,0.957
+"Oct 19, 2002",Denver,1,3,Keni Gibson,L,58:34,3,0,27,30,0.900
+"Oct 25, 2002",New Hampshire,2,2,Keni Gibson,T,65:00,2,0,43,45,0.956
+"Oct 26, 2002",Wisconsin,1,5,Mike Gilhooly,L,35:31,4,0,12,16,0.750
+"Oct 26, 2002",Wisconsin,1,5,Keni Gibson,,24:29,1,0,7,8,0.875
+"Nov 01, 2002",Boston University,6,7,Keni Gibson,,40:00,6,0,15,21,0.714
+"Nov 01, 2002",Boston University,6,7,Tim Heneroty,L,19:09,1,0,15,16,0.938
+"Nov 02, 2002",Massachusetts,3,5,Tim Heneroty,L,58:55,5,0,27,32,0.844
+"Nov 08, 2002",Providence,4,3,Keni Gibson,W,60:00,3,0,34,37,0.919
+"Nov 09, 2002",Providence,3,4,Keni Gibson,L,59:00,4,0,45,49,0.918
+"Nov 15, 2002",Maine,2,8,Keni Gibson,L,24:29,4,0,11,15,0.733
+"Nov 15, 2002",Maine,2,8,Mike Gilhooly,,3:27,3,0,1,4,0.250
+"Nov 15, 2002",Maine,2,8,Tim Heneroty,,32:04,1,0,19,20,0.950
+"Nov 22, 2002",Boston College,1,4,Keni Gibson,L,60:00,4,0,33,37,0.892
+"Nov 23, 2002",Quinnipiac,2,1,Keni Gibson,W,60:00,1,0,18,19,0.947
+"Nov 29, 2002",St. Lawrence,2,1,Keni Gibson,W,60:00,1,0,25,26,0.962
+"Nov 30, 2002",Clarkson,3,1,Keni Gibson,W,60:00,1,0,26,27,0.963
+"Dec 07, 2002",Merrimack,0,1,Keni Gibson,L,59:15,1,0,19,20,0.950
+"Dec 14, 2002",Union,4,2,Keni Gibson,W,60:00,2,0,22,24,0.917
+"Jan 04, 2003",Boston University,0,4,Keni Gibson,L,59:04,4,0,22,26,0.846
+"Jan 05, 2003",Boston University,2,7,Keni Gibson,L,56:16,6,0,31,37,0.838
+"Jan 05, 2003",Boston University,2,7,Tim Heneroty,,3:44,1,0,4,5,0.800
+"Jan 10, 2003",Maine,1,7,Tim Heneroty,L,31:39,5,0,12,17,0.706
+"Jan 10, 2003",Maine,1,7,Mike Gilhooly,,28:21,2,0,14,16,0.875
+"Jan 11, 2003",Maine,1,3,Keni Gibson,L,59:10,3,0,28,31,0.903
+"Jan 17, 2003",UMass-Lowell,4,1,Keni Gibson,W,60:00,1,0,32,33,0.970
+"Jan 18, 2003",UMass-Lowell,2,3,Keni Gibson,OTL,61:59,3,0,34,37,0.919
+"Jan 24, 2003",Massachusetts,2,3,Keni Gibson,L,58:49,3,0,27,30,0.900
+"Jan 25, 2003",Massachusetts,3,2,Mike Gilhooly,W,60:00,2,0,31,33,0.939
+"Jan 31, 2003",Providence,3,1,Mike Gilhooly,W,60:00,1,0,23,24,0.958
+"Feb 03, 2003",Boston College,2,5,Mike Gilhooly,L,60:00,5,0,30,35,0.857
+"Feb 07, 2003",Merrimack College,1,3,Keni Gibson,L,55:31,3,0,26,29,0.897
+"Feb 10, 2003",Harvard,1,4,Mike Gilhooly,L,58:45,4,0,35,39,0.897
+"Feb 14, 2003",New Hampshire,3,4,Mike Gilhooly,L,58:19,4,0,25,29,0.862
+"Feb 15, 2003",New Hampshire,1,1,Mike Gilhooly,T,65:00,1,0,30,31,0.968
+"Feb 21, 2003",Boston College,2,5,Mike Gilhooly,L,60:00,5,0,24,29,0.828
+"Feb 22, 2003",Boston College,3,6,Mike Gilhooly,L,60:00,6,0,25,31,0.806
+"Feb 28, 2003",Merrimack,4,1,Mike Gilhooly,W,60:00,1,0,25,26,0.962
+"Mar 01, 2003",UMass-Lowell,1,4,Keni Gibson,L,59:52,3,0,41,44,0.932
+"Oct 24, 2003",Merrimack,2,4,Keni Gibson,L,57:59,4,0,21,25,0.840
+"Nov 07, 2003",Providence,2,2,Keni Gibson,T,65:00,2,0,25,27,0.926
+"Oct 11, 2003",Colgate,3,3,Keni Gibson,T,65:00,3,0,17,20,0.850
+"Nov 22, 2003",New Hampshire,2,5,Keni Gibson,L,60:00,5,0,23,28,0.821
+"Nov 29, 2003",Boston College,2,4,Keni Gibson,L,59:45,4,0,38,42,0.905
+"Dec. 6, 2003",Vermont,1,0,Keni Gibson,W,60:00,0,0,25,25,1.000
+"Dec 13, 2003",Princeton,4,0,Keni Gibson,W,60:00,0,0,28,28,1.000
+"Dec 28, 2003",Colgate,6,4,Keni Gibson,W,60:00,4,0,14,18,0.778
+"Dec 29, 2003",Mercyhurst,7,5,Keni Gibson,W,60:00,5,0,28,33,0.848
+"Jan 03, 2004",Boston College,3,0,Keni Gibson,W,60:00,0,0,34,34,1.000
+"Jan 09, 2004",Boston University,3,4,Keni Gibson,OTL,61:58,4,0,26,30,0.867
+"Jan 10, 2004",Holy Cross,5,2,Keni Gibson,W,60:00,2,0,20,22,0.909
+"Jan 16, 2004",Providence,1,1,Keni Gibson,T,65:00,1,0,24,25,0.960
+"Oct 17, 2003",Denver,2,5,Keni Gibson,L,60:00,5,0,23,28,0.821
+"Jan 17, 2004",Providence,3,3,Keni Gibson,T,64:53,3,0,31,34,0.912
+"Jan 23, 2004",Boston College,2,4,Keni Gibson,L,58:53,3,0,24,27,0.889
+"Jan 24, 2004",Merrimack College,3,2,Keni Gibson,W,60:00,2,0,19,21,0.905
+"Jan 29, 2004",Massachusetts,2,4,Keni Gibson,L,59:46,4,0,14,18,0.778
+"Feb 02, 2004",Boston University,2,5,Keni Gibson,L,59:07,4,0,26,30,0.867
+"Feb 06, 2004",UMass Lowell,1,1,Keni Gibson,T,65:00,1,0,18,19,0.947
+"Feb 09, 2004",Harvard University,3,1,Keni Gibson,W,60:00,1,0,31,32,0.969
+"Feb 13, 2004",Maine,1,3,Keni Gibson,L,60:00,3,0,31,34,0.912
+"Feb 14, 2004",Maine,0,0,Keni Gibson,T,65:00,0,0,32,32,1.000
+"Feb 20, 2004",Merrimack College,1,4,Keni Gibson,L,40:00,4,0,16,20,0.800
+"Feb 20, 2004",Merrimack College,1,4,Tim Heneroty,,20:00,0,0,9,9,1.000
+"Oct 18, 2003",Denver,3,6,Tim Heneroty,L,60:00,6,0,31,37,0.838
+"Feb 22, 2004",New Hampshire,5,6,Keni Gibson,,22:57,5,0,7,12,0.583
+"Feb 22, 2004",New Hampshire,5,6,Tim Heneroty,L,35:42,1,0,15,16,0.938
+"Feb 27, 2004",Boston University,2,2,Keni Gibson,T,65:00,2,0,36,38,0.947
+"Feb 28, 2004",Boston University,6,3,Keni Gibson,W,60:00,3,0,28,31,0.903
+"Mar 5, 2004",Massachusetts,4,0,Keni Gibson,W,60:00,0,0,38,38,1.000
+"Mar 06, 2004",Massachusetts,3,2,Keni Gibson,W,60:00,2,0,37,39,0.949
+"Oct 31, 2003",UMass Lowell,2,5,Adam Geragosian,L,60:00,5,0,14,19,0.737
+"Nov 01, 2003",UMass Lowell,2,5,Keni Gibson,L,59:50,4,0,25,29,0.862
+"Nov 14, 2003",Maine,2,5,Keni Gibson,L,59:49,4,0,27,31,0.871
+"Nov 21, 2003",New Hampshire,2,3,Keni Gibson,L,59:11,3,0,27,30,0.900
+"Oct 19, 2004",RPI,4,7,"Gibson, Keni",L,59:05,5,0,20,25,0.800
+"Oct 23, 2004",Colgate,4,3,"Gibson, Keni",W,64:56,3,0,15,18,0.833
+"Oct 30, 2004",North Dakota,3,3,"Gibson, Keni",T,64:55,3,0,25,28,0.893
+"Nov 05, 2004",UConn,5,2,"Gibson, Keni",W,60:00,2,0,20,22,0.909
+"Nov 12, 2004",Maine,4,2,"Gibson, Keni",W,60:00,2,0,41,43,0.953
+"Nov 14, 2004",Providence,3,1,"Gibson, Keni",W,60:00,1,0,36,37,0.973
+"Nov 19, 2004",New Hampshire,3,4,"Gibson, Keni",L,59:20,4,0,27,31,0.871
+"Nov 20, 2004",New Hampshire,4,7,"Gibson, Keni",L,59:21,6,0,30,36,0.833
+"Nov 23, 2004",Merrimack,5,1,"Gibson, Keni",W,60:00,1,0,28,29,0.966
+"Nov 27, 2004",Boston College,1,4,"Gibson, Keni",L,60:00,4,0,34,38,0.895
+"Dec 04, 2004",Vermont,0,2,"Gibson, Keni",L,59:07,1,0,19,20,0.950
+"Dec 10, 2004",Boston College,1,2,"Gibson, Keni",OTL,64:37,2,0,35,37,0.946
+"Dec 11, 2004",UMass Lowell,2,2,"Gibson, Keni",T,65:00,2,0,32,34,0.941
+"Jan 01, 2005",Colgate,5,1,"Gibson, Keni",W,60:00,1,0,17,18,0.944
+"Jan 02, 2005",Denver,0,4,"Gibson, Keni",L,60:00,4,0,27,31,0.871
+"Jan 07, 2005",Boston University,1,3,"Gibson, Keni",L,59:42,2,0,30,32,0.938
+"Jan 08, 2005",UMass Lowell,1,2,"Gibson, Keni",L,58:42,2,0,21,23,0.913
+"Jan 14, 2005",Providence,3,3,"Gibson, Keni",T,65:00,3,0,30,33,0.909
+"Jan 15, 2005",Providence,6,0,"Gibson, Keni",W,60:00,0,0,21,21,1.000
+"Jan 21, 2005",Boston College,2,4,"Gibson, Keni",L,40:00,3,0,27,30,0.900
+"Jan 21, 2005",Boston College,2,4,"Geragosian, Adam",,19:08,1,0,12,13,0.923
+"Jan 24, 2005",Merrimack,4,3,"Gibson, Keni",W,60:00,3,0,33,36,0.917
+"Jan 28, 2005",Maine,0,1,"Gibson, Keni",L,59:19,1,0,25,26,0.962
+"Jan 29, 2005",Maine,2,2,"Gibson, Keni",T,65:00,2,0,32,34,0.941
+"Feb 03, 2005",Massachusetts,2,1,"Gibson, Keni",W,60:00,1,0,28,29,0.966
+"Feb 07, 2005",Harvard University,2,1,"Gibson, Keni",W,82:01,1,0,39,40,0.975
+"Feb 10, 2005",UMass Lowell,3,2,"Gibson, Keni",W,60:00,2,0,29,31,0.935
+"Feb 14, 2005",Boston University,2,3,"Gibson, Keni",OTL,74:10,3,0,26,29,0.897
+"Feb 18, 2005",Merrimack,4,1,"Gibson, Keni",W,60:00,1,0,29,30,0.967
+"Feb 19, 2005",New Hampshire,2,5,"Gibson, Keni",L,59:29,4,0,23,27,0.852
+"Feb 23, 2005",Boston University,2,2,"Gibson, Keni",T,65:00,2,0,36,38,0.947
+"Feb 26, 2005",Boston University,2,1,"Gibson, Keni",W,60:00,1,0,27,28,0.964
+"Mar 04, 2005",Massachusetts,1,2,"Geragosian, Adam",L,58:31,2,0,38,40,0.950
+"Mar 05, 2005",Massachusetts,8,3,"Gibson, Keni",W,60:00,3,0,30,33,0.909
+"Mar 10, 2005",New Hampshire,1,6,"Gibson, Keni",L,49:28,5,0,34,39,0.872
+"Mar 10, 2005",New Hampshire,1,6,"Geragosian, Adam",,10:32,1,0,3,4,0.750
+"Mar 11, 2005",New Hampshire,0,4,"Gibson, Keni",L,60:00,4,0,26,30,0.867
+"Oct 14, 2005",North Dakota,0,6,"Jewer, Doug",L,60:00,6,0,26,32,0.812
+"Oct 15, 2005",North Dakota,1,2,"Geragosian, Adam",L,59:36,2,0,36,38,0.947
+"Oct 22, 2005",Boston College,1,1,"Geragosian, Adam",T,65:00,1,0,29,30,0.967
+"Oct 28, 2005",Rensselaer,5,7,"Geragosian, Adam",L,59:56,6,0,27,33,0.818
+"Nov 1, 2005",Vermont,3,5,"Geragosian, Adam",L,13:38,5,0,10,15,0.667
+"Nov 1, 2005",Vermont,3,5,"Jewer, Doug",,45:51,0,0,12,12,1.000
+"Nov 04, 2005",New Hampshire,4,6,"Jewer, Doug",L,58:47,6,0,34,40,0.850
+"Nov 05, 2005",New Hampshire,0,3,"Geragosian, Adam",L,60:00,3,0,38,41,0.927
+"Nov 11, 2005",Massachusetts,2,0,"Geragosian, Adam",W,59:45,0,0,26,26,1.000
+"Nov 15, 2005",Providence,1,2,"Geragosian, Adam",OTL,60:53,2,0,39,41,0.951
+"Nov 19, 2005",Boston College,3,5,"Geragosian, Adam",L,60:00,5,0,28,33,0.848
+"Nov 27, 2005",New Hampshire,3,3,"Geragosian, Adam",T,65:00,3,0,36,39,0.923
+"Dec 02, 2005",Merrimack,4,4,"Geragosian, Adam",T,64:49,4,0,22,26,0.846
+"Dec 03, 2005",Merrimack,3,3,"Geragosian, Adam",T,64:50,3,0,26,29,0.897
+"Dec 10, 2005",Maine,2,5,"Geragosian, Adam",L,60:00,5,0,36,41,0.878
+"Dec 27, 2005",Cornell,0,3,"Geragosian, Adam",L,60:00,3,0,16,19,0.842
+"Dec 28, 2005",Maine,2,4,"Jewer, Doug",L,59:53,3,0,47,50,0.940
+"Jan 06, 2006",Boston College,3,4,"Jewer, Doug",L,58:56,3,0,27,30,0.900
+"Jan 07, 2006",Boston University,0,4,"Geragosian, Adam",L,26:31,3,0,7,10,0.700
+"Jan 07, 2006",Boston University,0,4,"Jewer, Doug",,32:41,0,0,11,11,1.000
+"Jan 13, 2006",Vermont,0,3,"Jewer, Doug",L,60:00,3,0,27,30,0.900
+"Jan 14, 2006",Vermont,0,3,"Jewer, Doug",L,60:00,3,0,19,22,0.864
+"Jan 20, 2006",UMass Lowell,1,2,"Jewer, Doug",L,40:17,2,0,23,25,0.920
+"Jan 20, 2006",UMass Lowell,1,2,"Geragosian, Adam",,18:52,0,0,4,4,1.000
+"Jan 21, 2006",UMass Lowell,2,2,"Geragosian, Adam",T,65:00,2,0,30,32,0.938
+"Jan 27, 2006",Maine,3,6,"Geragosian, Adam",L,60:00,6,0,29,35,0.829
+"Jan 28, 2006",Maine,1,2,"Geragosian, Adam",L,59:20,2,0,29,31,0.935
+"Feb 03, 2006",Merrimack,2,2,"Jewer, Doug",T,64:50,2,0,24,26,0.923
+"Feb 06, 2006",Boston College,2,5,"Jewer, Doug",L,17:50,3,0,10,13,0.769
+"Feb 06, 2006",Boston College,2,5,"Geragosian, Adam",,42:10,2,0,20,22,0.909
+"Feb 10, 2006",UMass Lowell,6,4,"Geragosian, Adam",W,59:54,4,0,32,36,0.889
+"Feb 13, 2006",Harvard,0,5,"Geragosian, Adam",L,60:00,5,0,36,41,0.878
+"Feb 16, 2006",Providence,2,1,"Geragosian, Adam",W,60:00,1,0,37,38,0.974
+"Feb 17, 2006",Providence,1,2,"Geragosian, Adam",L,59:31,2,0,37,39,0.949
+"Feb 24, 2006",Massachusetts,2,2,"Geragosian, Adam",T,64:47,2,0,28,30,0.933
+"Feb 25, 2006",Massachusetts,2,4,"Geragosian, Adam",L,59:33,4,0,29,33,0.879
+"Mar 03, 2006",Boston University,3,5,"Thaler, Jake",L,59:42,4,0,39,43,0.907
+"Mar 04, 2006",Boston University,3,5,"Thaler, Jake",L,59:15,5,0,30,35,0.857
+"Oct 10, 2006",Boston College,2,5,"Thiessen, Brad",L,60:00,5,0,32,37,0.865
+"Oct 14, 2006",Vermont,2,2,"Thiessen, Brad",T,65:00,2,0,24,26,0.923
+"Oct 20, 2006",Boston University,3,4,"Thiessen, Brad",L,59:37,4,0,35,39,0.897
+"Oct 21, 2006",Union,5,0,"Geragosian, Adam",W,60:00,0,0,32,32,1.000
+"Oct 27, 2006",Michigan,3,4,"Thiessen, Brad",OTL,60:48,4,0,27,31,0.871
+"Oct 28, 2006",Michigan,3,2,"Thiessen, Brad",W,60:00,2,0,45,47,0.957
+"Nov 03, 2006",New Hampshire,3,6,"Geragosian, Adam",L,60:00,6,0,28,34,0.824
+"Nov 04, 2006",New Hampshire,1,3,"Thiessen, Brad",L,59:00,3,0,21,24,0.875
+"Nov 10, 2006",Massachusetts,1,2,"Thiessen, Brad",L,58:59,2,0,28,30,0.933
+"Nov 14, 2006",Providence,3,4,"Thiessen, Brad",OTL,62:33,4,0,42,46,0.913
+"Nov 17, 2006",Boston College,3,3,"Thiessen, Brad",T,64:00,3,0,27,30,0.900
+"Nov 25, 2006",New Hampshire,1,3,"Thiessen, Brad",L,58:13,3,0,38,41,0.927
+"Dec 01, 2006",Merrimack,4,1,"Thiessen, Brad",W,60:00,1,0,22,23,0.957
+"Dec 02, 2006",Merrimack,2,0,"Thiessen, Brad",W,59:57,0,0,30,30,1.000
+"Dec 09, 2006",Maine,1,7,"Thiessen, Brad",L,59:54,7,0,27,34,0.794
+"Dec 29, 2006",Colgate,2,5,"Thiessen, Brad",L,60:00,5,0,34,39,0.872
+"Dec 30, 2006",Holy Cross,7,2,"Geragosian, Adam",W,60:00,2,0,15,17,0.882
+"Jan 05, 2007",Boston College,3,2,"Thiessen, Brad",W,62:33,2,0,14,16,0.875
+"Jan 06, 2007",Boston University,0,0,"Thiessen, Brad",T,64:58,0,0,26,26,1.000
+"Jan 12, 2007",Vermont,2,2,"Thiessen, Brad",T,65:00,2,0,25,27,0.926
+"Jan 13, 2007",Vermont,0,3,"Thiessen, Brad",L,59:30,2,0,23,25,0.920
+"Jan 19, 2007",UMass Lowell,6,2,"Thiessen, Brad",W,60:00,2,0,27,29,0.931
+"Jan 20, 2007",UMass Lowell,2,1,"Thiessen, Brad",W,61:01,1,0,25,26,0.962
+"Jan 26, 2007",Maine,6,1,"Thiessen, Brad",W,60:00,1,0,29,30,0.967
+"Jan 27, 2007",Maine,1,2,"Thiessen, Brad",OTL,64:17,2,0,31,33,0.939
+"Feb 02, 2007",Merrimack,1,0,"Thiessen, Brad",W,64:08,0,0,23,23,1.000
+"Feb 05, 2007",Boston University,0,4,"Thiessen, Brad",L,60:00,4,0,33,37,0.892
+"Feb 08, 2007",UMass Lowell,0,1,"Thiessen, Brad",L,58:33,1,0,26,27,0.963
+"Feb 12, 2007",Harvard,3,1,"Thiessen, Brad",W,60:00,1,0,25,26,0.962
+"Feb 16, 2007",Providence,3,0,"Thiessen, Brad",W,59:57,0,0,37,37,1.000
+"Feb 17, 2007",Providence,3,3,"Thiessen, Brad",T,65:00,3,0,45,48,0.938
+"Feb 23, 2007",Massachusetts,0,2,"Thiessen, Brad",L,59:13,1,0,39,40,0.975
+"Feb 25, 2007",Massachusetts,3,5,"Thiessen, Brad",L,59:18,4,0,29,33,0.879
+"Feb 28, 2007",Boston University,4,2,"Thiessen, Brad",W,59:58,2,0,30,32,0.938
+"Mar 08, 2007",Boston College,0,3,"Thiessen, Brad",L,60:00,3,0,26,29,0.897
+"Mar 09, 2007",Boston College,1,7,"Thiessen, Brad",L,33:49,6,0,12,18,0.667
+"Mar 09, 2007",Boston College,1,7,"Geragosian, Adam",,26:11,1,0,10,11,0.909
+"Oct 19, 2007",Providence,3,2,"Thiessen, Brad",W,60:44,2,0,30,32,0.938
+"Oct 20, 2007",North Dakota,0,3,"Thiessen, Brad",L,60:00,3,0,21,24,0.875
+"Oct 26, 2007",Maine,2,3,"Thiessen, Brad",L,58:47,3,0,30,33,0.909
+"Oct 27, 2007",Maine,3,4,"Thiessen, Brad",L,59:20,4,0,25,29,0.862
+"Nov 02, 2007",New Hampshire,4,7,"Thiessen, Brad",L,40:00,5,0,17,22,0.773
+"Nov 02, 2007",New Hampshire,4,7,"Binnington, Mike",,19:17,1,0,13,14,0.929
+"Nov 03, 2007",New Hampshire,2,1,"Thiessen, Brad",W,60:00,1,0,23,24,0.958
+"Nov 09, 2007",Vermont,4,2,"Thiessen, Brad",W,59:55,2,0,22,24,0.917
+"Nov 10, 2007",Boston University,2,2,"Thiessen, Brad",T,65:00,2,0,35,37,0.946
+"Nov 16, 2007",New Hampshire,4,1,"Thiessen, Brad",W,60:00,1,0,37,38,0.974
+"Nov 17, 2007",UMass Lowell,2,1,"Thiessen, Brad",W,59:56,1,0,21,22,0.955
+"Nov 23, 2007",Boston College,4,3,"Thiessen, Brad",W,64:56,3,0,20,23,0.870
+"Nov 30, 2007",Brown,4,3,"Thiessen, Brad",W,60:00,3,0,24,27,0.889
+"Dec 08, 2007",Union College,1,1,"Thiessen, Brad",T,65:00,1,0,26,27,0.963
+"Dec 28, 2007",Bowling Green,4,3,"Thiessen, Brad",W,60:00,3,0,23,26,0.885
+"Dec 29, 2007",Colgate,2,1,"Thiessen, Brad",W,59:57,1,0,26,27,0.963
+"Jan 04, 2008",Maine,7,3,"Thiessen, Brad",W,60:00,3,0,20,23,0.870
+"Jan 11, 2008",Merrimack,2,4,"Thiessen, Brad",L,59:08,4,0,26,30,0.867
+"Jan 12, 2008",Merrimack,3,0,"Thiessen, Brad",W,60:00,0,0,22,22,1.000
+"Jan 18, 2008",Vermont,2,2,"Thiessen, Brad",T,65:00,2,0,35,37,0.946
+"Jan 19, 2008",Vermont,2,5,"Thiessen, Brad",L,60:00,5,0,27,32,0.844
+"Jan 25, 2008",Providence,1,5,"Thiessen, Brad",L,51:36,5,0,34,39,0.872
+"Jan 25, 2008",Providence,1,5,"Binnington, Mike",,8:24,0,0,2,2,1.000
+"Jan 26, 2008",Providence,2,5,"Binnington, Mike",L,26:51,3,0,18,21,0.857
+"Jan 26, 2008",Providence,2,5,"Thiessen, Brad",,31:21,2,0,17,19,0.895
+"Feb 01, 2008",Massachusetts,1,0,"Thiessen, Brad",W,60:00,0,0,22,22,1.000
+"Feb 04, 2008",Harvard,1,3,"Thiessen, Brad",L,58:33,3,0,30,33,0.909
+"Feb 08, 2008",Merrimack,4,2,"Thiessen, Brad",W,60:00,2,0,31,33,0.939
+"Feb 11, 2008",Boston University,4,5,"Thiessen, Brad",L,59:43,5,0,40,45,0.889
+"Feb 15, 2008",Massachusetts,2,1,"Thiessen, Brad",W,60:00,1,0,28,29,0.966
+"Feb 16, 2008",Massachusetts,1,3,"Thiessen, Brad",L,58:37,3,0,30,33,0.909
+"Feb 22, 2008",Boston University,4,7,"Thiessen, Brad",L,58:28,5,0,31,36,0.861
+"Feb 23, 2008",Boston University,2,3,"Thiessen, Brad",L,58:17,3,0,32,35,0.914
+"Feb 29, 2008",UMass Lowell,4,5,"Thiessen, Brad",OTL,63:26,5,0,33,38,0.868
+"Mar 01, 2008",UMass Lowell,2,3,"Thiessen, Brad",L,58:27,3,0,38,41,0.927
+"Mar 07, 2008",Boston College,3,2,"Thiessen, Brad",W,63:56,2,0,25,27,0.926
+"Mar 08, 2008",Boston College,1,4,"Thiessen, Brad",L,59:22,3,0,26,29,0.897
+"Mar 14, 2008",Vermont,0,1,"Thiessen, Brad",L,59:05,1,0,26,27,0.963
+"Mar 15, 2008",Vermont,2,1,"Thiessen, Brad",W,63:08,1,0,34,35,0.971
+"Mar 16, 2008",Vermont,1,4,"Thiessen, Brad",L,58:41,3,0,27,30,0.900
+"Oct 11, 2008",Alaska Anchorage,4,2,"Thiessen, Brad",W,60:00,2,0,21,23,0.913
+"Oct 10, 2008",Alaska Fairbanks,2,2,"Thiessen, Brad",T,65:00,2,0,29,31,0.935
+"Oct 17, 2008",Providence College,4,0,"Thiessen, Brad",W,60:00,0,0,35,35,1.000
+"Oct 18, 2008",Boston College,4,3,"Thiessen, Brad",W,60:00,3,0,38,41,0.927
+"Oct 24, 2008",Maine,5,0,"Thiessen, Brad",W,60:00,0,0,29,29,1.000
+"Oct 25, 2008",Maine,2,1,"Thiessen, Brad",W,60:00,1,0,26,27,0.963
+"Oct 31, 2008",New Hampshire,2,4,"Thiessen, Brad",L,59:48,3,0,33,36,0.917
+"Nov 01, 2008",New Hampshire,2,2,"Thiessen, Brad",T,65:00,2,0,43,45,0.956
+"Nov 08, 2008",Bentley,4,1,"Thiessen, Brad",W,59:52,1,0,18,19,0.947
+"Nov 14, 2008",Vermont,5,3,"Thiessen, Brad",W,60:00,3,0,21,24,0.875
+"Nov 16, 2008",Boston University,0,3,"Thiessen, Brad",L,60:00,3,0,24,27,0.889
+"Nov 21, 2008",New Hampshire,3,2,"Thiessen, Brad",W,60:00,2,0,37,39,0.949
+"Nov 22, 2008",UMass Lowell,4,3,"Thiessen, Brad",W,60:00,3,0,36,39,0.923
+"Nov 28, 2008",Princeton,3,5,"Thiessen, Brad",L,59:57,4,0,34,38,0.895
+"Nov 29, 2008",Rensselaer,5,1,"Thiessen, Brad",W,59:55,1,0,25,26,0.962
+"Dec 05, 2008",Maine,3,2,"Thiessen, Brad",W,62:29,2,0,31,33,0.939
+"Jan 02, 2009",Western Michigan,3,1,"Thiessen, Brad",W,59:45,1,0,23,24,0.958
+"Jan 03, 2009",Minnesota,2,3,"Thiessen, Brad",OTL,61:38,3,0,27,30,0.900
+"Jan 09, 2009",Merrimack,2,1,"Thiessen, Brad",W,59:42,1,0,31,32,0.969
+"Jan 10, 2009",Merrimack,2,1,"Thiessen, Brad",W,60:00,1,0,30,31,0.968
+"Jan 16, 2009",Vermont,3,1,"Thiessen, Brad",W,60:00,1,0,32,33,0.970
+"Jan 17, 2009",Vermont,2,4,"Thiessen, Brad",L,59:36,3,0,36,39,0.923
+"Jan 23, 2009",Providence College,3,1,"Thiessen, Brad",W,60:00,1,0,32,33,0.970
+"Jan 24, 2009",Providence College,6,3,"Thiessen, Brad",W,60:00,3,0,23,26,0.885
+"Jan 30, 2009",Massachusetts,4,6,"Thiessen, Brad",L,59:24,6,0,25,31,0.806
+"Feb 02, 2009",Boston College,6,1,"Thiessen, Brad",W,60:00,1,0,45,46,0.978
+"Feb 06, 2009",Merrimack,4,3,"Thiessen, Brad",W,59:54,3,0,22,25,0.880
+"Feb 09, 2009",Boston University,2,5,"Thiessen, Brad",L,59:49,5,0,29,34,0.853
+"Feb 13, 2009",Massachusetts,5,3,"Thiessen, Brad",W,60:00,3,0,30,33,0.909
+"Feb 14, 2009",Massachusetts,1,4,"Thiessen, Brad",L,59:58,4,0,24,28,0.857
+"Feb 20, 2009",Boston University,2,2,"Thiessen, Brad",T,65:00,2,0,22,24,0.917
+"Feb 21, 2009",Boston University,1,1,"Thiessen, Brad",T,65:00,1,0,25,26,0.962
+"Feb 27, 2009",UMass Lowell,3,0,"Thiessen, Brad",W,59:39,0,0,24,24,1.000
+"Feb 28, 2009",UMass Lowell,3,1,"Thiessen, Brad",W,59:29,1,0,32,33,0.970
+"Mar 06, 2009",Boston College,2,1,"Thiessen, Brad",W,63:08,1,0,22,23,0.957
+"Mar 07, 2009",Boston College,1,4,"Thiessen, Brad",L,60:00,4,0,21,25,0.840
+"Mar 13, 2009",Massachusetts,1,2,"Thiessen, Brad",L,58:51,2,0,23,25,0.920
+"Mar 14, 2009",Massachusetts,4,1,"Thiessen, Brad",W,59:42,1,0,32,33,0.970
+"Mar 15, 2009",Massachusetts,3,2,"Thiessen, Brad",W,70:26,2,0,35,37,0.946
+"Mar 20, 2009",UMass Lowell,2,3,"Thiessen, Brad",OTL,63:00,3,0,41,44,0.932
+"Mar 28, 2009",Cornell,2,3,"Thiessen, Brad",L,59:42,3,0,29,32,0.906
+"Jan 07, 2011",Massachusetts,5,3,"Rawlings, Chris",W,60:00,3,0,30,33,0.909
+"Feb 25, 2011",UNH,2,2,"Rawlings, Chris",T,64:58,2,0,33,35,0.943
+"Nov 26, 2010",Vermont,2,2,"Rawlings, Chris",T,65:00,2,0,37,39,0.949
+"Feb 18, 2011",Boston College,7,7,"Rawlings, Chris",T,65:00,7,0,30,37,0.811
+"Feb 07, 2011",Harvard,4,0,"Rawlings, Chris",W,60:00,0,0,41,41,1.000
+"Feb 14, 2011",Boston College,6,7,"Rawlings, Chris",OTL,66:00,7,0,39,46,0.848
+"Nov 12, 2010",MAINE,2,4,"Rawlings, Chris",L,59:09,3,0,30,33,0.909
+"Nov 13, 2010",Maine,2,4,"Rawlings, Chris",L,58:43,4,0,36,40,0.900
+"Nov 20, 2010",Providence College,5,0,"Rawlings, Chris",W,60:00,0,0,29,29,1.000
+"Dec 03, 2010",Merrimack,1,2,"Rawlings, Chris",L,59:58,2,0,23,25,0.920
+"Jan 08, 2011",UMass Lowell,3,1,"Witt, Clay",W,60:00,1,0,23,24,0.958
+"Jan 14, 2011",Vermont,1,3,"Rawlings, Chris",L,59:26,3,0,22,25,0.880
+"Jan 15, 2011",Vermont,2,0,"Rawlings, Chris",W,59:36,0,0,17,17,1.000
+"Jan 19, 2011",Harvard,3,0,"Rawlings, Chris",W,60:00,0,0,34,34,1.000
+"Jan 22, 2011",MAINE,3,3,"Rawlings, Chris",T,65:00,3,0,34,37,0.919
+"Jan 28, 2011",Massachusetts,3,0,"Rawlings, Chris",W,59:32,0,0,26,26,1.000
+"Jan 29, 2011",Massachusetts,2,2,"Rawlings, Chris",T,64:50,2,0,39,41,0.951
+"Feb 04, 2011",Merrimack,3,4,"Rawlings, Chris",OTL,64:31,4,0,35,39,0.897
+"Oct 09, 2010",Boston College,0,2,"Rawlings, Chris",L,59:57,1,0,33,34,0.971
+"Feb 19, 2011",Boston College,2,1,"Rawlings, Chris",W,60:00,1,0,36,37,0.973
+"Feb 26, 2011",UNH,3,6,"Rawlings, Chris",L,45:51,5,0,26,31,0.839
+"Feb 26, 2011",UNH,3,6,"Witt, Clay",,13:37,0,0,6,6,1.000
+"Mar 4, 2011",Boston University,2,3,"Rawlings, Chris",L,58:31,3,0,24,27,0.889
+"Oct 15, 2010",RPI,2,2,"Rawlings, Chris",T,64:46,2,0,30,32,0.938
+"Oct 22, 2010",UNH,2,2,"Rawlings, Chris",T,65:00,2,0,43,45,0.956
+"Oct 29, 2010",Holy Cross,3,4,"Rawlings, Chris",OTL,61:20,4,0,22,26,0.846
+"Oct 30, 2010",Bentley,1,2,"Witt, Clay",L,59:32,2,0,32,34,0.941
+"Nov 05, 2010",Niagara University,1,4,"Rawlings, Chris",L,59:30,4,0,30,34,0.882
+"Mar 18, 2011",Boston College,4,5,"Rawlings, Chris",,40:00,4,0,23,27,0.852
+"Mar 18, 2011",Boston College,4,5,"Witt, Clay",L,17:33,1,0,5,6,0.833
+"Oct 23, 2010",UMass Lowell,3,1,"Rawlings, Chris",W,59:58,1,0,39,40,0.975
+"Dec 04, 2010",Merrimack,2,1,"Rawlings, Chris",W,60:00,1,0,22,23,0.957
+"Dec 08, 2010",Boston University,4,5,"Rawlings, Chris",,26:16,4,0,9,13,0.692
+"Dec 08, 2010",Boston University,4,5,"Witt, Clay",L,33:14,1,0,6,7,0.857
+"Mar 05, 2011",Boston University,4,3,"Witt, Clay",W,60:00,3,0,41,44,0.932
+"Mar 10, 2011",Boston University,4,2,"Rawlings, Chris",W,60:00,2,0,37,39,0.949
+"Mar 11, 2011",Boston University,2,5,"Rawlings, Chris",L,12:47,3,0,3,6,0.500
+"Mar 13, 2011",Boston University,5,4,"Rawlings, Chris",W,60:00,4,0,31,35,0.886
+"Oct 08, 2010",Providence College,2,3,"Rawlings, Chris",L,59:16,3,0,26,29,0.897
+"Nov 19, 2010",Providence College,3,3,"Rawlings, Chris",T,65:00,3,0,36,39,0.923
+"Feb 11, 2011",UMass Lowell,3,2,"Rawlings, Chris",W,64:31,2,0,37,39,0.949
+"Jan 27, 2012",VERMONT,8,3,"Rawlings, Chris",W,59:50,3,0,31,34,0.912
+"Jan 28, 2012",VERMONT,4,2,"Rawlings, Chris",W,60:00,2,0,23,25,0.920
+"Feb 10, 2012",New Hampshire,2,3,"Rawlings, Chris",L,58:31,3,0,28,31,0.903
+"Jan 14, 2012",Boston College,1,2,"Rawlings, Chris",L,59:12,2,0,28,30,0.933
+"Nov 11, 2011",Boston College,1,2,"Rawlings, Chris",L,60:00,2,0,34,36,0.944
+"Nov 18, 2011",Providence College,5,2,"Rawlings, Chris",W,60:00,2,0,19,21,0.905
+"Nov 12, 2011",Massachusetts,2,4,"Rawlings, Chris",L,59:24,3,0,39,42,0.929
+"Feb 06, 2012",Boston College,1,7,"Rawlings, Chris",L,39:52,5,0,24,29,0.828
+"Feb 13, 2012",Harvard,2,3,"Witt, Clay",L,59:01,3,0,36,39,0.923
+"Dec 30, 2011",Princeton,3,3,"Rawlings, Chris",T,65:00,3,0,23,26,0.885
+"Nov 19, 2011",VERMONT,4,1,"Rawlings, Chris",W,60:00,1,0,38,39,0.974
+"Dec 10, 2011",UMass Lowell,3,2,"Rawlings, Chris",W,60:00,2,0,38,40,0.950
+"Jan 13, 2012",Boston University,3,4,"Rawlings, Chris",L,58:40,4,0,26,30,0.867
+"Oct 07, 2011",Massachusetts,3,3,"Rawlings, Chris",T,63:48,3,0,36,39,0.923
+"Jan 21, 2012",UMass Lowell,2,3,"Rawlings, Chris",OTL,62:50,3,0,22,25,0.880
+"Feb. 3, 2012",Massachusetts,4,3,"Rawlings, Chris",W,60:21,3,0,28,31,0.903
+"Feb 17, 2012",Providence College,1,1,"Rawlings, Chris",T,64:57,1,0,22,23,0.957
+"Feb 18, 2012",Providence College,2,2,"Rawlings, Chris",T,65:00,2,0,47,49,0.959
+"Feb 24, 2012",Maine,4,2,"Rawlings, Chris",W,60:00,2,0,29,31,0.935
+"Feb 25, 2012",Maine,1,7,"Rawlings, Chris",L,9:52,3,0,1,4,0.250
+"Feb 25, 2012",Maine,1,7,"Witt, Clay",,36:58,4,0,14,18,0.778
+"Mar 03, 2012",Boston University,5,4,"Witt, Clay",W,62:35,4,0,36,40,0.900
+"Oct 14, 2011",New Hampshire,4,0,"Rawlings, Chris",W,60:00,0,0,27,27,1.000
+"Oct 22, 2011",Boston College,3,4,"Rawlings, Chris",OTL,64:58,4,0,39,43,0.907
+"Nov 05, 2011",Merrimack,2,3,"Rawlings, Chris",OTL,64:59,3,0,28,31,0.903
+11/04/2011,Merrimack,1,1,"Rawlings, Chris",T,80:00,1,0,34,35,0.971
+"Dec 02, 2011",Notre Dame,9,2,"Rawlings, Chris",W,60:00,2,0,25,27,0.926
+"Dec 03, 2011",Notre Dame,2,1,"Rawlings, Chris",W,60:00,1,0,22,23,0.957
+"Nov 25, 2011",Michigan,4,1,"Rawlings, Chris",W,60:00,1,0,33,34,0.971
+"Jan 20, 2012",UMass Lowell,0,4,"Rawlings, Chris",L,59:33,4,0,28,32,0.875
+"Oct 16, 1999",Bowling Green,4,1,Mike Gilhooly,W,60:00,1,0,18,19,0.947
+"Oct 22, 1999",UMass-Amherst,4,1,Mike Gilhooly,W,60:00,1,0,32,33,0.970
+"Oct 24, 1999",UMass-Lowell,1,4,Mike Gilhooly,L,60:00,4,0,23,27,0.852
+"Oct 29, 1999",Wisconsin,2,4,Jason Braun,L,59:11,3,0,23,26,0.885
+"Oct 30, 1999",Wisconsin,2,4,Mike Gilhooly,,3:33,1,0,3,4,0.750
+"Oct 30, 1999",Wisconsin,2,4,Jason Braun,L,55:52,3,0,24,27,0.889
+"Nov 05, 1999",Maine,2,2,Mike Gilhooly,T,65:00,2,0,24,26,0.923
+"Nov 12, 1999",Boston College,6,5,Mike Gilhooly,W,60:00,5,0,15,20,0.750
+"Nov 13, 1999",Boston University,4,4,Mike Gilhooly,T,65:00,4,0,12,16,0.750
+"Nov 19, 1999",Providence,1,3,Mike Gilhooly,L,59:41,2,0,23,25,0.920
+"Nov 20, 1999",Providence,1,4,Jason Braun,L,60:00,4,0,32,36,0.889
+"Nov 27, 1999",Princeton,3,0,Mike Gilhooly,W,60:00,0,0,22,22,1.000
+"Nov 30, 1999",Boston College,2,4,Mike Gilhooly,L,59:25,4,0,29,33,0.879
+"Dec 03, 1999",Maine,3,1,Jason Braun,W,60:00,1,0,23,24,0.958
+"Dec 04, 1999",Maine,6,3,Mike Gilhooly,W,60:00,3,0,35,38,0.921
+"Dec 11, 1999",Dartmouth,2,1,Mike Gilhooly,W,60:00,1,0,25,26,0.962
+"Dec 19, 1999",Harvard,5,6,Mike Gilhooly,,31:46,4,0,12,16,0.750
+"Dec 19, 1999",Harvard,5,6,Jason Braun,OTL,28:55,2,0,12,14,0.857
+"Dec 28, 1999",Minnesota-Duluth,3,2,Jason Braun,W,60:58,2,0,27,29,0.931
+"Dec 28, 1999",Ferris State,0,4,Mike Gilhooly,L,60:00,4,0,25,29,0.862
+"Jan. 7, 2000",UMass-Lowell,2,1,Jason Braun,W,63:49,1,0,24,25,0.960
+"Jan 14, 2000",UMass-Amherst,4,2,Mike Gilhooly,W,60:00,2,0,42,44,0.955
+"Jan 15, 2000",UMass-Amherst,3,2,Jason Braun,W,61:40,2,0,30,32,0.938
+"Jan 21, 2000",New Hampshire,3,3,Jason Braun,T,65:00,3,0,24,27,0.889
+"Jan 22, 2000",New Hampshire,4,4,Mike Gilhooly,T,65:00,4,0,35,39,0.897
+"Jan 29, 2000",Merrimack,4,4,Jason Braun,T,64:56,4,0,22,26,0.846
+"Feb 04, 2000",Providence,1,3,Mike Gilhooly,L,59:01,2,0,23,25,0.920
+"Feb 07, 2000",Boston College,0,6,Jason Braun,L,32:41,4,0,12,16,0.750
+"Feb 07, 2000",Boston College,0,6,Mike Gilhooly,,27:19,2,0,12,14,0.857
+"Feb 11, 2000",New Hampshire,6,2,Mike Gilhooly,W,60:00,2,0,22,24,0.917
+"Feb 14, 2000",Harvard,1,3,Jason Braun,L,59:12,2,0,13,15,0.867
+"Feb 18, 2000",Merrimack,0,1,Mike Gilhooly,L,58:43,1,0,23,24,0.958
+"Feb 19, 2000",Merrimack,2,3,Mike Gilhooly,OTL,62:01,3,0,17,20,0.850
+"Feb 25, 2000",Boston University,1,3,Mike Gilhooly,L,60:00,3,0,26,29,0.897
+"Feb 27, 2000",Boston University,3,4,Mike Gilhooly,L,59:04,4,0,24,28,0.857
+"Mar 02, 2000",Boston College,2,7,Jason Braun,L,49:50,6,0,21,27,0.778
+"Mar 02, 2000",Boston College,2,7,Matt Coates,,10:10,1,0,10,11,0.909
+"Mar 04, 2000",UMass-Lowell,2,6,Mike Gilhooly,L,60:00,6,0,29,35,0.829
+"Mar 10, 2000",Boston College,4,8,Mike Gilhooly,L,60:00,8,0,26,34,0.765
+"Mar 11, 2000",Boston College,2,3,Jason Braun,L,59:16,3,0,32,35,0.914
