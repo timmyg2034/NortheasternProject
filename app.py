@@ -31,7 +31,7 @@ except FileNotFoundError:
 
 # 4. Initialize the Gemini LLM and Pandas Agent
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash", 
+    model="gemini-3.5-flash-lite", 
     google_api_key=api_key, 
     temperature=0  
 )
