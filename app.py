@@ -181,8 +181,20 @@ def run_python_code(code: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
     return stdout_buf.getvalue().strip()
 
 
-def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
+def format_chat_history(messages: list, max_turns: int = 8) -> str:
+    if not messages:
+        return "None"
+    recent = messages[-max_turns:]
+    lines = []
+    for m in recent:
+        role = "User" if m.get("role") == "user" else "Assistant"
+        lines.append(f"{role}: {m.get('content', '')}")
+    return "\n".join(lines)
+
+
+def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, chat_history: list = None) -> str:
     all_opponents = sorted(set(df1["opponent"].dropna().unique()) | set(df2["opponent"].dropna().unique()))
+    history_text = format_chat_history(chat_history or [])
     code_prompt = (
         "You are a Python data analyst for Northeastern Men's Hockey.\n"
         "Two pandas DataFrames are already loaded in memory as `df1` and `df2`:\n"
@@ -193,12 +205,14 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
         "- `player_name` and `goalie_name` are formatted as 'First Last' (e.g., 'Devon Levi', 'Adam Gaudette'). Always filter names with `.str.contains(..., case=False, na=False)`.\n"
         "- `opponent` uses the standardized school names listed above (e.g., 'Boston University' for BU, 'Boston College' for BC, 'Massachusetts' for UMass, 'Massachusetts Lowell' for UMass Lowell / UML, 'Connecticut' for UConn, 'New Hampshire' for UNH, 'Rensselaer' for RPI).\n"
         "- In `df2`, `decision` is 'W' for a win, 'L' for a loss, and 'T' for a tie.\n"
+        "- CONVERSATION CONTEXT: Use the Recent Conversation History below to resolve pronouns or omitted context in follow-up questions (e.g., 'How many goals did he have?', 'What about against BU?', 'In that season?').\n"
         "- CRITICAL EXISTENCE CHECK: Never blindly run `.sum()` on a filtered DataFrame without checking if the player and opponent actually exist! If the user asks about a specific player/goalie and/or opponent:\n"
         "  1. First check if the player/goalie name appears ANYWHERE in `df1['player_name']` or `df2['goalie_name']`. Print `player_exists: True/False` (and matching names).\n"
         "  2. Check if the opponent appears ANYWHERE in `df1['opponent']` or `df2['opponent']`. Print `opponent_exists: True/False` (and matching opponent name).\n"
         "  3. Only if both exist, filter for their matchup, print the number of games found, and print the requested stats.\n\n"
+        f"Recent Conversation History:\n{history_text}\n\n"
         "Write ONLY a single ```python ... ``` code block that performs these checks and uses `print()` to output the results.\n\n"
-        f"User Question: {question}"
+        f"Current User Question: {question}"
     )
 
     msg = llm.invoke(code_prompt)
@@ -218,10 +232,11 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
 
     final_prompt = (
         "You are a friendly, knowledgeable Northeastern Men's Hockey statistics assistant speaking to hockey fans.\n"
-        f"User Message: {question}\n\n"
+        f"Recent Conversation History:\n{history_text}\n\n"
+        f"Current User Message: {question}\n\n"
         f"Computed Result from Historical Dataset (1999–present):\n{execution_output}\n\n"
         "Instructions:\n"
-        "- Provide a clear, accurate, and conversational answer based strictly on the computed result above.\n"
+        "- Provide a clear, accurate, and conversational answer based strictly on the computed result above, taking into account the conversation history.\n"
         "- If no records exist for the requested player, opponent, or matchup (e.g., `player_exists: False`, `opponent_exists: False`, or 0 matching games), NEVER claim the player recorded 0 saves/goals/points in that matchup. Instead, clearly state that you didn't find any records for that player and/or against that school in the historical dataset (1999–present), and ask the user to confirm the player or school name.\n"
         "- NEVER mention internal variable names like `df1`, `df2`, `player_exists`, `opponent_exists`, pandas DataFrames, CSV files, or Python code.\n"
         "- Instead, refer naturally to 'skater statistics', 'goalie statistics', 'game box scores', or 'opponent leaderboards'.\n"
@@ -244,7 +259,7 @@ for msg in st.session_state.messages:
 
 # 6. Capture User Input and Process the Query
 if prompt := st.chat_input("e.g. How many saves did Devon Levi have against BU?"):
-
+    prior_history = list(st.session_state.messages)
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -252,7 +267,7 @@ if prompt := st.chat_input("e.g. How many saves did Devon Levi have against BU?"
     with st.chat_message("assistant", avatar=assistant_avatar):
         with st.spinner("Querying the historical box scores..."):
             try:
-                response = answer_question(prompt, df_skaters, df_goalies)
+                response = answer_question(prompt, df_skaters, df_goalies, chat_history=prior_history)
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
             except Exception as e:
