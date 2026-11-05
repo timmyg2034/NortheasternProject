@@ -182,16 +182,22 @@ def run_python_code(code: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
 
 
 def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
+    all_opponents = sorted(set(df1["opponent"].dropna().unique()) | set(df2["opponent"].dropna().unique()))
     code_prompt = (
         "You are a Python data analyst for Northeastern Men's Hockey.\n"
         "Two pandas DataFrames are already loaded in memory as `df1` and `df2`:\n"
         "1. `df1` (skater game-by-game box scores): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'player_name', 'goals', 'assists', 'points', 'shots', 'plus_minus']\n"
         "2. `df2` (goalie game-by-game box scores): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'goalie_name', 'decision', 'minutes', 'goals_against', 'empty_net_goals', 'saves', 'shots_against', 'save_pct']\n\n"
+        f"Valid standardized `opponent` names in the dataset: {all_opponents}\n\n"
         "Important conventions:\n"
         "- `player_name` and `goalie_name` are formatted as 'First Last' (e.g., 'Devon Levi', 'Adam Gaudette'). Always filter names with `.str.contains(..., case=False, na=False)`.\n"
-        "- `opponent` uses standardized school names: 'Boston University' (for BU), 'Boston College' (for BC), 'Massachusetts' (for UMass), 'Massachusetts Lowell' (for UMass Lowell / UML), 'Connecticut' (for UConn), 'New Hampshire' (for UNH), 'Rensselaer' (for RPI), 'Maine', 'Providence', 'Merrimack', 'Vermont', 'Harvard', 'Quinnipiac', 'Army', 'AIC', 'RIT', etc.\n"
-        "- In `df2`, `decision` is 'W' for a win, 'L' for a loss, and 'T' for a tie.\n\n"
-        "Write ONLY a single ```python ... ``` code block that queries `df1` and/or `df2` and uses `print()` to output the exact values needed to answer the user's question.\n\n"
+        "- `opponent` uses the standardized school names listed above (e.g., 'Boston University' for BU, 'Boston College' for BC, 'Massachusetts' for UMass, 'Massachusetts Lowell' for UMass Lowell / UML, 'Connecticut' for UConn, 'New Hampshire' for UNH, 'Rensselaer' for RPI).\n"
+        "- In `df2`, `decision` is 'W' for a win, 'L' for a loss, and 'T' for a tie.\n"
+        "- CRITICAL EXISTENCE CHECK: Never blindly run `.sum()` on a filtered DataFrame without checking if the player and opponent actually exist! If the user asks about a specific player/goalie and/or opponent:\n"
+        "  1. First check if the player/goalie name appears ANYWHERE in `df1['player_name']` or `df2['goalie_name']`. Print `player_exists: True/False` (and matching names).\n"
+        "  2. Check if the opponent appears ANYWHERE in `df1['opponent']` or `df2['opponent']`. Print `opponent_exists: True/False` (and matching opponent name).\n"
+        "  3. Only if both exist, filter for their matchup, print the number of games found, and print the requested stats.\n\n"
+        "Write ONLY a single ```python ... ``` code block that performs these checks and uses `print()` to output the results.\n\n"
         f"User Question: {question}"
     )
 
@@ -216,7 +222,8 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
         f"Computed Result from Historical Dataset (1999–present):\n{execution_output}\n\n"
         "Instructions:\n"
         "- Provide a clear, accurate, and conversational answer based strictly on the computed result above.\n"
-        "- NEVER mention internal variable names like `df1` or `df2`, pandas DataFrames, CSV files, or Python code.\n"
+        "- If no records exist for the requested player, opponent, or matchup (e.g., `player_exists: False`, `opponent_exists: False`, or 0 matching games), NEVER claim the player recorded 0 saves/goals/points in that matchup. Instead, clearly state that you didn't find any records for that player and/or against that school in the historical dataset (1999–present), and ask the user to confirm the player or school name.\n"
+        "- NEVER mention internal variable names like `df1`, `df2`, `player_exists`, `opponent_exists`, pandas DataFrames, CSV files, or Python code.\n"
         "- Instead, refer naturally to 'skater statistics', 'goalie statistics', 'game box scores', or 'opponent leaderboards'.\n"
         "- If the user is just saying hello or asking what you can do, greet them warmly and suggest a few example questions (e.g., 'Who has the most career goals against Boston College?', 'How many saves did Devon Levi record against Boston University?', or 'What are Adam Gaudette's career stats against Maine?')."
     )
