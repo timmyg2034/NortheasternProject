@@ -7,10 +7,23 @@ import ast
 import contextlib
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+LOGO_PATH = "nu_husky_logo.jpg"
+HAS_LOGO = os.path.exists(LOGO_PATH)
+
 # 1. Page Configuration
-st.set_page_config(page_title="NU Hockey Stats Explorer", page_icon="🏒", layout="centered")
-st.title("🏒 Northeastern Men's Hockey Stats Explorer")
-st.write("Ask any question about historical skater or goalie statistics, game box scores, or opponent leaderboards.")
+st.set_page_config(
+    page_title="NU Hockey Stats Explorer",
+    page_icon=LOGO_PATH if HAS_LOGO else "🏒",
+    layout="centered",
+)
+
+col_logo, col_title = st.columns([1, 5], vertical_alignment="center") if "vertical_alignment" in st.columns.__code__.co_varnames else st.columns([1, 5])
+with col_logo:
+    if HAS_LOGO:
+        st.image(LOGO_PATH, width=95)
+with col_title:
+    st.title("Northeastern Men's Hockey Stats Explorer")
+    st.write("Ask any question about historical skater or goalie statistics, game box scores, or opponent leaderboards.")
 
 # 2. Securely Load the Gemini API Key
 api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
@@ -190,8 +203,11 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+assistant_avatar = LOGO_PATH if HAS_LOGO else None
+
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
+    avatar = assistant_avatar if msg["role"] == "assistant" else None
+    with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
 
 # 6. Capture User Input and Process the Query
@@ -201,7 +217,7 @@ if prompt := st.chat_input("e.g. How many saves did Devon Levi have against BU?"
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=assistant_avatar):
         with st.spinner("Querying the historical box scores..."):
             try:
                 response = answer_question(prompt, df_skaters, df_goalies)
