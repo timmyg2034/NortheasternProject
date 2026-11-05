@@ -3,4 +3,4 @@ pandas==2.2.1
 langchain==0.1.13
 langchain-google-genai==1.0.1
 langchain-experimental==0.0.55
-tabluate
+tabulate
