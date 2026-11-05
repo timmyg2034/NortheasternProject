@@ -189,11 +189,14 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
         execution_output = run_python_code(code, df1, df2)
 
     final_prompt = (
-        "You are a helpful Northeastern Men's Hockey statistics assistant.\n"
-        f"User Question: {question}\n\n"
-        f"Executed Python Query:\n```python\n{code}\n```\n\n"
-        f"Computed Result from Historical Dataset:\n{execution_output}\n\n"
-        "Provide a clear, accurate, and concise answer to the user's question based strictly on the computed result above."
+        "You are a friendly, knowledgeable Northeastern Men's Hockey statistics assistant speaking to hockey fans.\n"
+        f"User Message: {question}\n\n"
+        f"Computed Result from Historical Dataset (1999–present):\n{execution_output}\n\n"
+        "Instructions:\n"
+        "- Provide a clear, accurate, and conversational answer based strictly on the computed result above.\n"
+        "- NEVER mention internal variable names like `df1` or `df2`, pandas DataFrames, CSV files, or Python code.\n"
+        "- Instead, refer naturally to 'skater statistics', 'goalie statistics', 'game box scores', or 'opponent leaderboards'.\n"
+        "- If the user is just saying hello or asking what you can do, greet them warmly and suggest a few example questions (e.g., 'Who has the most career goals against Boston College?', 'How many saves did Devon Levi record against Boston University?', or 'What are Adam Gaudette's career stats against Maine?')."
     )
     final_msg = llm.invoke(final_prompt)
     return final_msg.content if hasattr(final_msg, "content") else str(final_msg)
