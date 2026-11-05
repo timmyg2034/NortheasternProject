@@ -7,7 +7,7 @@ import ast
 import contextlib
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-LOGO_PATH = "nu_husky_logo.jpg"
+LOGO_PATH = "nu_husky_logo.png"
 HAS_LOGO = os.path.exists(LOGO_PATH)
 
 # 1. Page Configuration
