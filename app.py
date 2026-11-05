@@ -135,7 +135,29 @@ llm = ChatGoogleGenerativeAI(
 )
 
 
+def message_to_text(msg) -> str:
+    content = msg.content if hasattr(msg, "content") else msg
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                if item.get("type") == "thinking":
+                    continue
+                if "text" in item:
+                    parts.append(str(item["text"]))
+            elif hasattr(item, "text"):
+                parts.append(str(item.text))
+        return "\n".join(parts).strip()
+    return str(content)
+
+
 def extract_python_code(text: str) -> str:
+    if not isinstance(text, str):
+        text = message_to_text(text)
     match = re.search(r"```(?:python)?\s*(.*?)```", text, re.DOTALL | re.IGNORECASE)
     if match:
         return match.group(1).strip()
@@ -174,7 +196,7 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
     )
 
     msg = llm.invoke(code_prompt)
-    code = extract_python_code(msg.content if hasattr(msg, "content") else str(msg))
+    code = extract_python_code(message_to_text(msg))
 
     try:
         execution_output = run_python_code(code, df1, df2)
@@ -185,7 +207,7 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
             "Please output ONLY the corrected ```python ... ``` code block."
         )
         msg_retry = llm.invoke(retry_prompt)
-        code = extract_python_code(msg_retry.content if hasattr(msg_retry, "content") else str(msg_retry))
+        code = extract_python_code(message_to_text(msg_retry))
         execution_output = run_python_code(code, df1, df2)
 
     final_prompt = (
@@ -199,7 +221,7 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
         "- If the user is just saying hello or asking what you can do, greet them warmly and suggest a few example questions (e.g., 'Who has the most career goals against Boston College?', 'How many saves did Devon Levi record against Boston University?', or 'What are Adam Gaudette's career stats against Maine?')."
     )
     final_msg = llm.invoke(final_prompt)
-    return final_msg.content if hasattr(final_msg, "content") else str(final_msg)
+    return message_to_text(final_msg)
 
 
 # 5. Initialize Chat History in Session State
