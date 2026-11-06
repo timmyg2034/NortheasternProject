@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 import os
 import re
@@ -18,114 +17,14 @@ st.set_page_config(
     layout="centered",
 )
 
-# Custom CSS to hide Streamlit header menu, deploy button, footer, and community cloud / GitHub badges
+# Custom CSS to cleanly hide upper right menu and deploy button without breaking layout
 st.markdown("""
 <style>
-    /* Hide upper-right menu buttons & toolbar */
-    #MainMenu {visibility: hidden; display: none !important;}
-    header {visibility: hidden; display: none !important;}
-    [data-testid="stHeader"] {visibility: hidden; display: none !important;}
-    [data-testid="stToolbar"] {visibility: hidden; display: none !important;}
-    .stDeployButton {display: none !important;}
-    button[title="View app in Streamlit Community Cloud"] {display: none !important;}
-
-    /* Hide bottom-right Streamlit and GitHub logos / footer / badges */
-    footer {visibility: hidden; display: none !important;}
-    [data-testid="stFooter"] {visibility: hidden; display: none !important;}
-    #manage-app-button {display: none !important;}
-    [data-testid="manage-app-button"] {display: none !important;}
-    div[class*="viewerBadge"] {display: none !important;}
-    div[class*="ProfileBadge"] {display: none !important;}
-    div[data-testid="stStatusWidget"] {display: none !important;}
-    div[data-testid="stDecoration"] {display: none !important;}
+    #MainMenu {visibility: hidden;}
+    .stDeployButton {display: none;}
+    footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
-
-# Break out of iframe and inject removal logic into parent Community Cloud DOM
-components.html("""
-<script>
-function cleanCloudBadges() {
-    try {
-        const docs = [
-            window.document,
-            window.parent ? window.parent.document : null,
-            window.top ? window.top.document : null
-        ];
-
-        docs.forEach(doc => {
-            if (!doc) return;
-
-            // 1. Inject persistent stylesheet into parent head if not already present
-            if (!doc.getElementById('cloud-branding-killer')) {
-                const style = doc.createElement('style');
-                style.id = 'cloud-branding-killer';
-                style.textContent = `
-                    #MainMenu, header, footer,
-                    [data-testid="stHeader"], [data-testid="stToolbar"], .stDeployButton,
-                    #manage-app-button, [data-testid="manage-app-button"],
-                    [class*="viewerBadge"], [class*="ProfileBadge"], [class*="ViewerBadge"],
-                    div[data-testid="stStatusWidget"], div[data-testid="stDecoration"] {
-                        display: none !important;
-                        visibility: hidden !important;
-                    }
-                `;
-                doc.head.appendChild(style);
-            }
-
-            // 2. Hide common badges & selectors directly
-            const selectors = [
-                '#MainMenu', 'header', 'footer',
-                '[data-testid="stHeader"]', '[data-testid="stToolbar"]', '.stDeployButton',
-                '#manage-app-button', '[data-testid="manage-app-button"]',
-                '[class*="viewerBadge"]', '[class*="ProfileBadge"]', '[class*="ViewerBadge"]',
-                'div[data-testid="stStatusWidget"]', 'div[data-testid="stDecoration"]'
-            ];
-            selectors.forEach(sel => {
-                doc.querySelectorAll(sel).forEach(el => {
-                    el.style.setProperty('display', 'none', 'important');
-                    el.style.setProperty('visibility', 'hidden', 'important');
-                });
-            });
-
-            // 3. Search and remove any elements or links mentioning streamlit.io, hosted with, or creator handle
-            doc.querySelectorAll('a, button, div, span').forEach(el => {
-                const href = (el.getAttribute('href') || '').toLowerCase();
-                const text = (el.innerText || el.textContent || '').toLowerCase();
-                const aria = (el.getAttribute('aria-label') || '').toLowerCase();
-                const title = (el.getAttribute('title') || '').toLowerCase();
-
-                if (
-                    href.includes('streamlit.io') ||
-                    href.includes('github.com/timmyg2034') ||
-                    text.includes('hosted with streamlit') ||
-                    text.includes('created by') ||
-                    text.includes('timmyg2034') ||
-                    aria.includes('hosted with streamlit') ||
-                    aria.includes('manage app') ||
-                    title.includes('streamlit')
-                ) {
-                    const badgeContainer = el.closest('[class*="viewerBadge"]') ||
-                                           el.closest('[class*="ProfileBadge"]') ||
-                                           el.closest('div[style*="position: fixed"]') ||
-                                           el;
-                    badgeContainer.style.setProperty('display', 'none', 'important');
-                    badgeContainer.style.setProperty('visibility', 'hidden', 'important');
-                }
-            });
-        });
-    } catch (e) {}
-}
-
-cleanCloudBadges();
-setInterval(cleanCloudBadges, 300);
-
-try {
-    const parentDoc = window.parent ? window.parent.document : window.document;
-    const observer = new MutationObserver(() => cleanCloudBadges());
-    observer.observe(parentDoc.body, { childList: true, subtree: true });
-} catch (e) {}
-</script>
-""", height=0, width=0)
 
 col_logo, col_title = st.columns([1, 5], vertical_alignment="center") if "vertical_alignment" in st.columns.__code__.co_varnames else st.columns([1, 5])
 with col_logo:
