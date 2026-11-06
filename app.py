@@ -216,12 +216,31 @@ except FileNotFoundError:
     st.error("Datasets not found. Please ensure CSV files are uploaded to the repository.")
     st.stop()
 
-# 4. Initialize the Gemini LLM
-llm = ChatGoogleGenerativeAI(
-    model="gemini-3.5-flash-lite",
+# 4. Initialize Gemini LLM with Model Fallback Ladder
+MODEL_LADDER = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash-lite",
+    "gemini-3-flash",
+    "gemini-2.5-flash",
+]
+
+primary_llm = ChatGoogleGenerativeAI(
+    model=MODEL_LADDER[0],
     google_api_key=api_key,
     temperature=0,
 )
+
+fallback_llms = [
+    ChatGoogleGenerativeAI(
+        model=m,
+        google_api_key=api_key,
+        temperature=0,
+    )
+    for m in MODEL_LADDER[1:]
+]
+
+llm = primary_llm.with_fallbacks(fallback_llms)
 
 
 def message_to_text(msg) -> str:
