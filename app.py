@@ -25,6 +25,23 @@ with col_title:
     st.title("Northeastern Men's Hockey Stats Explorer")
     st.write("Ask any question about historical skater or goalie statistics, game-winning goals, faceoffs, blocks, penalties, or opponent matchups (1999–present).")
 
+with st.expander("ℹ️ Data Sources & Coverage Disclaimer"):
+    st.markdown("""
+    **Primary Data Sources:**
+    - All game-by-game records are scraped and parsed directly from official Northeastern Athletics archives:
+      - **2012–13 to Present:** Official Sidearm box scores via [nuhuskies.com](https://nuhuskies.com)
+      - **1999–00 to 2011–12:** Legacy athletic archives via [static.gonu.com](https://static.gonu.com)
+    - Whenever you ask about a specific game, direct links to the official box score are provided.
+
+    **Coverage & Metric Availability:**
+    - **Goals, Assists, Points, Shots, +/-**: Complete coverage across all 996 games from **1999–00 to present** (~18,000 player records).
+    - **Goalie Performance (Saves, GA, Decisions, Shutouts)**: Complete coverage from **1999–00 to present** (1,040 goalie records).
+    - **Goal Scoring Timeline & Game-Winning Goals (GWG)**: Complete coverage from **1999–00 to present** (7,050 goal events).
+    - **Penalty Infractions & Minutes**: Complete coverage from **1999–00 to present** (16,739 penalties).
+    - **Blocked Shots (`BLK`) & Faceoffs (`FO`)**: Officially tracked from **2012–13 to present** (6,956 blocks, 15,284 faceoff wins). The NCAA and Northeastern did not track blocked shots or faceoffs in box scores prior to 2012.
+    - **Pre-1999 Note**: Digital game-by-game box scores prior to October 1999 are not published in athletic web archives.
+    """)
+
 # 2. Securely Load the Gemini API Key
 api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
 
@@ -267,9 +284,11 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         "Instructions:\n"
         "- Provide a clear, accurate, and conversational answer based strictly on the computed result above, taking into account the conversation history.\n"
         "- If a box score URL is available in the computed result for a specific game lookup, provide it as a markdown link: [View Official Box Score](<url>).\n"
+        "- If a user asks about blocked shots or faceoffs for seasons prior to 2012–13, politely inform them that in-game blocked shots and faceoffs were not officially recorded by the NCAA or Northeastern prior to the 2012–13 season.\n"
+        "- If a user asks about game-by-game stats prior to October 1999, clarify that digital athletic box score archives begin with the 1999–00 season.\n"
         "- If no records exist for the requested player, opponent, or matchup (e.g., `player_exists: False`, `opponent_exists: False`, or 0 matching games), NEVER claim the player recorded 0 stats in that matchup. Instead, clearly state that you didn't find any records for that player and/or against that school in the historical dataset (1999–present), and ask the user to confirm the player or school name.\n"
         "- NEVER mention internal variable names like `df1`, `df2`, `df3`, `df4`, `player_exists`, `opponent_exists`, pandas DataFrames, CSV files, or Python code.\n"
-        "- Instead, refer naturally to 'skater statistics', 'goalie statistics', 'scoring summary', 'penalty infractions', or 'game box scores'.\n"
+        "- Instead, refer naturally to 'skater statistics', 'goalie statistics', 'scoring summary', 'penalty infractions', or 'game box scores' from Northeastern Athletics archives.\n"
         "- If the user is just saying hello or asking what you can do, greet them warmly and suggest a few exciting example questions (e.g., 'Who scored the game-winning goal against BU in the Beanpot?', 'Which player had the most blocked shots against BC?', 'How many faceoffs did Justin Hryckowian win?', or 'Show me the team's top goal scorers vs. Maine.')."
     )
     final_msg = llm.invoke(final_prompt)
