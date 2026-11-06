@@ -17,12 +17,22 @@ st.set_page_config(
     layout="centered",
 )
 
-# Custom CSS to cleanly hide upper right menu and deploy button without breaking layout
+# Custom CSS to cleanly hide upper right menu, toolbar, and deploy button
 st.markdown("""
 <style>
-    #MainMenu {visibility: hidden;}
-    .stDeployButton {display: none;}
-    footer {visibility: hidden;}
+    /* Hide upper-right menu buttons, deploy button, and toolbar */
+    #MainMenu {visibility: hidden; display: none !important;}
+    header {visibility: hidden !important;}
+    [data-testid="stHeader"] {visibility: hidden !important;}
+    [data-testid="stToolbar"] {visibility: hidden; display: none !important;}
+    .stDeployButton {display: none !important;}
+    header button {display: none !important;}
+    button[title="View app in Streamlit Community Cloud"] {display: none !important;}
+    div[data-testid="stDecoration"] {display: none !important;}
+
+    /* Hide standard footer */
+    footer {visibility: hidden; display: none !important;}
+    [data-testid="stFooter"] {visibility: hidden; display: none !important;}
 </style>
 """, unsafe_allow_html=True)
 
