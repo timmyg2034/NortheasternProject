@@ -663,33 +663,42 @@ def parse_legacy_boxscore(soup, url, html):
 
     # 4. PARSE PENALTY SUMMARY
     penalty_events = []
+    in_pen_section = False
     for t in soup.find_all("table"):
         txt = t.get_text()
         if "Penalty Summary" in txt and "Offense" in txt:
             for r in t.find_all("tr"):
                 cols = [c.get_text(strip=True) for c in r.find_all(["td", "th"])]
-                if len(cols) >= 6 and cols[0] != "Prd" and any(x in cols[0].lower() for x in ["1st", "2nd", "3rd", "ot"]):
-                    prd = cols[0]
-                    p_name = clean_person_name(cols[1])
-                    team_code = cols[2]
-                    try: p_mins = int(cols[3])
-                    except (ValueError, IndexError): p_mins = 2
-                    offense = cols[4] if len(cols) > 4 else ""
-                    time_str = cols[5] if len(cols) > 5 else ""
+                if cols and cols[0] == "Prd" and "Player" in cols and "Offense" in cols:
+                    in_pen_section = True
+                    continue
+                if in_pen_section:
+                    if any(x in str(cols).lower() for x in ["faceoffs", "power play", "summary:", "totals........."]):
+                        in_pen_section = False
+                        break
+                    if len(cols) >= 6 and cols[0] in ["1st", "2nd", "3rd", "OT", "2OT", "3OT"]:
+                        prd = cols[0]
+                        p_name = clean_person_name(cols[1])
+                        team_code = cols[2]
+                        try: p_mins = int(cols[3])
+                        except (ValueError, IndexError): p_mins = 2
+                        offense = cols[4] if len(cols) > 4 else ""
+                        time_str = cols[5] if len(cols) > 5 else ""
 
-                    is_nu = ("nu" in team_code.lower() or "neu" in team_code.lower())
-                    penalty_events.append({
-                        "date": date,
-                        "opponent": opponent,
-                        "period": prd,
-                        "time": time_str,
-                        "team": "Northeastern" if is_nu else opponent,
-                        "player_name": p_name,
-                        "penalty_minutes": p_mins,
-                        "infraction": offense,
-                        "boxscore_url": url,
-                    })
-            break
+                        is_nu = ("nu" in team_code.lower() or "neu" in team_code.lower())
+                        penalty_events.append({
+                            "date": date,
+                            "opponent": opponent,
+                            "period": prd,
+                            "time": time_str,
+                            "team": "Northeastern" if is_nu else opponent,
+                            "player_name": p_name,
+                            "penalty_minutes": p_mins,
+                            "infraction": offense,
+                            "boxscore_url": url,
+                        })
+            if penalty_events:
+                break
 
     shootout_events = []
     return game_record, skaters, goalies, goal_events, penalty_events, shootout_events

@@ -179,8 +179,17 @@ def load_data():
             penalties_df["opponent"] = penalties_df["opponent"].fillna("").apply(clean_opponent_name)
         if "player_name" in penalties_df.columns:
             penalties_df["player_name"] = penalties_df["player_name"].fillna("").apply(clean_person_name)
+        # Exclude TEAM, TM, bench minors, and formatting artifacts from player penalties
+        penalties_df = penalties_df[
+            ~penalties_df["player_name"].str.upper().isin(["TEAM", "TM", "BENCH", "TEAM BENCH", "TEAM PENALTY"]) &
+            ~penalties_df["player_name"].str.startswith(":") &
+            (penalties_df["player_name"] != "st")
+        ].copy()
         if "penalty_minutes" in penalties_df.columns:
             penalties_df["penalty_minutes"] = pd.to_numeric(penalties_df["penalty_minutes"], errors="coerce").fillna(2)
+        if "infraction" in penalties_df.columns:
+            penalties_df["infraction"] = penalties_df["infraction"].fillna("").astype(str).str.strip().str.upper()
+            penalties_df["infraction"] = penalties_df["infraction"].str.replace("CROSS CHECKING", "CROSS-CHECKING")
 
     # Clean game results
     if not games_df.empty:
@@ -315,6 +324,7 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         "   - `is_gwg`: 1 if this specific goal was the official Game-Winning Goal, 0 otherwise\n"
         "4. `df4` (penalty events & infractions): columns = ['date', 'opponent', 'period', 'time', 'team', 'player_name', 'penalty_minutes', 'infraction', 'boxscore_url']\n"
         "   - `period`: Formatted as strings '1st', '2nd', '3rd', 'OT'.\n"
+        "   - `infraction`: Standardized uppercase penalty infraction/type (e.g., 'ROUGHING', 'HOOKING', 'INTERFERENCE', 'TRIPPING', 'SLASHING', 'HOLDING', 'CROSS-CHECKING', 'HIGH STICKING', 'BOARDING', 'HITTING FROM BEHIND', 'GAME MISCONDUCT', '10-MINUTE MISCONDUCT', 'UNSPORTSMANLIKE CONDUCT').\n"
         "5. `df5` (game outcomes, overtime, shutouts): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'outcome', 'overtime_status', 'is_overtime', 'is_shootout', 'is_shutout', 'shutout_team', 'boxscore_url']\n"
         "   - `outcome`: 'W' (win), 'L' (loss), 'T' (tie)\n"
         "   - `overtime_status`: 'REG' (regulation), 'OT' (1st overtime), '2OT', '3OT', 'SO' (shootout)\n"
@@ -334,6 +344,7 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         "- `opponent` uses standardized school names (e.g., 'Boston University' for BU, 'Boston College' for BC, 'Massachusetts' for UMass, 'Massachusetts Lowell' for UMass Lowell / UML, 'Connecticut' for UConn, 'New Hampshire' for UNH, 'Rensselaer' for RPI).\n"
         "- In `df2`, `decision` is 'W' for win, 'L' for loss, 'T' for tie.\n"
         "- In `df3` and `df4`, `period` values are strings: `'1st'`, `'2nd'`, `'3rd'`, `'OT'`. When the user asks for 1st/2nd/3rd period, match `'1st'`, `'2nd'`, or `'3rd'` (not numbers like `3` or words like `'third'`).\n"
+        "- PENALTIES & BENCH MINORS: In `df4`, `infraction` records the specific penalty type (e.g. 'ROUGHING', 'TRIPPING', 'SLASHING', 'HOOKING', 'INTERFERENCE', 'CROSS-CHECKING'). Never include 'TEAM', 'Team', or 'TM' as a player! Those are team bench minors (e.g. too many men on ice). When answering who had the most penalties or penalty minutes, only include actual human players.\n"
         "- CONVERSATION CONTEXT: Use the Recent Conversation History below to resolve pronouns or omitted context in follow-up questions (e.g., 'How many goals did he have?', 'What about against BU?', 'Who had the shootout winner?').\n"
         "- CRITICAL EXISTENCE CHECK: Never blindly run `.sum()` or `.count()` on a filtered DataFrame without checking if the player and opponent actually exist! If the user asks about a specific player/goalie and/or opponent:\n"
         "  1. Check if the player name appears in `df1['player_name']`, `df2['goalie_name']`, `df3['scorer']`, `df4['player_name']`, `df6['shooter_name']`, or `df6['goalie_name']`. Print `player_exists: True/False`.\n"
