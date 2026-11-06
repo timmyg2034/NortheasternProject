@@ -23,7 +23,7 @@ with col_logo:
         st.image(LOGO_PATH, width=95)
 with col_title:
     st.title("Northeastern Men's Hockey Stats Explorer")
-    st.write("Ask any question about historical skater or goalie statistics, game box scores, or opponent leaderboards.")
+    st.write("Ask any question about historical skater or goalie statistics, game-winning goals, faceoffs, blocks, penalties, or opponent matchups (1999–present).")
 
 # 2. Securely Load the Gemini API Key
 api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
@@ -89,6 +89,7 @@ def clean_opponent_name(name):
 
 def clean_person_name(name):
     name = str(name).strip()
+    name = re.sub(r'^[*\s\d]+', '', name).strip()
     if "," in name:
         parts = [p.strip() for p in name.split(",", 1)]
         if len(parts) == 2 and parts[0] and parts[1]:
@@ -96,20 +97,24 @@ def clean_person_name(name):
     return name
 
 
-# 3. Load Both Datasets into Memory
+# 3. Load All 4 Datasets into Memory
 @st.cache_data
 def load_data():
     skater_df = pd.read_csv("northeastern_hockey_stats_mcp.csv")
     goalie_df = pd.read_csv("northeastern_goalie_stats.csv")
+    goals_df = pd.read_csv("northeastern_goal_events.csv") if os.path.exists("northeastern_goal_events.csv") else pd.DataFrame()
+    penalties_df = pd.read_csv("northeastern_penalty_events.csv") if os.path.exists("northeastern_penalty_events.csv") else pd.DataFrame()
 
+    # Clean skaters
     if "opponent" in skater_df.columns:
         skater_df["opponent"] = skater_df["opponent"].fillna("").apply(clean_opponent_name)
     if "player_name" in skater_df.columns:
         skater_df["player_name"] = skater_df["player_name"].fillna("").apply(clean_person_name)
-    for col in ["nu_goals", "opp_goals", "goals", "assists", "points", "shots", "plus_minus"]:
+    for col in ["nu_goals", "opp_goals", "goals", "assists", "points", "shots", "plus_minus", "penalties", "penalty_minutes", "faceoffs_won", "faceoffs_lost", "blocked_shots"]:
         if col in skater_df.columns:
             skater_df[col] = pd.to_numeric(skater_df[col], errors="coerce").fillna(0)
 
+    # Clean goalies
     if "opponent" in goalie_df.columns:
         goalie_df["opponent"] = goalie_df["opponent"].fillna("").apply(clean_opponent_name)
     if "goalie_name" in goalie_df.columns:
@@ -118,13 +123,33 @@ def load_data():
         if col in goalie_df.columns:
             goalie_df[col] = pd.to_numeric(goalie_df[col], errors="coerce").fillna(0)
 
-    return skater_df, goalie_df
+    # Clean goals
+    if not goals_df.empty:
+        if "opponent" in goals_df.columns:
+            goals_df["opponent"] = goals_df["opponent"].fillna("").apply(clean_opponent_name)
+        for c in ["scorer", "primary_assist", "secondary_assist"]:
+            if c in goals_df.columns:
+                goals_df[c] = goals_df[c].fillna("").apply(clean_person_name)
+        for col in ["is_gwg", "nu_score_after", "opp_score_after"]:
+            if col in goals_df.columns:
+                goals_df[col] = pd.to_numeric(goals_df[col], errors="coerce").fillna(0)
+
+    # Clean penalties
+    if not penalties_df.empty:
+        if "opponent" in penalties_df.columns:
+            penalties_df["opponent"] = penalties_df["opponent"].fillna("").apply(clean_opponent_name)
+        if "player_name" in penalties_df.columns:
+            penalties_df["player_name"] = penalties_df["player_name"].fillna("").apply(clean_person_name)
+        if "penalty_minutes" in penalties_df.columns:
+            penalties_df["penalty_minutes"] = pd.to_numeric(penalties_df["penalty_minutes"], errors="coerce").fillna(2)
+
+    return skater_df, goalie_df, goals_df, penalties_df
 
 
 try:
-    df_skaters, df_goalies = load_data()
+    df_skaters, df_goalies, df_goals, df_penalties = load_data()
 except FileNotFoundError:
-    st.error("Datasets not found. Please ensure both 'northeastern_hockey_stats_mcp.csv' and 'northeastern_goalie_stats.csv' are uploaded to the repository.")
+    st.error("Datasets not found. Please ensure CSV files are uploaded to the repository.")
     st.stop()
 
 # 4. Initialize the Gemini LLM
@@ -164,8 +189,8 @@ def extract_python_code(text: str) -> str:
     return text.strip()
 
 
-def run_python_code(code: str, df1: pd.DataFrame, df2: pd.DataFrame) -> str:
-    local_env = {"df1": df1, "df2": df2, "pd": pd}
+def run_python_code(code: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame) -> str:
+    local_env = {"df1": df1, "df2": df2, "df3": df3, "df4": df4, "pd": pd}
     stdout_buf = io.StringIO()
     with contextlib.redirect_stdout(stdout_buf):
         tree = ast.parse(code, mode="exec")
@@ -192,24 +217,28 @@ def format_chat_history(messages: list, max_turns: int = 8) -> str:
     return "\n".join(lines)
 
 
-def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, chat_history: list = None) -> str:
+def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, chat_history: list = None) -> str:
     all_opponents = sorted(set(df1["opponent"].dropna().unique()) | set(df2["opponent"].dropna().unique()))
     history_text = format_chat_history(chat_history or [])
     code_prompt = (
         "You are a Python data analyst for Northeastern Men's Hockey.\n"
-        "Two pandas DataFrames are already loaded in memory as `df1` and `df2`:\n"
-        "1. `df1` (skater game-by-game box scores): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'player_name', 'goals', 'assists', 'points', 'shots', 'plus_minus']\n"
-        "2. `df2` (goalie game-by-game box scores): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'goalie_name', 'decision', 'minutes', 'goals_against', 'empty_net_goals', 'saves', 'shots_against', 'save_pct']\n\n"
+        "Four pandas DataFrames are already loaded in memory:\n"
+        "1. `df1` (skaters): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'player_name', 'goals', 'assists', 'points', 'shots', 'plus_minus', 'penalties', 'penalty_minutes', 'faceoffs_won', 'faceoffs_lost', 'blocked_shots', 'boxscore_url']\n"
+        "2. `df2` (goalies): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'goalie_name', 'decision', 'minutes', 'goals_against', 'empty_net_goals', 'saves', 'shots_against', 'save_pct', 'boxscore_url']\n"
+        "3. `df3` (scoring events & timeline): columns = ['date', 'opponent', 'period', 'time', 'team', 'scorer', 'primary_assist', 'secondary_assist', 'strength', 'is_gwg', 'nu_score_after', 'opp_score_after', 'boxscore_url']\n"
+        "   - `strength`: 'EV', 'PP', 'SH', 'EN'\n"
+        "   - `is_gwg`: 1 if this goal was the official Game-Winning Goal, 0 otherwise\n"
+        "4. `df4` (penalty events & infractions): columns = ['date', 'opponent', 'period', 'time', 'team', 'player_name', 'penalty_minutes', 'infraction', 'boxscore_url']\n\n"
         f"Valid standardized `opponent` names in the dataset: {all_opponents}\n\n"
         "Important conventions:\n"
-        "- `player_name` and `goalie_name` are formatted as 'First Last' (e.g., 'Devon Levi', 'Adam Gaudette'). Always filter names with `.str.contains(..., case=False, na=False)`.\n"
-        "- `opponent` uses the standardized school names listed above (e.g., 'Boston University' for BU, 'Boston College' for BC, 'Massachusetts' for UMass, 'Massachusetts Lowell' for UMass Lowell / UML, 'Connecticut' for UConn, 'New Hampshire' for UNH, 'Rensselaer' for RPI).\n"
-        "- In `df2`, `decision` is 'W' for a win, 'L' for a loss, and 'T' for a tie.\n"
-        "- CONVERSATION CONTEXT: Use the Recent Conversation History below to resolve pronouns or omitted context in follow-up questions (e.g., 'How many goals did he have?', 'What about against BU?', 'In that season?').\n"
+        "- All player names are formatted as 'First Last' (e.g., 'Devon Levi', 'Adam Gaudette', 'Hunter McDonald'). Always filter with `.str.contains(..., case=False, na=False)`.\n"
+        "- `opponent` uses standardized school names (e.g., 'Boston University' for BU, 'Boston College' for BC, 'Massachusetts' for UMass, 'Massachusetts Lowell' for UMass Lowell / UML, 'Connecticut' for UConn, 'New Hampshire' for UNH, 'Rensselaer' for RPI).\n"
+        "- In `df2`, `decision` is 'W' for win, 'L' for loss, 'T' for tie.\n"
+        "- CONVERSATION CONTEXT: Use the Recent Conversation History below to resolve pronouns or omitted context in follow-up questions (e.g., 'How many goals did he have?', 'What about against BU?', 'Who had the game-winner?').\n"
         "- CRITICAL EXISTENCE CHECK: Never blindly run `.sum()` on a filtered DataFrame without checking if the player and opponent actually exist! If the user asks about a specific player/goalie and/or opponent:\n"
-        "  1. First check if the player/goalie name appears ANYWHERE in `df1['player_name']` or `df2['goalie_name']`. Print `player_exists: True/False` (and matching names).\n"
-        "  2. Check if the opponent appears ANYWHERE in `df1['opponent']` or `df2['opponent']`. Print `opponent_exists: True/False` (and matching opponent name).\n"
-        "  3. Only if both exist, filter for their matchup, print the number of games found, and print the requested stats.\n\n"
+        "  1. Check if the player name appears in `df1['player_name']`, `df2['goalie_name']`, `df3['scorer']`, or `df4['player_name']`. Print `player_exists: True/False`.\n"
+        "  2. Check if the opponent appears in `df1['opponent']` or `df2['opponent']`. Print `opponent_exists: True/False`.\n"
+        "  3. Only if both exist, filter and print the requested stats (include `boxscore_url` if relevant for game lookups).\n\n"
         f"Recent Conversation History:\n{history_text}\n\n"
         "Write ONLY a single ```python ... ``` code block that performs these checks and uses `print()` to output the results.\n\n"
         f"Current User Question: {question}"
@@ -219,7 +248,7 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, chat_hi
     code = extract_python_code(message_to_text(msg))
 
     try:
-        execution_output = run_python_code(code, df1, df2)
+        execution_output = run_python_code(code, df1, df2, df3, df4)
     except Exception as err:
         retry_prompt = (
             f"{code_prompt}\n\nYour previous code:\n```python\n{code}\n```\n"
@@ -228,7 +257,7 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, chat_hi
         )
         msg_retry = llm.invoke(retry_prompt)
         code = extract_python_code(message_to_text(msg_retry))
-        execution_output = run_python_code(code, df1, df2)
+        execution_output = run_python_code(code, df1, df2, df3, df4)
 
     final_prompt = (
         "You are a friendly, knowledgeable Northeastern Men's Hockey statistics assistant speaking to hockey fans.\n"
@@ -237,10 +266,11 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, chat_hi
         f"Computed Result from Historical Dataset (1999–present):\n{execution_output}\n\n"
         "Instructions:\n"
         "- Provide a clear, accurate, and conversational answer based strictly on the computed result above, taking into account the conversation history.\n"
-        "- If no records exist for the requested player, opponent, or matchup (e.g., `player_exists: False`, `opponent_exists: False`, or 0 matching games), NEVER claim the player recorded 0 saves/goals/points in that matchup. Instead, clearly state that you didn't find any records for that player and/or against that school in the historical dataset (1999–present), and ask the user to confirm the player or school name.\n"
-        "- NEVER mention internal variable names like `df1`, `df2`, `player_exists`, `opponent_exists`, pandas DataFrames, CSV files, or Python code.\n"
-        "- Instead, refer naturally to 'skater statistics', 'goalie statistics', 'game box scores', or 'opponent leaderboards'.\n"
-        "- If the user is just saying hello or asking what you can do, greet them warmly and suggest a few example questions (e.g., 'Who has the most career goals against Boston College?', 'How many saves did Devon Levi record against Boston University?', or 'What are Adam Gaudette's career stats against Maine?')."
+        "- If a box score URL is available in the computed result for a specific game lookup, provide it as a markdown link: [View Official Box Score](<url>).\n"
+        "- If no records exist for the requested player, opponent, or matchup (e.g., `player_exists: False`, `opponent_exists: False`, or 0 matching games), NEVER claim the player recorded 0 stats in that matchup. Instead, clearly state that you didn't find any records for that player and/or against that school in the historical dataset (1999–present), and ask the user to confirm the player or school name.\n"
+        "- NEVER mention internal variable names like `df1`, `df2`, `df3`, `df4`, `player_exists`, `opponent_exists`, pandas DataFrames, CSV files, or Python code.\n"
+        "- Instead, refer naturally to 'skater statistics', 'goalie statistics', 'scoring summary', 'penalty infractions', or 'game box scores'.\n"
+        "- If the user is just saying hello or asking what you can do, greet them warmly and suggest a few exciting example questions (e.g., 'Who scored the game-winning goal against BU in the Beanpot?', 'Which player had the most blocked shots against BC?', 'How many faceoffs did Justin Hryckowian win?', or 'Show me the team's top goal scorers vs. Maine.')."
     )
     final_msg = llm.invoke(final_prompt)
     return message_to_text(final_msg)
@@ -258,7 +288,7 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # 6. Capture User Input and Process the Query
-if prompt := st.chat_input("e.g. How many saves did Devon Levi have against BU?"):
+if prompt := st.chat_input("e.g. Who scored the game-winning goal against BC in 2023?"):
     prior_history = list(st.session_state.messages)
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -267,7 +297,7 @@ if prompt := st.chat_input("e.g. How many saves did Devon Levi have against BU?"
     with st.chat_message("assistant", avatar=assistant_avatar):
         with st.spinner("Querying the historical box scores..."):
             try:
-                response = answer_question(prompt, df_skaters, df_goalies, chat_history=prior_history)
+                response = answer_question(prompt, df_skaters, df_goalies, df_goals, df_penalties, chat_history=prior_history)
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
             except Exception as e:

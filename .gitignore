@@ -1,5 +1,7 @@
 .env
-__pycache__/mcp_hockey_server.cpython-314.pyc
+__pycache__/
+*.pyc
+data_cache/
 generate_goalie_master_doc.py
 generate_master_notebook_doc.py
 mcp_hockey_server.py
