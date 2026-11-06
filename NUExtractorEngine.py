@@ -17,10 +17,14 @@ HEADERS = {
 CACHE_DIR = Path("data_cache/boxscores")
 INDEX_FILE = Path("data_cache/boxscores_index.json")
 
+SO_PATTERN = re.compile(
+    r'Shootout attempt by\s+([A-Za-z0-9_]+)\s+([A-Za-z0-9_,\.\s\'-]+?)\s+(MADE|MISSED|SCORED)[\s,]*against\s+([A-Za-z0-9_]+)\s+goalie\s+([A-Za-z0-9_,\.\s\'-]+)',
+    re.IGNORECASE
+)
+
 
 def clean_person_name(name):
     name = str(name).strip()
-    # Strip leading/trailing jersey numbers or asterisks e.g. "4Arik Engbrecht" or "*4Matt Desrosiers"
     name = re.sub(r'^[*\s\d]+', '', name).strip()
     if "," in name:
         parts = [p.strip() for p in name.split(",", 1)]
@@ -35,7 +39,7 @@ def url_to_filename(url: str) -> str:
 
 
 def parse_modern_boxscore(soup, url, html):
-    """Parses modern Sidearm box scores for skaters, goalies, goals, and penalties."""
+    """Parses modern Sidearm box scores for games, skaters, goalies, goals, penalties, and shootouts."""
     title = soup.title.string.strip() if soup.title else ""
     m = re.search(r'(?:vs\.?|at)\s+(.+?)\s+on\s+(\d{1,2}/\d{1,2}/\d{4})', title, re.IGNORECASE)
     opponent = m.group(1).strip() if m else "Unknown"
@@ -44,7 +48,7 @@ def parse_modern_boxscore(soup, url, html):
     nu_goals = 0
     opp_goals = 0
 
-    # Extract score from table captions or title
+    # Extract score from table captions
     for t in soup.find_all("table"):
         cap = t.find("caption")
         if cap:
@@ -59,12 +63,98 @@ def parse_modern_boxscore(soup, url, html):
                     if opponent == "Unknown":
                         opponent = team_name
 
-    skaters = []
-    goalies = []
-    goal_events = []
-    penalty_events = []
+    # 1. PARSE SHOOTOUT ATTEMPTS
+    shootout_events = []
+    has_shootout_play = False
+    so_round = 1
+    for t in soup.find_all("table"):
+        cap = (t.find("caption").get_text(strip=True) if t.find("caption") else "").lower()
+        if "period" in cap or "play" in cap or "shootout" in cap:
+            for r in t.find_all("tr"):
+                for c in r.find_all(["td", "th"]):
+                    txt = c.get_text(strip=True)
+                    sm = SO_PATTERN.search(txt)
+                    if sm:
+                        has_shootout_play = True
+                        team_code, raw_shooter, res, g_team_code, raw_goalie = sm.groups()
+                        is_nu_shooter = ("nor" in team_code.lower() or "neu" in team_code.lower() or "nu" in team_code.lower())
+                        shooter_team = "Northeastern" if is_nu_shooter else opponent
+                        goalie_team = opponent if is_nu_shooter else "Northeastern"
+                        res_clean = "MADE" if res.upper() in ["MADE", "SCORED"] else "MISSED"
 
-    # 1. PARSE SKATERS
+                        shootout_events.append({
+                            "date": date,
+                            "opponent": opponent,
+                            "round": so_round,
+                            "shooter_team": shooter_team,
+                            "shooter_name": clean_person_name(raw_shooter),
+                            "result": res_clean,
+                            "goalie_team": goalie_team,
+                            "goalie_name": clean_person_name(raw_goalie),
+                            "boxscore_url": url,
+                        })
+                        if not is_nu_shooter:
+                            so_round += 1
+                        break
+
+    # 2. DETERMINE OVERTIME & SHUTOUT STATUS
+    has_period_4 = False
+    has_period_5 = False
+    has_period_6 = False
+    score_table_has_ot = False
+
+    for t in soup.find_all("table"):
+        cap = (t.find("caption").get_text(strip=True) if t.find("caption") else "").lower()
+        if "period #4" in cap: has_period_4 = True
+        elif "period #5" in cap: has_period_5 = True
+        elif "period #6" in cap: has_period_6 = True
+        if "team score by period" in cap:
+            ths = [th.get_text(strip=True).upper() for th in t.find_all("th")]
+            if any(x in ths for x in ["OT", "1ST OT", "2OT", "SO"]):
+                score_table_has_ot = True
+
+    is_shootout = 1 if (has_shootout_play or len(shootout_events) > 0) else 0
+    is_ot = 1 if (is_shootout or has_period_4 or score_table_has_ot) else 0
+
+    if is_shootout:
+        ot_status = "SO"
+    elif has_period_6:
+        ot_status = "3OT"
+    elif has_period_5 and not is_shootout:
+        ot_status = "2OT"
+    elif is_ot:
+        ot_status = "OT"
+    else:
+        ot_status = "REG"
+
+    is_shutout = 1 if (nu_goals == 0 or opp_goals == 0) else 0
+    if opp_goals == 0 and nu_goals > 0:
+        shutout_team = "Northeastern"
+    elif nu_goals == 0 and opp_goals > 0:
+        shutout_team = opponent
+    elif nu_goals == 0 and opp_goals == 0:
+        shutout_team = "Both (0-0 Tie)"
+    else:
+        shutout_team = "None"
+
+    outcome = "W" if nu_goals > opp_goals else ("L" if nu_goals < opp_goals else "T")
+
+    game_record = {
+        "date": date,
+        "opponent": opponent,
+        "nu_goals": nu_goals,
+        "opp_goals": opp_goals,
+        "outcome": outcome,
+        "overtime_status": ot_status,
+        "is_overtime": is_ot,
+        "is_shootout": is_shootout,
+        "is_shutout": is_shutout,
+        "shutout_team": shutout_team,
+        "boxscore_url": url,
+    }
+
+    # 3. PARSE SKATERS
+    skaters = []
     for t in soup.find_all("table"):
         cap = t.find("caption")
         cap_text = cap.get_text().lower() if cap else ""
@@ -73,12 +163,10 @@ def parse_modern_boxscore(soup, url, html):
             th_texts = [th.get_text(strip=True) for th in th_cells]
             if "G" in th_texts and "A" in th_texts:
                 tbody = t.find("tbody")
-                if not tbody:
-                    continue
+                if not tbody: continue
                 for row in tbody.find_all("tr"):
                     cells = row.find_all(["td", "th"])
-                    if not cells:
-                        continue
+                    if not cells: continue
                     a_tag = row.find("a")
                     p_name = a_tag.get_text(strip=True) if a_tag else (cells[2].get_text(strip=True) if len(cells) > 2 else "")
                     p_name = clean_person_name(p_name)
@@ -137,22 +225,23 @@ def parse_modern_boxscore(soup, url, html):
                         "faceoffs_won": fo_won,
                         "faceoffs_lost": fo_lost,
                         "blocked_shots": blocks,
+                        "is_overtime": is_ot,
+                        "is_shutout": is_shutout,
                         "boxscore_url": url,
                     })
                 break
 
-    # 2. PARSE GOALIES
+    # 4. PARSE GOALIES
+    goalies = []
     for t in soup.find_all("table"):
         cap = t.find("caption")
         cap_text = cap.get_text().lower() if cap else ""
         if "northeastern" in cap_text and ("goal" in cap_text or "save" in cap_text or "keeper" in cap_text):
             tbody = t.find("tbody")
-            if not tbody:
-                continue
+            if not tbody: continue
             for r in tbody.find_all("tr"):
                 cells = r.find_all(["td", "th"])
-                if not cells:
-                    continue
+                if not cells: continue
                 a_tag = r.find("a")
                 g_name = a_tag.get_text(strip=True) if a_tag else (cells[1].get_text(strip=True) if len(cells) > 1 else "")
                 g_name = clean_person_name(g_name)
@@ -177,6 +266,8 @@ def parse_modern_boxscore(soup, url, html):
 
                 shots_against = ga + saves
                 save_pct = round(saves / shots_against, 3) if shots_against > 0 else 0.0
+                so_flag = 1 if (ga == 0 and saves > 0) else 0
+
                 goalies.append({
                     "date": date,
                     "opponent": opponent,
@@ -190,17 +281,19 @@ def parse_modern_boxscore(soup, url, html):
                     "saves": saves,
                     "shots_against": shots_against,
                     "save_pct": f"{save_pct:.3f}" if shots_against > 0 else ".000",
+                    "shutouts": so_flag,
+                    "is_overtime": is_ot,
                     "boxscore_url": url,
                 })
             break
 
-    # 3. PARSE SCORING SUMMARY
+    # 5. PARSE SCORING SUMMARY
+    goal_events = []
     for t in soup.find_all("table"):
         cap = t.find("caption")
         cap_text = cap.get_text().lower() if cap else ""
         if "scoring summary" in cap_text:
             tbody = t.find("tbody") or t
-            # Identify score after each goal
             nu_running = 0
             opp_running = 0
             gwg_goal_num = (opp_goals + 1) if nu_goals > opp_goals else -1
@@ -219,12 +312,9 @@ def parse_modern_boxscore(soup, url, html):
                     secondary_assist = ""
                     if assists_str and assists_str not in ["-", "unassisted", "None"]:
                         a_parts = [clean_person_name(a) for a in assists_str.split(",")]
-                        if len(a_parts) >= 1 and a_parts[0]:
-                            primary_assist = a_parts[0]
-                        if len(a_parts) >= 2 and a_parts[1]:
-                            secondary_assist = a_parts[1]
+                        if len(a_parts) >= 1 and a_parts[0]: primary_assist = a_parts[0]
+                        if len(a_parts) >= 2 and a_parts[1]: secondary_assist = a_parts[1]
 
-                    # Parse scores after goal if available
                     opp_score_str = cells[6] if len(cells) > 6 else ""
                     nu_score_str = cells[7] if len(cells) > 7 else ""
                     try:
@@ -260,7 +350,8 @@ def parse_modern_boxscore(soup, url, html):
                     })
             break
 
-    # 4. PARSE PENALTY SUMMARY
+    # 6. PARSE PENALTY SUMMARY
+    penalty_events = []
     for t in soup.find_all("table"):
         cap = t.find("caption")
         cap_text = cap.get_text().lower() if cap else ""
@@ -275,8 +366,6 @@ def parse_modern_boxscore(soup, url, html):
                     min_str = cells[3]
                     offense = cells[4] if len(cells) > 4 else ""
                     time_str = cells[6] if len(cells) > 6 else (cells[5] if len(cells) > 5 else "")
-                    
-                    # Convert MIN like '02:00' to integer minutes 2
                     try:
                         p_mins = int(min_str.split(":")[0]) if ":" in min_str else int(min_str)
                     except ValueError:
@@ -297,11 +386,11 @@ def parse_modern_boxscore(soup, url, html):
                     })
             break
 
-    return skaters, goalies, goal_events, penalty_events
+    return game_record, skaters, goalies, goal_events, penalty_events, shootout_events
 
 
 def parse_legacy_boxscore(soup, url, html):
-    """Parses legacy Gonu box scores for skaters, goalies, goals, and penalties."""
+    """Parses legacy Gonu box scores for games, skaters, goalies, goals, penalties, and shootouts."""
     title = soup.title.string.strip() if soup.title else ""
     m = re.search(r'Northeastern\s+(?:vs\.?|at)\s+(.+?)\s+\((.+?)\)', title, re.IGNORECASE)
     if not m:
@@ -316,6 +405,7 @@ def parse_legacy_boxscore(soup, url, html):
 
     nu_goals = 0
     opp_goals = 0
+    legacy_ot_col = False
 
     # Score from Goals by Period table
     for t in soup.find_all("table"):
@@ -323,6 +413,8 @@ def parse_legacy_boxscore(soup, url, html):
         if "Goals by Period" in txt:
             for r in t.find_all("tr"):
                 cols = [c.get_text(strip=True) for c in r.find_all(["td", "th"])]
+                if any(re.search(r'^(?:OT|2OT|3OT|SO)$', c, re.IGNORECASE) for c in cols):
+                    legacy_ot_col = True
                 if cols and "Northeastern" in cols[0] and len(cols) >= 5:
                     try: nu_goals = int(cols[-1])
                     except ValueError: pass
@@ -333,12 +425,36 @@ def parse_legacy_boxscore(soup, url, html):
                             opponent = cols[0]
                     except ValueError: pass
 
-    skaters = []
-    goalies = []
-    goal_events = []
-    penalty_events = []
+    is_ot = 1 if legacy_ot_col else 0
+    ot_status = "OT" if is_ot else "REG"
+    is_shutout = 1 if (nu_goals == 0 or opp_goals == 0) else 0
+    if opp_goals == 0 and nu_goals > 0:
+        shutout_team = "Northeastern"
+    elif nu_goals == 0 and opp_goals > 0:
+        shutout_team = opponent
+    elif nu_goals == 0 and opp_goals == 0:
+        shutout_team = "Both (0-0 Tie)"
+    else:
+        shutout_team = "None"
+
+    outcome = "W" if nu_goals > opp_goals else ("L" if nu_goals < opp_goals else "T")
+
+    game_record = {
+        "date": date,
+        "opponent": opponent,
+        "nu_goals": nu_goals,
+        "opp_goals": opp_goals,
+        "outcome": outcome,
+        "overtime_status": ot_status,
+        "is_overtime": is_ot,
+        "is_shootout": 0,
+        "is_shutout": is_shutout,
+        "shutout_team": shutout_team,
+        "boxscore_url": url,
+    }
 
     # 1. PARSE SKATERS
+    skaters = []
     for t in soup.find_all("table"):
         rows = t.find_all("tr")
         for i, r in enumerate(rows):
@@ -346,8 +462,7 @@ def parse_legacy_boxscore(soup, url, html):
             if len(cols) >= 4 and cols[0] == "Northeastern" and "G" in cols and "A" in cols:
                 for r2 in rows[i + 1:]:
                     c2 = [c.get_text(strip=True) for c in r2.find_all(["td", "th"])]
-                    if any("total" in str(x).lower() for x in c2):
-                        break
+                    if any("total" in str(x).lower() for x in c2): break
                     if len(c2) >= 8:
                         p_name = clean_person_name(c2[2])
                         if not p_name or any(x in p_name.lower() for x in ["totals", "team"]):
@@ -386,6 +501,8 @@ def parse_legacy_boxscore(soup, url, html):
                             "faceoffs_won": 0,
                             "faceoffs_lost": 0,
                             "blocked_shots": 0,
+                            "is_overtime": is_ot,
+                            "is_shutout": is_shutout,
                             "boxscore_url": url,
                         })
                 break
@@ -393,6 +510,7 @@ def parse_legacy_boxscore(soup, url, html):
             break
 
     # 2. PARSE GOALIES
+    goalies = []
     for t in soup.find_all("table"):
         rows = t.find_all("tr")
         for i, r in enumerate(rows):
@@ -405,8 +523,7 @@ def parse_legacy_boxscore(soup, url, html):
                     if len(c2) >= 6:
                         g_name = clean_person_name(c2[1])
                         mins = c2[3] if len(c2) > 3 else ""
-                        if ":" not in mins:
-                            break
+                        if ":" not in mins: break
                         dec = c2[2] if len(c2) > 2 else ""
                         try: ga = int(c2[4])
                         except (ValueError, IndexError): ga = 0
@@ -417,6 +534,17 @@ def parse_legacy_boxscore(soup, url, html):
 
                         shots_against = ga + saves
                         save_pct = round(saves / shots_against, 3) if shots_against > 0 else 0.0
+                        so_flag = 1 if (ga == 0 and saves > 0) else 0
+
+                        # Check if goalie minutes indicate overtime e.g. 65:00
+                        try:
+                            m_int = int(mins.split(":")[0])
+                            if m_int > 60:
+                                game_record["is_overtime"] = 1
+                                if game_record["overtime_status"] == "REG":
+                                    game_record["overtime_status"] = "OT"
+                        except Exception: pass
+
                         goalies.append({
                             "date": date,
                             "opponent": opponent,
@@ -430,13 +558,16 @@ def parse_legacy_boxscore(soup, url, html):
                             "saves": saves,
                             "shots_against": shots_against,
                             "save_pct": f"{save_pct:.3f}" if shots_against > 0 else ".000",
+                            "shutouts": so_flag,
+                            "is_overtime": game_record["is_overtime"],
                             "boxscore_url": url,
                         })
                 break
         if goalies:
             break
 
-    # 3. PARSE SCORING SUMMARY (Table with 'Scored by')
+    # 3. PARSE SCORING SUMMARY
+    goal_events = []
     for t in soup.find_all("table"):
         txt = t.get_text()
         if "Scoring Summary" in txt and "Scored by" in txt:
@@ -447,8 +578,8 @@ def parse_legacy_boxscore(soup, url, html):
 
             for r in t.find_all("tr"):
                 cols = [c.get_text(strip=True) for c in r.find_all(["td", "th"])]
-                if len(cols) >= 6 and cols[0] != "#" and any(x in cols[1].lower() for x in ["1st", "2nd", "3rd", "ot"]):
-                    prd = cols[1]
+                if len(cols) >= 6 and cols[0] != "#" and re.match(r'^(?:1st|2nd|3rd|ot|2ot|3ot)\b', cols[1].strip(), re.IGNORECASE):
+                    prd = cols[1].strip()
                     time_str = cols[2]
                     team_code = cols[3]
                     strength = cols[4] if len(cols) > 4 else "EVEN"
@@ -456,10 +587,14 @@ def parse_legacy_boxscore(soup, url, html):
                     scorer = clean_person_name(re.sub(r'/\d+', '', raw_scorer))
                     assists_str = cols[6] if len(cols) > 6 else ""
 
+                    if re.match(r'^(?:ot|2ot|3ot)\b', prd, re.IGNORECASE):
+                        game_record["is_overtime"] = 1
+                        if game_record["overtime_status"] == "REG":
+                            game_record["overtime_status"] = "OT"
+
                     primary_assist = ""
                     secondary_assist = ""
                     if assists_str and assists_str not in ["-", "unassisted", "None"]:
-                        # assists in legacy often separated by spaces or newlines
                         a_tokens = [clean_person_name(x) for x in re.split(r'[,;]|\s{2,}', assists_str) if x.strip()]
                         if len(a_tokens) >= 1: primary_assist = a_tokens[0]
                         if len(a_tokens) >= 2: secondary_assist = a_tokens[1]
@@ -490,7 +625,8 @@ def parse_legacy_boxscore(soup, url, html):
                     })
             break
 
-    # 4. PARSE PENALTY SUMMARY (Table with 'Offense')
+    # 4. PARSE PENALTY SUMMARY
+    penalty_events = []
     for t in soup.find_all("table"):
         txt = t.get_text()
         if "Penalty Summary" in txt and "Offense" in txt:
@@ -519,7 +655,8 @@ def parse_legacy_boxscore(soup, url, html):
                     })
             break
 
-    return skaters, goalies, goal_events, penalty_events
+    shootout_events = []
+    return game_record, skaters, goalies, goal_events, penalty_events, shootout_events
 
 
 def parse_boxscore(html: str, url: str):
@@ -625,39 +762,53 @@ async def run_pipeline():
         with open(INDEX_FILE, "w", encoding="utf-8") as f:
             json.dump(index, f, indent=2)
 
-    print("\n3. Parsing box scores for skaters, goalies, goals, and penalties...")
+    print("\n3. Parsing box scores for games, skaters, goalies, goals, penalties, and shootouts...")
+    all_games = []
     all_skaters = []
     all_goalies = []
     all_goals = []
     all_penalties = []
+    all_shootouts = []
 
     for html, url in html_results:
         if not html:
             continue
         try:
-            sk, go, goals, pens = parse_boxscore(html, url)
+            gm, sk, go, goals, pens, shootouts = parse_boxscore(html, url)
+            all_games.append(gm)
             all_skaters.extend(sk)
             all_goalies.extend(go)
             all_goals.extend(goals)
             all_penalties.extend(pens)
+            all_shootouts.extend(shootouts)
         except Exception as e:
             continue
 
-    # Export all 4 CSV datasets
+    # Export all 6 CSV datasets
+    games_csv = "northeastern_game_results.csv"
     skater_csv = "northeastern_hockey_stats_mcp.csv"
     goalie_csv = "northeastern_goalie_stats.csv"
     goals_csv = "northeastern_goal_events.csv"
     penalties_csv = "northeastern_penalty_events.csv"
+    shootouts_csv = "northeastern_shootout_events.csv"
+
+    valid_games = [g for g in all_games if g.get("date") and g.get("opponent") != "Unknown"]
+    if valid_games:
+        gm_keys = ["date", "opponent", "nu_goals", "opp_goals", "outcome", "overtime_status", "is_overtime", "is_shootout", "is_shutout", "shutout_team", "boxscore_url"]
+        with open(games_csv, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=gm_keys)
+            w.writeheader()
+            w.writerows(valid_games)
 
     if all_skaters:
-        sk_keys = ["date", "opponent", "nu_goals", "opp_goals", "player_name", "goals", "assists", "points", "shots", "plus_minus", "penalties", "penalty_minutes", "faceoffs_won", "faceoffs_lost", "blocked_shots", "boxscore_url"]
+        sk_keys = ["date", "opponent", "nu_goals", "opp_goals", "player_name", "goals", "assists", "points", "shots", "plus_minus", "penalties", "penalty_minutes", "faceoffs_won", "faceoffs_lost", "blocked_shots", "is_overtime", "is_shutout", "boxscore_url"]
         with open(skater_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=sk_keys)
             w.writeheader()
             w.writerows(all_skaters)
 
     if all_goalies:
-        go_keys = ["date", "opponent", "nu_goals", "opp_goals", "goalie_name", "decision", "minutes", "goals_against", "empty_net_goals", "saves", "shots_against", "save_pct", "boxscore_url"]
+        go_keys = ["date", "opponent", "nu_goals", "opp_goals", "goalie_name", "decision", "minutes", "goals_against", "empty_net_goals", "saves", "shots_against", "save_pct", "shutouts", "is_overtime", "boxscore_url"]
         with open(goalie_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=go_keys)
             w.writeheader()
@@ -677,13 +828,22 @@ async def run_pipeline():
             w.writeheader()
             w.writerows(all_penalties)
 
+    if all_shootouts:
+        so_keys = ["date", "opponent", "round", "shooter_team", "shooter_name", "result", "goalie_team", "goalie_name", "boxscore_url"]
+        with open(shootouts_csv, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=so_keys)
+            w.writeheader()
+            w.writerows(all_shootouts)
+
     elapsed = time.time() - start_time
     print(f"\n==========================================")
     print(f"PIPELINE COMPLETE in {elapsed:.1f}s")
-    print(f"  Skaters:   {len(all_skaters)} records -> {skater_csv}")
-    print(f"  Goalies:   {len(all_goalies)} records -> {goalie_csv}")
-    print(f"  Goals:     {len(all_goals)} events  -> {goals_csv}")
-    print(f"  Penalties: {len(all_penalties)} events  -> {penalties_csv}")
+    print(f"  Game Results:     {len(all_games)} games     -> {games_csv}")
+    print(f"  Skaters:          {len(all_skaters)} records   -> {skater_csv}")
+    print(f"  Goalies:          {len(all_goalies)} records   -> {goalie_csv}")
+    print(f"  Goals:            {len(all_goals)} events    -> {goals_csv}")
+    print(f"  Penalties:        {len(all_penalties)} events    -> {penalties_csv}")
+    print(f"  Shootout Attempts:{len(all_shootouts)} shots     -> {shootouts_csv}")
     print(f"==========================================\n")
 
 
