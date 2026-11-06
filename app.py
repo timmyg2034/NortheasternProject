@@ -17,13 +17,35 @@ st.set_page_config(
     layout="centered",
 )
 
+# Custom CSS to hide Streamlit header menu, deploy button, footer, and community cloud / GitHub badges
+st.markdown("""
+<style>
+    /* Hide upper-right menu buttons & toolbar */
+    #MainMenu {visibility: hidden; display: none !important;}
+    header {visibility: hidden; display: none !important;}
+    [data-testid="stHeader"] {visibility: hidden; display: none !important;}
+    [data-testid="stToolbar"] {visibility: hidden; display: none !important;}
+    .stDeployButton {display: none !important;}
+    button[title="View app in Streamlit Community Cloud"] {display: none !important;}
+
+    /* Hide bottom-right Streamlit and GitHub logos / footer / badges */
+    footer {visibility: hidden; display: none !important;}
+    [data-testid="stFooter"] {visibility: hidden; display: none !important;}
+    #manage-app-button {display: none !important;}
+    [data-testid="manage-app-button"] {display: none !important;}
+    div[class*="viewerBadge"] {display: none !important;}
+    div[class*="ProfileBadge"] {display: none !important;}
+    div[data-testid="stStatusWidget"] {display: none !important;}
+    div[data-testid="stDecoration"] {display: none !important;}
+</style>
+""", unsafe_allow_html=True)
+
 col_logo, col_title = st.columns([1, 5], vertical_alignment="center") if "vertical_alignment" in st.columns.__code__.co_varnames else st.columns([1, 5])
 with col_logo:
     if HAS_LOGO:
         st.image(LOGO_PATH, width=95)
 with col_title:
     st.title("Northeastern Men's Hockey Stats Explorer")
-    st.write("Ask any question about historical skater or goalie statistics, game-winning goals, faceoffs, blocks, penalties, overtime, shutouts, shootouts, or opponent matchups (1999–present).")
 
 with st.expander("ℹ️ Data Sources & Coverage Disclaimer"):
     st.markdown("""
