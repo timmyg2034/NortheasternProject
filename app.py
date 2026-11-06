@@ -149,7 +149,7 @@ def load_data():
         skater_df["opponent"] = skater_df["opponent"].fillna("").apply(clean_opponent_name)
     if "player_name" in skater_df.columns:
         skater_df["player_name"] = skater_df["player_name"].fillna("").apply(clean_person_name)
-    for col in ["nu_goals", "opp_goals", "goals", "assists", "points", "shots", "plus_minus", "penalties", "penalty_minutes", "faceoffs_won", "faceoffs_lost", "blocked_shots"]:
+    for col in ["nu_goals", "opp_goals", "goals", "assists", "points", "shots", "plus_minus", "penalties", "penalty_minutes", "faceoffs_won", "faceoffs_lost", "blocked_shots", "gwg"]:
         if col in skater_df.columns:
             skater_df[col] = pd.to_numeric(skater_df[col], errors="coerce").fillna(0)
 
@@ -306,12 +306,13 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
     code_prompt = (
         "You are a Python data analyst for Northeastern Men's Hockey.\n"
         "Six pandas DataFrames are already loaded in memory:\n"
-        "1. `df1` (skaters): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'player_name', 'goals', 'assists', 'points', 'shots', 'plus_minus', 'penalties', 'penalty_minutes', 'faceoffs_won', 'faceoffs_lost', 'blocked_shots', 'boxscore_url']\n"
+        "1. `df1` (skaters): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'player_name', 'goals', 'assists', 'points', 'shots', 'plus_minus', 'penalties', 'penalty_minutes', 'faceoffs_won', 'faceoffs_lost', 'blocked_shots', 'gwg', 'boxscore_url']\n"
+        "   - `gwg`: 1 if this skater scored the official Game-Winning Goal in this game, 0 otherwise\n"
         "2. `df2` (goalies): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'goalie_name', 'decision', 'minutes', 'goals_against', 'empty_net_goals', 'saves', 'shots_against', 'save_pct', 'boxscore_url']\n"
         "3. `df3` (scoring events & timeline): columns = ['date', 'opponent', 'period', 'time', 'team', 'scorer', 'primary_assist', 'secondary_assist', 'strength', 'is_gwg', 'nu_score_after', 'opp_score_after', 'boxscore_url']\n"
         "   - `period`: Formatted as strings '1st', '2nd', '3rd', 'OT'. For third period, filter with `'3rd'`.\n"
         "   - `strength`: 'EV', 'PP', 'SH', 'EN'\n"
-        "   - `is_gwg`: 1 if this goal was the official Game-Winning Goal, 0 otherwise\n"
+        "   - `is_gwg`: 1 if this specific goal was the official Game-Winning Goal, 0 otherwise\n"
         "4. `df4` (penalty events & infractions): columns = ['date', 'opponent', 'period', 'time', 'team', 'player_name', 'penalty_minutes', 'infraction', 'boxscore_url']\n"
         "   - `period`: Formatted as strings '1st', '2nd', '3rd', 'OT'.\n"
         "5. `df5` (game outcomes, overtime, shutouts): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'outcome', 'overtime_status', 'is_overtime', 'is_shootout', 'is_shutout', 'shutout_team', 'boxscore_url']\n"

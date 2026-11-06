@@ -225,6 +225,7 @@ def parse_modern_boxscore(soup, url, html):
                         "faceoffs_won": fo_won,
                         "faceoffs_lost": fo_lost,
                         "blocked_shots": blocks,
+                        "gwg": 0,
                         "is_overtime": is_ot,
                         "is_shutout": is_shutout,
                         "boxscore_url": url,
@@ -289,6 +290,7 @@ def parse_modern_boxscore(soup, url, html):
 
     # 5. PARSE SCORING SUMMARY
     goal_events = []
+    nu_skater_names = set(s["player_name"].lower() for s in skaters)
     for t in soup.find_all("table"):
         cap = t.find("caption")
         cap_text = cap.get_text().lower() if cap else ""
@@ -299,9 +301,19 @@ def parse_modern_boxscore(soup, url, html):
             gwg_goal_num = (opp_goals + 1) if nu_goals > opp_goals else -1
             nu_goal_count = 0
 
+            # Detect which column is Northeastern and which is Opponent from headers
+            ths = [th.get_text(strip=True).upper() for th in t.find_all("th")]
+            nu_col = 6
+            opp_col = 7
+            if len(ths) >= 8:
+                if any(x in ths[7] for x in ["NU", "NEU", "NOR", "NEA"]):
+                    nu_col, opp_col = 7, 6
+                elif any(x in ths[6] for x in ["NU", "NEU", "NOR", "NEA"]):
+                    nu_col, opp_col = 6, 7
+
             for r in tbody.find_all("tr"):
                 cells = [c.get_text(strip=True) for c in r.find_all(["td", "th"])]
-                if len(cells) >= 6:
+                if len(cells) >= 6 and cells[0] != "":
                     prd = cells[2] if len(cells) > 2 else ""
                     time_str = cells[3] if len(cells) > 3 else ""
                     strength = cells[1].replace("(", "").replace(")", "").strip() if len(cells) > 1 else ""
@@ -315,16 +327,30 @@ def parse_modern_boxscore(soup, url, html):
                         if len(a_parts) >= 1 and a_parts[0]: primary_assist = a_parts[0]
                         if len(a_parts) >= 2 and a_parts[1]: secondary_assist = a_parts[1]
 
-                    opp_score_str = cells[6] if len(cells) > 6 else ""
-                    nu_score_str = cells[7] if len(cells) > 7 else ""
-                    try:
-                        new_opp = int(opp_score_str)
-                        new_nu = int(nu_score_str)
-                        is_nu_goal = (new_nu > nu_running)
-                        nu_running = new_nu
-                        opp_running = new_opp
-                    except ValueError:
+                    # Parse scores from detected columns
+                    score_nu = None
+                    score_opp = None
+                    if len(cells) > max(nu_col, opp_col):
+                        try:
+                            score_nu = int(cells[nu_col])
+                            score_opp = int(cells[opp_col])
+                        except ValueError: pass
+
+                    # Determine if this was a Northeastern goal
+                    if scorer.lower() in nu_skater_names:
                         is_nu_goal = True
+                    elif score_nu is not None and score_nu > nu_running:
+                        is_nu_goal = True
+                    elif score_opp is not None and score_opp > opp_running:
+                        is_nu_goal = False
+                    else:
+                        is_nu_goal = True
+
+                    if score_nu is not None: nu_running = score_nu
+                    elif is_nu_goal: nu_running += 1
+
+                    if score_opp is not None: opp_running = score_opp
+                    elif not is_nu_goal: opp_running += 1
 
                     team = "Northeastern" if is_nu_goal else opponent
                     is_gwg = False
@@ -332,6 +358,10 @@ def parse_modern_boxscore(soup, url, html):
                         nu_goal_count += 1
                         if nu_goal_count == gwg_goal_num:
                             is_gwg = True
+                            for s in skaters:
+                                if s["player_name"].lower() == scorer.lower() or scorer.lower() in s["player_name"].lower():
+                                    s["gwg"] = 1
+                                    break
 
                     goal_events.append({
                         "date": date,
@@ -501,6 +531,7 @@ def parse_legacy_boxscore(soup, url, html):
                             "faceoffs_won": 0,
                             "faceoffs_lost": 0,
                             "blocked_shots": 0,
+                            "gwg": 0,
                             "is_overtime": is_ot,
                             "is_shutout": is_shutout,
                             "boxscore_url": url,
@@ -607,6 +638,11 @@ def parse_legacy_boxscore(soup, url, html):
                         opp_running += 1
 
                     is_gwg = (is_nu and nu_goal_count == gwg_goal_num)
+                    if is_gwg:
+                        for s in skaters:
+                            if s["player_name"].lower() == scorer.lower() or scorer.lower() in s["player_name"].lower():
+                                s["gwg"] = 1
+                                break
 
                     goal_events.append({
                         "date": date,
@@ -801,7 +837,7 @@ async def run_pipeline():
             w.writerows(valid_games)
 
     if all_skaters:
-        sk_keys = ["date", "opponent", "nu_goals", "opp_goals", "player_name", "goals", "assists", "points", "shots", "plus_minus", "penalties", "penalty_minutes", "faceoffs_won", "faceoffs_lost", "blocked_shots", "is_overtime", "is_shutout", "boxscore_url"]
+        sk_keys = ["date", "opponent", "nu_goals", "opp_goals", "player_name", "goals", "assists", "points", "shots", "plus_minus", "penalties", "penalty_minutes", "faceoffs_won", "faceoffs_lost", "blocked_shots", "gwg", "is_overtime", "is_shutout", "boxscore_url"]
         with open(skater_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=sk_keys)
             w.writeheader()
