@@ -1,0 +1,2 @@
+# Optional dependencies for running keep_alive.py locally
+playwright>=1.40.0
