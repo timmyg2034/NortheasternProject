@@ -2,6 +2,7 @@ import os
 import re
 import csv
 import time
+from datetime import datetime
 import json
 import hashlib
 import asyncio
@@ -837,8 +838,26 @@ async def run_pipeline():
     penalties_csv = "northeastern_penalty_events.csv"
     shootouts_csv = "northeastern_shootout_events.csv"
 
+    def standardize_date(d: str) -> str:
+        if not d:
+            return ""
+        d = str(d).strip()
+        if d == "Dec. 29, 200":
+            return "2000-12-29"
+        if d.startswith("Oct.27,"):
+            d = d.replace("Oct.27,", "Oct. 27,")
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%b %d, %Y", "%B %d, %Y", "%b. %d, %Y"):
+            try:
+                return datetime.strptime(d, fmt).strftime("%Y-%m-%d")
+            except ValueError:
+                pass
+        return d
+
     valid_games = [g for g in all_games if g.get("date") and g.get("opponent") != "Unknown"]
     if valid_games:
+        for r in valid_games:
+            r["date"] = standardize_date(r.get("date", ""))
+        valid_games.sort(key=lambda x: x.get("date", ""))
         gm_keys = ["date", "opponent", "nu_goals", "opp_goals", "outcome", "overtime_status", "is_overtime", "is_shootout", "is_shutout", "shutout_team", "boxscore_url"]
         with open(games_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=gm_keys)
@@ -846,6 +865,9 @@ async def run_pipeline():
             w.writerows(valid_games)
 
     if all_skaters:
+        for r in all_skaters:
+            r["date"] = standardize_date(r.get("date", ""))
+        all_skaters.sort(key=lambda x: x.get("date", ""))
         sk_keys = ["date", "opponent", "nu_goals", "opp_goals", "player_name", "goals", "assists", "points", "shots", "plus_minus", "penalties", "penalty_minutes", "faceoffs_won", "faceoffs_lost", "blocked_shots", "gwg", "is_overtime", "is_shutout", "boxscore_url"]
         with open(skater_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=sk_keys)
@@ -853,6 +875,9 @@ async def run_pipeline():
             w.writerows(all_skaters)
 
     if all_goalies:
+        for r in all_goalies:
+            r["date"] = standardize_date(r.get("date", ""))
+        all_goalies.sort(key=lambda x: x.get("date", ""))
         go_keys = ["date", "opponent", "nu_goals", "opp_goals", "goalie_name", "decision", "minutes", "goals_against", "empty_net_goals", "saves", "shots_against", "save_pct", "shutouts", "is_overtime", "boxscore_url"]
         with open(goalie_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=go_keys)
@@ -860,6 +885,9 @@ async def run_pipeline():
             w.writerows(all_goalies)
 
     if all_goals:
+        for r in all_goals:
+            r["date"] = standardize_date(r.get("date", ""))
+        all_goals.sort(key=lambda x: x.get("date", ""))
         goal_keys = ["date", "opponent", "period", "time", "team", "scorer", "primary_assist", "secondary_assist", "strength", "is_gwg", "nu_score_after", "opp_score_after", "boxscore_url"]
         with open(goals_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=goal_keys)
@@ -867,6 +895,9 @@ async def run_pipeline():
             w.writerows(all_goals)
 
     if all_penalties:
+        for r in all_penalties:
+            r["date"] = standardize_date(r.get("date", ""))
+        all_penalties.sort(key=lambda x: x.get("date", ""))
         pen_keys = ["date", "opponent", "period", "time", "team", "player_name", "penalty_minutes", "infraction", "boxscore_url"]
         with open(penalties_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=pen_keys)
@@ -874,6 +905,9 @@ async def run_pipeline():
             w.writerows(all_penalties)
 
     if all_shootouts:
+        for r in all_shootouts:
+            r["date"] = standardize_date(r.get("date", ""))
+        all_shootouts.sort(key=lambda x: x.get("date", ""))
         so_keys = ["date", "opponent", "round", "shooter_team", "shooter_name", "result", "goalie_team", "goalie_name", "boxscore_url"]
         with open(shootouts_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=so_keys)

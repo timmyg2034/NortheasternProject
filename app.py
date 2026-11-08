@@ -5,6 +5,7 @@ import re
 import io
 import ast
 import contextlib
+from datetime import datetime
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 LOGO_PATH = "nu_husky_logo.png"
@@ -63,7 +64,13 @@ with st.expander("ℹ️ Data Sources & Coverage Disclaimer"):
     """)
 
 # 2. Securely Load the Gemini API Key
-api_key = st.secrets.get("GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
+api_key = None
+try:
+    api_key = st.secrets.get("GEMINI_API_KEY")
+except Exception:
+    pass
+if not api_key:
+    api_key = os.getenv("GEMINI_API_KEY")
 
 if not api_key:
     st.warning("Please configure your GEMINI_API_KEY in the application secrets to enable the AI agent.")
@@ -132,6 +139,22 @@ def clean_person_name(name):
         if len(parts) == 2 and parts[0] and parts[1]:
             return f"{parts[1]} {parts[0]}"
     return name
+
+
+def standardize_date(d):
+    if not d or pd.isna(d):
+        return ""
+    d = str(d).strip()
+    if d == "Dec. 29, 200":
+        return "2000-12-29"
+    if d.startswith("Oct.27,"):
+        d = d.replace("Oct.27,", "Oct. 27,")
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%b %d, %Y", "%B %d, %Y", "%b. %d, %Y"):
+        try:
+            return datetime.strptime(d, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            pass
+    return d
 
 
 # 3. Load All 6 Datasets into Memory
@@ -216,7 +239,15 @@ def load_data():
         if "round" in shootouts_df.columns:
             shootouts_df["round"] = pd.to_numeric(shootouts_df["round"], errors="coerce").fillna(1)
 
+    # Standardize dates and sort all DataFrames chronologically (1999 -> 2026+)
+    for df in [skater_df, goalie_df, goals_df, penalties_df, games_df, shootouts_df]:
+        if not df.empty and "date" in df.columns:
+            df["date"] = df["date"].apply(standardize_date)
+            df.sort_values("date", inplace=True)
+            df.reset_index(drop=True, inplace=True)
+
     return skater_df, goalie_df, goals_df, penalties_df, games_df, shootouts_df
+
 
 
 try:
@@ -345,6 +376,11 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         "- In `df2`, `decision` is 'W' for win, 'L' for loss, 'T' for tie.\n"
         "- In `df3` and `df4`, `period` values are strings: `'1st'`, `'2nd'`, `'3rd'`, `'OT'`. When the user asks for 1st/2nd/3rd period, match `'1st'`, `'2nd'`, or `'3rd'` (not numbers like `3` or words like `'third'`).\n"
         "- PENALTIES & BENCH MINORS: In `df4`, `infraction` records the specific penalty type (e.g. 'ROUGHING', 'TRIPPING', 'SLASHING', 'HOOKING', 'INTERFERENCE', 'CROSS-CHECKING'). Never include 'TEAM', 'Team', or 'TM' as a player! Those are team bench minors (e.g. too many men on ice). When answering who had the most penalties or penalty minutes, only include actual human players.\n"
+        "- DATES & CHRONOLOGICAL ORDERING: In all DataFrames (`df1` to `df6`), `date` is standardized in ISO format `'YYYY-MM-DD'` (e.g., `'2026-10-31'`) and pre-sorted in ascending chronological order from oldest (1999) to newest (2026).\n"
+        "  - For the MOST RECENT game in the dataset, simply inspect `df5.iloc[-1]` (or `df5.tail(1)`).\n"
+        "  - For the EARLIEST game in the dataset, inspect `df5.iloc[0]` (or `df5.head(1)`).\n"
+        "  - For the most recent game against a specific opponent, filter and take `.tail(1)`: e.g. `df5[df5['opponent'] == 'Boston College'].tail(1)`.\n"
+        "  - When filtering or sorting by date, you can compare strings directly (e.g. `df5['date'] >= '2026-01-01'`) or use `pd.to_datetime(df['date'])`.\n"
         "- CONVERSATION CONTEXT: Use the Recent Conversation History below to resolve pronouns or omitted context in follow-up questions (e.g., 'How many goals did he have?', 'What about against BU?', 'Who had the shootout winner?').\n"
         "- CRITICAL EXISTENCE CHECK: Never blindly run `.sum()` or `.count()` on a filtered DataFrame without checking if the player and opponent actually exist! If the user asks about a specific player/goalie and/or opponent:\n"
         "  1. Check if the player name appears in `df1['player_name']`, `df2['goalie_name']`, `df3['scorer']`, `df4['player_name']`, `df6['shooter_name']`, or `df6['goalie_name']`. Print `player_exists: True/False`.\n"
