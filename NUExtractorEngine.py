@@ -19,7 +19,7 @@ CACHE_DIR = Path("data_cache/boxscores")
 INDEX_FILE = Path("data_cache/boxscores_index.json")
 
 SO_PATTERN = re.compile(
-    r'Shootout attempt by\s+([A-Za-z0-9_]+)\s+([A-Za-z0-9_,\.\s\'-]+?)\s+(MADE|MISSED|SCORED)[\s,]*against\s+([A-Za-z0-9_]+)\s+goalie\s+([A-Za-z0-9_,\.\s\'-]+)',
+    r'Shootout attempt by\s+(NE\s+U|U\s+Maine|[A-Za-z0-9_]+)\s+([A-Za-z0-9_,\.\s\'-]+?)\s+(MADE|MISSED|SCORED)[\s,]*against\s+(NE\s+U|U\s+Maine|[A-Za-z0-9_]+)\s+goalie\s+([A-Za-z0-9_,\.\s\'-]+)',
     re.IGNORECASE
 )
 
@@ -78,7 +78,8 @@ def parse_modern_boxscore(soup, url, html):
                     if sm:
                         has_shootout_play = True
                         team_code, raw_shooter, res, g_team_code, raw_goalie = sm.groups()
-                        is_nu_shooter = ("nor" in team_code.lower() or "neu" in team_code.lower() or "nu" in team_code.lower())
+                        tc_low = team_code.lower().replace(" ", "")
+                        is_nu_shooter = ("nor" in tc_low or "neu" in tc_low or "nu" in tc_low)
                         shooter_team = "Northeastern" if is_nu_shooter else opponent
                         goalie_team = opponent if is_nu_shooter else "Northeastern"
                         res_clean = "MADE" if res.upper() in ["MADE", "SCORED"] else "MISSED"
@@ -92,11 +93,35 @@ def parse_modern_boxscore(soup, url, html):
                             "result": res_clean,
                             "goalie_team": goalie_team,
                             "goalie_name": clean_person_name(raw_goalie),
+                            "shootout_winner": "None",
+                            "is_shootout_winner": 0,
                             "boxscore_url": url,
                         })
                         if not is_nu_shooter:
                             so_round += 1
                         break
+
+    shootout_winner = "None"
+    if shootout_events:
+        nu_so_made = sum(1 for e in shootout_events if e["shooter_team"] == "Northeastern" and e["result"] == "MADE")
+        opp_so_made = sum(1 for e in shootout_events if e["shooter_team"] != "Northeastern" and e["result"] == "MADE")
+        if nu_so_made > opp_so_made:
+            shootout_winner = "Northeastern"
+            target_so_goal = opp_so_made + 1
+        elif opp_so_made > nu_so_made:
+            shootout_winner = opponent
+            target_so_goal = nu_so_made + 1
+        else:
+            target_so_goal = -1
+
+        win_so_count = 0
+        for e in shootout_events:
+            e["shootout_winner"] = shootout_winner
+            if shootout_winner != "None" and e["shooter_team"] == shootout_winner and e["result"] == "MADE":
+                win_so_count += 1
+                e["is_shootout_winner"] = 1 if win_so_count == target_so_goal else 0
+            else:
+                e["is_shootout_winner"] = 0
 
     # 2. DETERMINE OVERTIME & SHUTOUT STATUS
     has_period_4 = False
@@ -149,6 +174,7 @@ def parse_modern_boxscore(soup, url, html):
         "overtime_status": ot_status,
         "is_overtime": is_ot,
         "is_shootout": is_shootout,
+        "shootout_winner": shootout_winner,
         "is_shutout": is_shutout,
         "shutout_team": shutout_team,
         "boxscore_url": url,
@@ -479,6 +505,7 @@ def parse_legacy_boxscore(soup, url, html):
         "overtime_status": ot_status,
         "is_overtime": is_ot,
         "is_shootout": 0,
+        "shootout_winner": "None",
         "is_shutout": is_shutout,
         "shutout_team": shutout_team,
         "boxscore_url": url,
@@ -858,7 +885,7 @@ async def run_pipeline():
         for r in valid_games:
             r["date"] = standardize_date(r.get("date", ""))
         valid_games.sort(key=lambda x: x.get("date", ""))
-        gm_keys = ["date", "opponent", "nu_goals", "opp_goals", "outcome", "overtime_status", "is_overtime", "is_shootout", "is_shutout", "shutout_team", "boxscore_url"]
+        gm_keys = ["date", "opponent", "nu_goals", "opp_goals", "outcome", "overtime_status", "is_overtime", "is_shootout", "shootout_winner", "is_shutout", "shutout_team", "boxscore_url"]
         with open(games_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=gm_keys)
             w.writeheader()
@@ -908,7 +935,7 @@ async def run_pipeline():
         for r in all_shootouts:
             r["date"] = standardize_date(r.get("date", ""))
         all_shootouts.sort(key=lambda x: x.get("date", ""))
-        so_keys = ["date", "opponent", "round", "shooter_team", "shooter_name", "result", "goalie_team", "goalie_name", "boxscore_url"]
+        so_keys = ["date", "opponent", "round", "shooter_team", "shooter_name", "result", "goalie_team", "goalie_name", "shootout_winner", "is_shootout_winner", "boxscore_url"]
         with open(shootouts_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=so_keys)
             w.writeheader()

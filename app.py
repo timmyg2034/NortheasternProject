@@ -221,6 +221,8 @@ def load_data():
             games_df["opponent"] = games_df["opponent"].fillna("").apply(clean_opponent_name)
         if "shutout_team" in games_df.columns:
             games_df["shutout_team"] = games_df["shutout_team"].fillna("").apply(lambda x: clean_opponent_name(x) if x not in ["Northeastern", "None", "Both (0-0 Tie)"] else x)
+        if "shootout_winner" in games_df.columns:
+            games_df["shootout_winner"] = games_df["shootout_winner"].fillna("None").apply(lambda x: clean_opponent_name(x) if x not in ["Northeastern", "None"] else x)
         for col in ["nu_goals", "opp_goals", "is_overtime", "is_shootout", "is_shutout"]:
             if col in games_df.columns:
                 games_df[col] = pd.to_numeric(games_df[col], errors="coerce").fillna(0)
@@ -233,11 +235,15 @@ def load_data():
             shootouts_df["shooter_team"] = shootouts_df["shooter_team"].fillna("").apply(lambda x: clean_opponent_name(x) if x != "Northeastern" else x)
         if "goalie_team" in shootouts_df.columns:
             shootouts_df["goalie_team"] = shootouts_df["goalie_team"].fillna("").apply(lambda x: clean_opponent_name(x) if x != "Northeastern" else x)
+        if "shootout_winner" in shootouts_df.columns:
+            shootouts_df["shootout_winner"] = shootouts_df["shootout_winner"].fillna("None").apply(lambda x: clean_opponent_name(x) if x not in ["Northeastern", "None"] else x)
         for c in ["shooter_name", "goalie_name"]:
             if c in shootouts_df.columns:
                 shootouts_df[c] = shootouts_df[c].fillna("").apply(clean_person_name)
         if "round" in shootouts_df.columns:
             shootouts_df["round"] = pd.to_numeric(shootouts_df["round"], errors="coerce").fillna(1)
+        if "is_shootout_winner" in shootouts_df.columns:
+            shootouts_df["is_shootout_winner"] = pd.to_numeric(shootouts_df["is_shootout_winner"], errors="coerce").fillna(0)
 
     # Standardize dates and sort all DataFrames chronologically (1999 -> 2026+)
     for df in [skater_df, goalie_df, goals_df, penalties_df, games_df, shootouts_df]:
@@ -356,19 +362,22 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         "4. `df4` (penalty events & infractions): columns = ['date', 'opponent', 'period', 'time', 'team', 'player_name', 'penalty_minutes', 'infraction', 'boxscore_url']\n"
         "   - `period`: Formatted as strings '1st', '2nd', '3rd', 'OT'.\n"
         "   - `infraction`: Standardized uppercase penalty infraction/type (e.g., 'ROUGHING', 'HOOKING', 'INTERFERENCE', 'TRIPPING', 'SLASHING', 'HOLDING', 'CROSS-CHECKING', 'HIGH STICKING', 'BOARDING', 'HITTING FROM BEHIND', 'GAME MISCONDUCT', '10-MINUTE MISCONDUCT', 'UNSPORTSMANLIKE CONDUCT').\n"
-        "5. `df5` (game outcomes, overtime, shutouts): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'outcome', 'overtime_status', 'is_overtime', 'is_shootout', 'is_shutout', 'shutout_team', 'boxscore_url']\n"
-        "   - `outcome`: 'W' (win), 'L' (loss), 'T' (tie)\n"
+        "5. `df5` (game outcomes, overtime, shutouts): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'outcome', 'overtime_status', 'is_overtime', 'is_shootout', 'shootout_winner', 'is_shutout', 'shutout_team', 'boxscore_url']\n"
+        "   - `outcome`: 'W' (win), 'L' (loss), 'T' (tie; note that NCAA officially records shootout games as 'T' in overall standings, so check `shootout_winner` to see who won a shootout)\n"
         "   - `overtime_status`: 'REG' (regulation), 'OT' (1st overtime), '2OT', '3OT', 'SO' (shootout)\n"
         "   - `is_overtime`: 1 if game reached overtime or shootout, 0 otherwise\n"
         "   - `is_shootout`: 1 if game was decided in a shootout, 0 otherwise\n"
+        "   - `shootout_winner`: 'Northeastern' or opponent school name if `is_shootout == 1`, otherwise 'None'\n"
         "   - `is_shutout`: 1 if either team was held scoreless (0 goals), 0 otherwise\n"
         "   - `shutout_team`: 'Northeastern' (if NU shut out the opponent) or opponent school name (if NU was shut out)\n"
-        "6. `df6` (shootout attempts & results): columns = ['date', 'opponent', 'round', 'shooter_team', 'shooter_name', 'result', 'goalie_team', 'goalie_name', 'boxscore_url']\n"
+        "6. `df6` (shootout attempts & results): columns = ['date', 'opponent', 'round', 'shooter_team', 'shooter_name', 'result', 'goalie_team', 'goalie_name', 'shootout_winner', 'is_shootout_winner', 'boxscore_url']\n"
         "   - `shooter_team`: 'Northeastern' or opponent name\n"
         "   - `shooter_name`: player who took the shootout shot\n"
-        "   - `result`: 'MADE' or 'MISSED'\n"
+        "   - `result`: 'MADE' or 'MISSED' (whether this individual shootout attempt went in — does NOT mean it was the winning shootout goal!)\n"
         "   - `goalie_team`: team defending the shootout attempt\n"
-        "   - `goalie_name`: goaltender who faced the shot\n\n"
+        "   - `goalie_name`: goaltender who faced the shot\n"
+        "   - `shootout_winner`: team that won the shootout ('Northeastern' or opponent name)\n"
+        "   - `is_shootout_winner`: 1 if this specific attempt was the official winning/deciding shootout goal for the team that won the shootout, 0 otherwise\n\n"
         f"Valid standardized `opponent` names in the dataset: {all_opponents}\n\n"
         "Important conventions:\n"
         "- All player names are formatted as 'First Last' (e.g., 'Devon Levi', 'Adam Gaudette', 'Hunter McDonald', 'Aidan McDonough'). Always filter with `.str.contains(..., case=False, na=False)`.\n"
@@ -376,6 +385,9 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         "- In `df2`, `decision` is 'W' for win, 'L' for loss, 'T' for tie.\n"
         "- In `df3` and `df4`, `period` values are strings: `'1st'`, `'2nd'`, `'3rd'`, `'OT'`. When the user asks for 1st/2nd/3rd period, match `'1st'`, `'2nd'`, or `'3rd'` (not numbers like `3` or words like `'third'`).\n"
         "- PENALTIES & BENCH MINORS: In `df4`, `infraction` records the specific penalty type (e.g. 'ROUGHING', 'TRIPPING', 'SLASHING', 'HOOKING', 'INTERFERENCE', 'CROSS-CHECKING'). Never include 'TEAM', 'Team', or 'TM' as a player! Those are team bench minors (e.g. too many men on ice). When answering who had the most penalties or penalty minutes, only include actual human players.\n"
+        "- SHOOTOUT WINNERS & WINNING SHOOTOUT GOALS: In `df6`, `result == 'MADE'` ONLY means a player made their individual shootout attempt — a player can score (`result == 'MADE'`) in a shootout that their team LOST (e.g., Dylan Hryckowian made a Round 2 attempt against Boston University on 2026-02-02, but BU won that shootout 2-1 on Cole Hutson's Round 3 goal). NEVER filter `result == 'MADE'` alone when asked for a **winning shootout goal** (or shootout winner / deciding shootout goal)! Instead, ALWAYS filter `df6['is_shootout_winner'] == 1`. When asked for the most recent winning shootout goal, print BOTH:\n"
+        "  1. Most recent Northeastern winning shootout goal: `df6[(df6['is_shootout_winner'] == 1) & (df6['shooter_team'] == 'Northeastern')].tail(1)`\n"
+        "  2. Most recent winning shootout goal overall (including opponents): `df6[df6['is_shootout_winner'] == 1].tail(1)` and all attempts from that shootout game so the full context is clear.\n"
         "- DATES & CHRONOLOGICAL ORDERING: In all DataFrames (`df1` to `df6`), `date` is standardized in ISO format `'YYYY-MM-DD'` (e.g., `'2026-10-31'`) and pre-sorted in ascending chronological order from oldest (1999) to newest (2026).\n"
         "  - For the MOST RECENT game in the dataset, simply inspect `df5.iloc[-1]` (or `df5.tail(1)`).\n"
         "  - For the EARLIEST game in the dataset, inspect `df5.iloc[0]` (or `df5.head(1)`).\n"
