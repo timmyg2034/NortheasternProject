@@ -893,6 +893,28 @@ async def fetch_or_load_html(client: httpx.AsyncClient, semaphore: asyncio.Semap
     return "", url
 
 
+def safe_int(v, default=0) -> int:
+    if v is None:
+        return default
+    s = str(v).strip().replace("+", "")
+    if not s or s == "-":
+        return default
+    m = re.search(r"-?\d+", s)
+    return int(m.group(0)) if m else default
+
+
+def safe_float(v, default=0.0) -> float:
+    if v is None:
+        return default
+    s = str(v).strip()
+    if not s or s == "-":
+        return default
+    m = re.search(r"-?\d*\.?\d+", s)
+    if m and m.group(0) not in ("", "-", "."):
+        return float(m.group(0))
+    return default
+
+
 def date_to_season(date_str: str) -> str:
     if not date_str or len(date_str) < 7:
         return ""
