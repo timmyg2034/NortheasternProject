@@ -2409,8 +2409,10 @@ async def run_pipeline():
 
     valid_games = [g for g in all_games if g.get("date") and g.get("opponent") != "Unknown"]
     if valid_games:
+        for r in valid_games:
+            r["season"] = date_to_season(r.get("date", ""))
         valid_games.sort(key=lambda x: x.get("date", ""))
-        gm_keys = ["date", "opponent", "nu_goals", "opp_goals", "outcome", "overtime_status", "is_overtime", "is_shootout", "shootout_winner", "is_shutout", "shutout_team", "boxscore_url"]
+        gm_keys = ["date", "season", "opponent", "nu_goals", "opp_goals", "outcome", "overtime_status", "is_overtime", "is_shootout", "shootout_winner", "is_shutout", "shutout_team", "boxscore_url"]
         with open(games_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=gm_keys)
             w.writeheader()
@@ -2448,24 +2450,30 @@ async def run_pipeline():
             w.writerows(all_goalies)
 
     if all_goals:
+        for r in all_goals:
+            r["season"] = date_to_season(r.get("date", ""))
         all_goals.sort(key=lambda x: x.get("date", ""))
-        goal_keys = ["date", "opponent", "period", "time", "time_seconds", "seconds_remaining", "team", "scorer", "primary_assist", "secondary_assist", "strength", "is_gwg", "nu_score_after", "opp_score_after", "boxscore_url"]
+        goal_keys = ["date", "season", "opponent", "period", "time", "time_seconds", "seconds_remaining", "team", "scorer", "primary_assist", "secondary_assist", "strength", "is_gwg", "nu_score_after", "opp_score_after", "boxscore_url"]
         with open(goals_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=goal_keys)
             w.writeheader()
             w.writerows(all_goals)
 
     if all_penalties:
+        for r in all_penalties:
+            r["season"] = date_to_season(r.get("date", ""))
         all_penalties.sort(key=lambda x: x.get("date", ""))
-        pen_keys = ["date", "opponent", "period", "time", "team", "player_name", "penalty_minutes", "infraction", "boxscore_url"]
+        pen_keys = ["date", "season", "opponent", "period", "time", "team", "player_name", "penalty_minutes", "infraction", "boxscore_url"]
         with open(penalties_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=pen_keys)
             w.writeheader()
             w.writerows(all_penalties)
 
     if all_shootouts:
+        for r in all_shootouts:
+            r["season"] = date_to_season(r.get("date", ""))
         all_shootouts.sort(key=lambda x: x.get("date", ""))
-        so_keys = ["date", "opponent", "round", "shooter_team", "shooter_name", "result", "goalie_team", "goalie_name", "shootout_winner", "is_shootout_winner", "boxscore_url"]
+        so_keys = ["date", "season", "opponent", "round", "shooter_team", "shooter_name", "result", "goalie_team", "goalie_name", "shootout_winner", "is_shootout_winner", "boxscore_url"]
         with open(shootouts_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=so_keys)
             w.writeheader()

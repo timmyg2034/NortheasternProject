@@ -159,6 +159,45 @@ def standardize_date(d):
     return d
 
 
+ROSTER_COLUMNS = [
+    "season", "jersey_number", "player_name", "captain_role", "is_captain",
+    "is_alternate_captain", "is_leadership", "position", "class_year",
+    "height", "height_inches", "weight", "shoots", "hometown",
+    "previous_team", "previous_school", "major", "head_coach", "roster_url",
+]
+
+SEASON_STATS_COLUMNS = [
+    "season", "jersey_number", "player_name", "captain_role", "is_captain",
+    "is_alternate_captain", "is_leadership", "position", "class_year",
+    "height", "weight", "shoots", "hometown", "previous_team", "major", "head_coach",
+    "gp", "goals", "assists", "points", "shots", "shot_pct", "plus_minus",
+    "ppg", "shg", "fg", "gwg", "gtg", "otg", "htg", "uag",
+    "penalties", "pim", "minor_penalties", "major_penalties", "other_penalties", "blocked_shots",
+    "conf_gp", "conf_goals", "conf_assists", "conf_points", "conf_shots", "conf_shot_pct",
+    "conf_plus_minus", "conf_ppg", "conf_shg", "conf_fg", "conf_gwg", "conf_gtg",
+    "conf_otg", "conf_htg", "conf_uag", "conf_penalties", "conf_pim", "conf_blocked_shots",
+    "goalie_gp", "goalie_gs", "goalie_minutes", "ga", "gaa", "ppga", "shga", "enga",
+    "saves", "save_pct", "wins", "losses", "ties", "shutouts",
+    "conf_goalie_gp", "conf_goalie_gs", "conf_goalie_minutes", "conf_ga", "conf_gaa",
+    "conf_saves", "conf_save_pct", "conf_wins", "conf_losses", "conf_ties", "conf_shutouts",
+    "stats_url",
+]
+
+
+def date_to_season(date_str: str) -> str:
+    if not date_str or len(str(date_str)) < 7:
+        return ""
+    try:
+        yr = int(str(date_str)[:4])
+        mo = int(str(date_str)[5:7])
+        if mo >= 8:
+            return f"{yr}-{str(yr + 1)[-2:]}"
+        else:
+            return f"{yr - 1}-{str(yr)[-2:]}"
+    except Exception:
+        return ""
+
+
 # 3. Load All 8 Datasets into Memory
 @st.cache_data
 def load_data():
@@ -168,8 +207,16 @@ def load_data():
     penalties_df = pd.read_csv("northeastern_penalty_events.csv") if os.path.exists("northeastern_penalty_events.csv") else pd.DataFrame()
     games_df = pd.read_csv("northeastern_game_results.csv") if os.path.exists("northeastern_game_results.csv") else pd.DataFrame()
     shootouts_df = pd.read_csv("northeastern_shootout_events.csv") if os.path.exists("northeastern_shootout_events.csv") else pd.DataFrame()
-    rosters_df = pd.read_csv("northeastern_rosters.csv") if os.path.exists("northeastern_rosters.csv") else pd.DataFrame()
-    season_stats_df = pd.read_csv("northeastern_season_stats.csv") if os.path.exists("northeastern_season_stats.csv") else pd.DataFrame()
+    rosters_df = pd.read_csv("northeastern_rosters.csv") if os.path.exists("northeastern_rosters.csv") else pd.DataFrame(columns=ROSTER_COLUMNS)
+    season_stats_df = pd.read_csv("northeastern_season_stats.csv") if os.path.exists("northeastern_season_stats.csv") else pd.DataFrame(columns=SEASON_STATS_COLUMNS)
+
+    # Ensure empty rosters or season stats have full schema guaranteed
+    for col in ROSTER_COLUMNS:
+        if col not in rosters_df.columns:
+            rosters_df[col] = ""
+    for col in SEASON_STATS_COLUMNS:
+        if col not in season_stats_df.columns:
+            season_stats_df[col] = 0
 
     # Clean skaters
     if "opponent" in skater_df.columns:
@@ -297,10 +344,12 @@ def load_data():
             if col in season_stats_df.columns:
                 season_stats_df[col] = pd.to_numeric(season_stats_df[col], errors="coerce").fillna(0)
 
-    # Standardize dates and sort all game-level DataFrames chronologically (1999 -> 2026+) using stable sort
+    # Standardize dates, populate season across all game-level DataFrames, and sort chronologically
     for df in [skater_df, goalie_df, goals_df, penalties_df, games_df, shootouts_df]:
         if not df.empty and "date" in df.columns:
             df["date"] = df["date"].apply(standardize_date)
+            if "season" not in df.columns:
+                df["season"] = df["date"].apply(date_to_season)
             df.sort_values("date", kind="mergesort", inplace=True)
             df.reset_index(drop=True, inplace=True)
 
@@ -458,6 +507,26 @@ def answer_question(
         "   - `shutout_team`: 'Northeastern' (if NU shut out the opponent) or opponent school name (if NU was shut out)\n"
         "6. `df6` (shootout attempts & results): columns = ['date', 'opponent', 'round', 'shooter_team', 'shooter_name', 'result', 'goalie_team', 'goalie_name', 'shootout_winner', 'is_shootout_winner', 'boxscore_url']\n"
         "   - `shooter_team`: 'Northeastern' or opponent name\n"
+        "3. `df3` (scoring events & timeline): columns = ['date', 'season', 'opponent', 'period', 'time', 'time_seconds', 'seconds_remaining', 'team', 'scorer', 'primary_assist', 'secondary_assist', 'strength', 'is_gwg', 'nu_score_after', 'opp_score_after', 'boxscore_url']\n"
+        "   - `period`: Formatted as strings '1st', '2nd', '3rd', 'OT'. For third period, filter with `'3rd'`.\n"
+        "   - `time`: Official box score timestamp showing TIME ELAPSED in the period ('MM:SS' like '19:59', or 'MM:SS.t' with tenths of a second in the final minute of modern games like '19:59.8', '19:59.7', '19:59.4').\n"
+        "   - `time_seconds`: Float of seconds elapsed in the period (0.0 to 1200.0 in regulation periods '1st'/'2nd'/'3rd'; 0.0 to 300.0 in regular-season 'OT', or up to 1200.0 in 20-minute playoff 'OT'). E.g. '19:59' = 1199.0, '19:59.8' = 1199.8.\n"
+        "   - `seconds_remaining`: Float of seconds remaining on the game clock in that period (e.g. 1.0 for '19:59', 0.2 for '19:59.8', 0.3 for '19:59.7', 0.6 for '19:59.4').\n"
+        "   - `strength`: 'EV', 'PP', 'SH', 'EN', 'EX'\n"
+        "   - `is_gwg`: 1 if this specific goal was the official Game-Winning Goal, 0 otherwise\n"
+        "4. `df4` (penalty events & infractions): columns = ['date', 'season', 'opponent', 'period', 'time', 'team', 'player_name', 'penalty_minutes', 'infraction', 'boxscore_url']\n"
+        "   - `period`: Formatted as strings '1st', '2nd', '3rd', 'OT'.\n"
+        "   - `infraction`: Standardized uppercase penalty infraction/type (e.g., 'ROUGHING', 'HOOKING', 'INTERFERENCE', 'TRIPPING', 'SLASHING', 'HOLDING', 'CROSS-CHECKING', 'HIGH STICKING', 'BOARDING', 'HITTING FROM BEHIND', 'GAME MISCONDUCT', '10-MINUTE MISCONDUCT', 'UNSPORTSMANLIKE CONDUCT').\n"
+        "5. `df5` (game outcomes, overtime, shutouts): columns = ['date', 'season', 'opponent', 'nu_goals', 'opp_goals', 'outcome', 'overtime_status', 'is_overtime', 'is_shootout', 'shootout_winner', 'is_shutout', 'shutout_team', 'boxscore_url']\n"
+        "   - `outcome`: 'W' (win), 'L' (loss), 'T' (tie; note that NCAA officially records shootout games as 'T' in overall standings, so check `shootout_winner` to see who won a shootout)\n"
+        "   - `overtime_status`: 'REG' (regulation), 'OT' (1st overtime), '2OT', '3OT', 'SO' (shootout)\n"
+        "   - `is_overtime`: 1 if game reached overtime or shootout, 0 otherwise\n"
+        "   - `is_shootout`: 1 if game was decided in a shootout, 0 otherwise\n"
+        "   - `shootout_winner`: 'Northeastern' or opponent school name if `is_shootout == 1`, otherwise 'None'\n"
+        "   - `is_shutout`: 1 if either team was held scoreless (0 goals), 0 otherwise\n"
+        "   - `shutout_team`: 'Northeastern' (if NU shut out the opponent) or opponent school name (if NU was shut out)\n"
+        "6. `df6` (shootout attempts & results): columns = ['date', 'season', 'opponent', 'round', 'shooter_team', 'shooter_name', 'result', 'goalie_team', 'goalie_name', 'shootout_winner', 'is_shootout_winner', 'boxscore_url']\n"
+        "   - `shooter_team`: 'Northeastern' or opponent name\n"
         "   - `shooter_name`: player who took the shootout shot\n"
         "   - `result`: 'MADE' or 'MISSED' (whether this individual shootout attempt went in — does NOT mean it was the winning shootout goal!)\n"
         "   - `goalie_team`: team defending the shootout attempt\n"
@@ -480,7 +549,10 @@ def answer_question(
         "Important conventions:\n"
         "- All player names are formatted as 'First Last' (e.g., 'Devon Levi', 'Adam Gaudette', 'Hunter McDonald', 'Aidan McDonough'). Always filter with `.str.contains(..., case=False, na=False)`.\n"
         "- `opponent` uses standardized school names (e.g., 'Boston University' for BU, 'Boston College' for BC, 'Massachusetts' for UMass, 'Massachusetts Lowell' for UMass Lowell / UML, 'Connecticut' for UConn, 'New Hampshire' for UNH, 'Rensselaer' for RPI).\n"
-        "- SEASON STRINGS & YEAR NORMALIZATION: In `df1`, `df2`, `df7`, and `df8`, `season` values are formatted as 7-character strings `'YYYY-YY'` (e.g., `'2015-16'`, `'2023-24'`, `'1999-00'`). If a user asks about `'2015-2016'`, `'2015-2016 season'`, `'2015'`, or `'2016'`, ALWAYS normalize the input to `'YYYY-YY'` (e.g., `'2015-2016'` -> `'2015-16'`) or use `.str.startswith('2015')` or `.isin(['2015-16', '2015-2016'])`. Never assume exact string equality against `'YYYY-YYYY'`!\n"
+        "- ALL 8 DATAFRAMES HAVE A `season` COLUMN: `season` is available on `df1`, `df2`, `df3`, `df4`, `df5`, `df6`, `df7`, and `df8`! Season values are standardized 7-character strings formatted as `'YYYY-YY'` (e.g. `'2015-16'`, `'2023-24'`, `'1999-00'`).\n"
+        "- SEASON STRINGS & YEAR NORMALIZATION: If a user asks about `'2015-2016'`, `'2015-2016 season'`, `'2015'`, or `'2016'`, ALWAYS normalize the input to `'YYYY-YY'` (e.g., `'2015-2016'` -> `'2015-16'`) or use `.str.startswith('2015')` or `.isin(['2015-16', '2015-2016'])`. Never assume exact string equality against `'YYYY-YYYY'`!\n"
+        "- SINGLE-YEAR OR AMBIGUOUS SEASON INPUTS (e.g. '2015 season', 'in 2015'): In college hockey, seasons span two calendar years (e.g., fall 2014 to spring 2015 is '2014-15'; fall 2015 to spring 2016 is '2015-16'). If a user provides a single 4-digit year like '2015' without specifying whether they mean the season starting in 2015 ('2015-16') or ending in 2015 ('2014-15'):\n"
+        "  - Check BOTH candidate seasons: `target_seasons = ['2014-15', '2015-16']` (or `df['season'].str.contains('15')`) and output the captains / stats for BOTH seasons clearly labeled so the user gets their exact answer regardless of which season they meant!\n"
         "- CAPTAINS (`C`) & ALTERNATE / ASSISTANT CAPTAINS (`A`):\n"
         "  - Use `df7` (rosters) and `df8` (cumulative season stats) for season-level or career captain/alternate captain questions (e.g. 'Who were the captains in 2025-26?', 'Who are the captains for 2026-27?', 'Which captain scored the most points in a season?', 'How many goals did captains and alternate captains score by season?', 'Which players served as captain for multiple seasons?').\n"
         "  - Filter Captains with `captain_role == 'C'` (or `is_captain == 1`), Alternate/Assistant Captains with `captain_role == 'A'` (or `is_alternate_captain == 1`), and all Leadership (Captains + Alternate Captains) with `captain_role.isin(['C', 'A'])` (or `is_leadership == 1`).\n"
@@ -527,11 +599,14 @@ def answer_question(
         retry_prompt = (
             f"{code_prompt}\n\nYour previous code:\n```python\n{code}\n```\n"
             f"raised this error: {err}\n"
-            "Please output ONLY the corrected ```python ... ``` code block."
+            "Please output ONLY the corrected ```python ... ``` code block with valid Python syntax."
         )
         msg_retry = llm.invoke(retry_prompt)
         code = extract_python_code(message_to_text(msg_retry))
-        execution_output = run_python_code(code, df1, df2, df3, df4, df5, df6, df7, df8)
+        try:
+            execution_output = run_python_code(code, df1, df2, df3, df4, df5, df6, df7, df8)
+        except Exception as retry_err:
+            execution_output = f"Execution error: {retry_err}"
 
     final_prompt = (
         "You are a friendly, knowledgeable Northeastern Men's Hockey statistics assistant speaking to hockey fans.\n"
@@ -541,6 +616,7 @@ def answer_question(
         "Instructions:\n"
         "- Provide a clear, accurate, and conversational answer based strictly on the computed result above, taking into account the conversation history.\n"
         "- STRICT ANTI-HALLUCINATION & FACTUAL GROUNDING RULE: You must answer ONLY using the facts present in 'Computed Result from Historical Dataset'. NEVER fabricate, hallucinate, or draw upon general training memory for player names, jersey numbers, captaincy roles, tournament titles, or game results! If the computed result is empty, indicates no matching records, or does not answer the question, state honestly that no records were found matching that criteria in the Northeastern Athletics dataset (1999–present), and suggest checking the season format (e.g., '2015-16').\n"
+        "- If the computed result indicates an execution error, apologize politely, explain that you encountered a slight hiccup running that calculation, and invite the user to clarify or rephrase their question (e.g. specifying the season as 'YYYY-YY' like '2014-15' or '2015-16'). NEVER show raw Python errors or variable names like df1-df8.\n"
         "- If a box score URL, roster URL, or season stats URL is available in the computed result for a specific lookup, provide it as a markdown link (e.g., [View Official Box Score](<url>), [View Official Roster](<url>), or [View Official Season Stats](<url>)).\n"
         "- If a user asks about blocked shots or faceoffs for seasons prior to 2012–13, politely inform them that in-game blocked shots and faceoffs were not officially recorded by the NCAA or Northeastern prior to the 2012–13 season.\n"
         "- If a user asks about game-by-game stats prior to October 1999, clarify that digital athletic box score archives begin with the 1999–00 season.\n"
