@@ -39,7 +39,6 @@ jobs:
       - name: Run extraction pipeline
         run: |
           python audit_boxscores.py
-          python NUExtractorEngine.py
 
       - name: Commit and push changes
         run: |

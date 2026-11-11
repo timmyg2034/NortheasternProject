@@ -1,5 +1,4 @@
 import asyncio
-import csv
 import json
 import urllib.parse
 import httpx
@@ -9,202 +8,99 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 }
 
-async def check_url(client_strict: httpx.AsyncClient, client_loose: httpx.AsyncClient, sem: asyncio.Semaphore, url: str):
-    async with sem:
-        res = {
-            "url": url,
-            "strict_ok": False,
-            "strict_status": None,
-            "strict_error": None,
-            "strict_final_url": None,
-            "loose_ok": False,
-            "loose_status": None,
-            "loose_final_url": None,
-            "length": 0,
-            "title": "",
-            "has_boxscore_content": False,
-        }
-        try:
-            r = await client_strict.get(url, timeout=10.0)
-            res["strict_status"] = r.status_code
-            res["strict_final_url"] = str(r.url)
-            res["length"] = len(r.text)
-            soup = BeautifulSoup(r.text, "html.parser")
-            res["title"] = soup.title.get_text(strip=True) if soup.title else ""
-            txt_lower = r.text.lower()
-            has_content = (
-                r.status_code == 200
-                and len(r.text) > 800
-                and ("scoring summary" in txt_lower or "penalty summary" in txt_lower or "box score" in txt_lower or "goals by period" in txt_lower)
-                and "page not found" not in txt_lower
-                and "404 - file or directory not found" not in txt_lower
-            )
-            res["has_boxscore_content"] = has_content
-            res["strict_ok"] = has_content
-            res["loose_ok"] = has_content
-            res["loose_status"] = r.status_code
-            res["loose_final_url"] = str(r.url)
-            return res
-        except Exception as e:
-            res["strict_error"] = f"{type(e).__name__}: {str(e)[:120]}"
-
-        try:
-            r2 = await client_loose.get(url, timeout=10.0)
-            res["loose_status"] = r2.status_code
-            res["loose_final_url"] = str(r2.url)
-            res["length"] = len(r2.text)
-            soup = BeautifulSoup(r2.text, "html.parser")
-            res["title"] = soup.title.get_text(strip=True) if soup.title else ""
-            txt_lower = r2.text.lower()
-            has_content = (
-                r2.status_code == 200
-                and len(r2.text) > 800
-                and ("scoring summary" in txt_lower or "penalty summary" in txt_lower or "box score" in txt_lower or "goals by period" in txt_lower)
-                and "page not found" not in txt_lower
-                and "404 - file or directory not found" not in txt_lower
-            )
-            res["has_boxscore_content"] = has_content
-            res["loose_ok"] = has_content
-        except Exception as e2:
-            res["loose_error"] = f"{type(e2).__name__}: {str(e2)[:120]}"
-        return res
-
 async def main():
-    limits = httpx.Limits(max_keepalive_connections=30, max_connections=50)
-    sem = asyncio.Semaphore(30)
-    report = {
-        "schedule_2011_12_games": [],
-        "all_schedule_seasons": {},
-        "teamstat_2011_12_links": [],
-        "csv_urls_summary": {},
-        "broken_csv_urls": [],
-        "url_checks": {},
-    }
+    report = {}
+    async with httpx.AsyncClient(headers=HEADERS, follow_redirects=True, verify=False, timeout=15.0) as client:
+        # 1. Inspect MHK1112 teamstat.htm completely
+        r_ts = await client.get("https://static.gonu.com/custompages/mhockey/MHK1112/HTML/teamstat.htm")
+        soup_ts = BeautifulSoup(r_ts.text, "html.parser")
+        ts_links = []
+        for a in soup_ts.find_all("a", href=True):
+            parent_tr = a.find_parent("tr")
+            row_txt = parent_tr.get_text(" | ", strip=True) if parent_tr else a.parent.get_text(" | ", strip=True)
+            ts_links.append({"text": a.get_text(strip=True), "href": a["href"], "row": row_txt[:200]})
+        report["mhk1112_teamstat_all_a"] = ts_links
 
-    async with httpx.AsyncClient(headers=HEADERS, limits=limits, follow_redirects=True, verify=True) as client_strict, \
-               httpx.AsyncClient(headers=HEADERS, limits=limits, follow_redirects=True, verify=False) as client_loose:
+        # Also dump all rows of teamstat.htm table that look like game results
+        ts_rows = []
+        for tr in soup_ts.find_all("tr"):
+            txt = tr.get_text(" | ", strip=True)
+            if any(m in txt for m in ["Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "10/", "11/", "12/", "1/", "2/", "3/"]):
+                hrefs = [a["href"] for a in tr.find_all("a", href=True)]
+                ts_rows.append({"text": txt[:200], "hrefs": hrefs})
+        report["mhk1112_teamstat_game_rows"] = ts_rows
 
-        candidate_urls = set()
+        # 2. Inspect 2011-12 schedule page on nuhuskies.com and every Box Score / Box score link on it
+        r_sched = await client.get("https://nuhuskies.com/sports/mens-ice-hockey/schedule/2011-12")
+        soup_sched = BeautifulSoup(r_sched.text, "html.parser")
+        sched_box_urls = []
+        seen_u = set()
+        for a in soup_sched.find_all("a", href=True):
+            txt = a.get_text(" ", strip=True)
+            href = urllib.parse.urljoin("https://nuhuskies.com/sports/mens-ice-hockey/schedule/2011-12", a["href"])
+            if "box" in txt.lower() or "boxscore" in href.lower():
+                if (txt, href) not in seen_u:
+                    seen_u.add((txt, href))
+                    sched_box_urls.append({"text": txt, "url": href})
 
-        # Read current CSV URLs
-        with open("northeastern_game_results.csv", "r", encoding="utf-8") as f:
-            csv_games = list(csv.DictReader(f))
-        for g in csv_games:
-            if g.get("boxscore_url"):
-                candidate_urls.add(g["boxscore_url"])
-
-        # Inspect schedule pages for 1999-2027, with detailed extraction for 2008-2014
-        for year in range(1999, 2027):
-            season_str = f"{year}-{str(year+1)[-2:]}"
-            sched_url = f"https://nuhuskies.com/sports/mens-ice-hockey/schedule/{season_str}"
-            legacy_url = f"https://static.gonu.com/custompages/mhockey/MHK{str(year)[-2:]}{str(year+1)[-2:]}/HTML/teamstat.htm"
-
-            sched_links = []
+        # Fetch all 2011-12 schedule box score URLs and inspect their content!
+        box_details = []
+        for item in sched_box_urls:
+            u = item["url"]
             try:
-                r = await client_loose.get(sched_url, timeout=10.0)
-                if r.status_code == 200:
-                    soup = BeautifulSoup(r.text, "html.parser")
-                    # Find game containers or links
-                    if year in (2010, 2011, 2012):
-                        games_detail = []
-                        for item in soup.select(".sidearm-schedule-game"):
-                            opp_el = item.select_one(".sidearm-schedule-game-opponent-name")
-                            date_el = item.select_one(".sidearm-schedule-game-opponent-date")
-                            opp_txt = opp_el.get_text(" ", strip=True) if opp_el else ""
-                            date_txt = date_el.get_text(" ", strip=True) if date_el else ""
-                            links = []
-                            for a in item.find_all("a", href=True):
-                                txt = a.get_text(" ", strip=True)
-                                href = urllib.parse.urljoin(sched_url, a["href"])
-                                links.append({"text": txt, "href": href, "raw_href": a["href"]})
-                                if "box" in txt.lower() or "boxscore" in href.lower() or ".htm" in href.lower() or "stats" in href.lower():
-                                    candidate_urls.add(href)
-                            games_detail.append({
-                                "date_text": date_txt,
-                                "opponent": opp_txt,
-                                "links": links,
-                            })
-                        if year == 2011:
-                            report["schedule_2011_12_games"] = games_detail
-                            all_a = []
-                            for a in soup.find_all("a", href=True):
-                                txt = a.get_text(" ", strip=True)
-                                href = urllib.parse.urljoin(sched_url, a["href"])
-                                if any(k in (txt + " " + href).lower() for k in ["box", "recap", "htm", "stats", "umass", "massachusetts"]):
-                                    li = a.find_parent("li", class_=lambda c: c and "sidearm-schedule-game" in c) or a.find_parent("li") or a.parent
-                                    parent_txt = li.get_text(" ", strip=True)[:250] if li else ""
-                                    all_a.append({"text": txt, "href": href, "raw_href": a["href"], "context": parent_txt})
-                                    candidate_urls.add(href)
-                            report["schedule_2011_12_all_links"] = all_a
-                    for a in soup.find_all("a", href=True):
-                        href = a["href"]
-                        txt = a.get_text(strip=True)
-                        full_u = urllib.parse.urljoin(sched_url, href)
-                        if any(k in (txt + " " + href).lower() for k in ["boxscore", "box score", "/stats/", ".htm"]) and "roster" not in href.lower() and "cumulative" not in href.lower():
-                            sched_links.append({"text": txt, "url": full_u})
-                            candidate_urls.add(full_u)
-            except Exception as e:
-                sched_links.append({"error": str(e)})
-
-            leg_links = []
-            try:
-                rl = await client_loose.get(legacy_url, timeout=10.0)
-                if rl.status_code == 200:
-                    soup = BeautifulSoup(rl.text, "html.parser")
-                    for a in soup.find_all("a", href=True):
-                        href = a["href"]
-                        if href.lower().endswith(".htm") and not any(x in href.lower() for x in ["teamcume", "teamgbg", "confstat", "plystat", "teamstat"]):
-                            full_u = urllib.parse.urljoin(legacy_url, href)
-                            leg_links.append({"text": a.get_text(strip=True), "raw_href": href, "url": full_u})
-                            candidate_urls.add(full_u)
-            except Exception as e:
-                pass
-
-            if year == 2011:
-                report["teamstat_2011_12_links"] = leg_links
-
-            report["all_schedule_seasons"][season_str] = {
-                "sched_link_count": len(sched_links),
-                "legacy_link_count": len(leg_links),
-                "sample_sched_links": sched_links[:10],
-            }
-
-        # Check all candidate URLs
-        print(f"Testing {len(candidate_urls)} unique candidate URLs...")
-        tasks = [check_url(client_strict, client_loose, sem, u) for u in sorted(candidate_urls)]
-        results = await asyncio.gather(*tasks)
-        url_map = {r["url"]: r for r in results}
-        report["url_checks"] = url_map
-
-        # Summarize CSV URLs
-        strict_pass = 0
-        loose_pass = 0
-        broken = []
-        for g in csv_games:
-            u = g.get("boxscore_url", "")
-            chk = url_map.get(u, {})
-            if chk.get("strict_ok"):
-                strict_pass += 1
-            if chk.get("loose_ok"):
-                loose_pass += 1
-            if not chk.get("strict_ok") or not chk.get("loose_ok"):
-                broken.append({
-                    "date": g["date"],
-                    "opponent": g["opponent"],
+                rb = await client.get(u)
+                sb = BeautifulSoup(rb.text, "html.parser")
+                title = sb.title.get_text(strip=True) if sb.title else ""
+                tables_info = []
+                for t in sb.find_all("table"):
+                    rows = t.find_all("tr")
+                    first_rows = [[c.get_text(strip=True) for c in r.find_all(["td", "th"])][:8] for r in rows[:3]]
+                    tables_info.append({"row_count": len(rows), "sample": first_rows})
+                # Check if there are any links or iframes to static.gonu.com or custompages or .htm
+                inner_links = []
+                for a in sb.find_all(["a", "iframe"], href=True):
+                    if any(k in a["href"].lower() for k in ["gonu", "custompages", ".htm", "boxscore", "mhk"]):
+                        inner_links.append(a["href"])
+                for ifr in sb.find_all("iframe", src=True):
+                    inner_links.append(ifr["src"])
+                body_text = sb.get_text(" ", strip=True)
+                has_scoring = "scoring summary" in body_text.lower() or "goals by period" in body_text.lower()
+                box_details.append({
+                    "link_text": item["text"],
                     "url": u,
-                    "check": chk,
+                    "final_url": str(rb.url),
+                    "status": rb.status_code,
+                    "title": title,
+                    "table_count": len(tables_info),
+                    "has_scoring_summary": has_scoring,
+                    "inner_links": inner_links[:10],
+                    "tables_sample": tables_info[:6],
                 })
-        report["csv_urls_summary"] = {
-            "total_csv_games": len(csv_games),
-            "strict_pass": strict_pass,
-            "loose_pass": loose_pass,
-            "broken_or_non_strict_count": len(broken),
-        }
-        report["broken_csv_urls"] = broken
+            except Exception as e:
+                box_details.append({"link_text": item["text"], "url": u, "error": str(e)})
+        report["sched_2011_12_box_details"] = box_details
+
+        # 3. Inspect one 2009-10 game (nu-cc1.htm) and 2004-05 (game01.htm) and 2014-15 (5064) to see why skaters/goalies were 0
+        sample_missing = [
+            "https://static.gonu.com/custompages/mhockey/MHK0910/HTML/nu-cc1.htm",
+            "https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game01.htm",
+            "https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/maine/boxscore/5064",
+        ]
+        missing_debug = {}
+        for mu in sample_missing:
+            rm = await client.get(mu)
+            sm = BeautifulSoup(rm.text, "html.parser")
+            tbls = []
+            for t in sm.find_all("table"):
+                rows = t.find_all("tr")
+                first_rows = [[c.get_text(strip=True) for c in r.find_all(["td", "th"])][:10] for r in rows[:4]]
+                tbls.append({"row_count": len(rows), "first_rows": first_rows})
+            missing_debug[mu] = {"title": sm.title.get_text(strip=True) if sm.title else "", "tables": tbls}
+        report["missing_skaters_debug"] = missing_debug
 
     with open("docs/boxscore_audit.json", "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
-    print("Saved docs/boxscore_audit.json")
+    print("Saved detailed 2011-12 & missing games audit to docs/boxscore_audit.json")
 
 if __name__ == "__main__":
     asyncio.run(main())
