@@ -76,7 +76,8 @@ def parse_modern_boxscore(soup, url, html):
             cm = re.search(r'^(.*?)\s+(\d+)$', txt)
             if cm:
                 team_name, score = cm.group(1).strip(), int(cm.group(2))
-                if "northeastern" in team_name.lower():
+                tn_low = team_name.lower()
+                if "northeastern" in tn_low or tn_low in ("nu", "neu", "winnernu"):
                     nu_goals = score
                 else:
                     opp_goals = score
@@ -213,7 +214,7 @@ def parse_modern_boxscore(soup, url, html):
     for t in soup.find_all("table"):
         cap = t.find("caption")
         cap_text = cap.get_text().lower() if cap else ""
-        if "northeastern" in cap_text and ("goalkeeping" not in cap_text and "faceoff" not in cap_text and "power" not in cap_text):
+        if ("northeastern" in cap_text or re.search(r'\b(?:nu|neu)\b', cap_text)) and ("goalkeeping" not in cap_text and "faceoff" not in cap_text and "power" not in cap_text):
             th_cells = t.find_all("th")
             th_texts = [th.get_text(strip=True) for th in th_cells]
             if "G" in th_texts and "A" in th_texts:
@@ -292,7 +293,7 @@ def parse_modern_boxscore(soup, url, html):
     for t in soup.find_all("table"):
         cap = t.find("caption")
         cap_text = cap.get_text().lower() if cap else ""
-        if "northeastern" in cap_text and ("goal" in cap_text or "save" in cap_text or "keeper" in cap_text):
+        if ("northeastern" in cap_text or re.search(r'\b(?:nu|neu)\b', cap_text)) and ("goal" in cap_text or "save" in cap_text or "keeper" in cap_text):
             tbody = t.find("tbody")
             if not tbody: continue
             for r in tbody.find_all("tr"):
@@ -484,39 +485,47 @@ def parse_modern_boxscore(soup, url, html):
     return game_record, skaters, goalies, goal_events, penalty_events, shootout_events
 
 
+def is_nu_team_label(val: str) -> bool:
+    v = str(val).strip().lower()
+    return "northeastern" in v or v in ("nu", "neu")
+
+
 def parse_legacy_boxscore(soup, url, html):
-    """Parses legacy Gonu box scores for games, skaters, goalies, goals, penalties, and shootouts."""
-    title = soup.title.string.strip() if soup.title else ""
-    m = re.search(r'Northeastern\s+(?:vs\.?|at)\s+(.+?)\s+\((.+?)\)', title, re.IGNORECASE)
+    """Parses legacy Gonu and 2011-12 .aspx box scores for games, skaters, goalies, goals, penalties, and shootouts."""
+    title = soup.title.get_text(strip=True) if soup.title else ""
+    m = re.search(r'(?:Northeastern(?:\s+Univ\.?)?|NU|NEU)\s+(?:vs\.?|at)\s+(.+?)\s+\((.+?)\)', title, re.IGNORECASE)
     if not m:
-        m = re.search(r'(.+?)\s+(?:vs\.?|at)\s+Northeastern\s+\((.+?)\)', title, re.IGNORECASE)
+        m = re.search(r'(.+?)\s+(?:vs\.?|at)\s+(?:Northeastern(?:\s+Univ\.?)?|NU|NEU)\s+\((.+?)\)', title, re.IGNORECASE)
     opponent = m.group(1).strip() if m else "Unknown"
     date = m.group(2).strip() if m else ""
 
     if not date:
-        dm = re.search(r'Date:\s*([A-Za-z]{3}\s+\d{1,2},\s+\d{4})', html)
+        full_txt = soup.get_text(" ", strip=True)
+        dm = re.search(r'Date:\s*([A-Za-z]+\.?\s+\d{1,2},\s+\d{4}|\d{1,2}/\d{1,2}/\d{2,4})', full_txt)
         if dm:
-            date = dm.group(1)
+            date = dm.group(1).strip()
 
     nu_goals = 0
     opp_goals = 0
     legacy_ot_col = False
 
+    leaf_tables = [t for t in soup.find_all("table") if not t.find("table")]
+
     # Score from Goals by Period table
-    for t in soup.find_all("table"):
+    for t in leaf_tables:
         txt = t.get_text()
         if "Goals by Period" in txt:
             for r in t.find_all("tr"):
                 cols = [c.get_text(strip=True) for c in r.find_all(["td", "th"])]
                 if any(re.search(r'^(?:OT|2OT|3OT|SO)$', c, re.IGNORECASE) for c in cols):
                     legacy_ot_col = True
-                if cols and "Northeastern" in cols[0] and len(cols) >= 5:
+                if cols and is_nu_team_label(cols[0]) and len(cols) >= 5:
                     try: nu_goals = int(cols[-1])
                     except ValueError: pass
                 elif cols and len(cols) >= 5 and cols[0] != "Goals by Period":
                     try:
                         opp_goals = int(cols[-1])
-                        if opponent == "Unknown":
+                        if opponent == "Unknown" or is_nu_team_label(opponent):
                             opponent = cols[0]
                     except ValueError: pass
 
@@ -551,11 +560,11 @@ def parse_legacy_boxscore(soup, url, html):
 
     # 1. PARSE SKATERS
     skaters = []
-    for t in soup.find_all("table"):
+    for t in leaf_tables:
         rows = t.find_all("tr")
         for i, r in enumerate(rows):
             cols = [c.get_text(strip=True) for c in r.find_all(["td", "th"])]
-            if len(cols) >= 4 and cols[0] == "Northeastern" and "G" in cols and "A" in cols:
+            if len(cols) >= 4 and is_nu_team_label(cols[0]) and "G" in cols and "A" in cols:
                 for r2 in rows[i + 1:]:
                     c2 = [c.get_text(strip=True) for c in r2.find_all(["td", "th"])]
                     if any("total" in str(x).lower() for x in c2): break
@@ -563,17 +572,21 @@ def parse_legacy_boxscore(soup, url, html):
                         p_name = clean_person_name(c2[2])
                         if not p_name or any(x in p_name.lower() for x in ["totals", "team"]):
                             continue
+                        offset = len(c2) - len(cols)
                         try:
                             goals = int(c2[3])
                             assists = int(c2[4])
-                            shots = int(c2[8]) if len(c2) > 8 and c2[8].isdigit() else (int(c2[7]) if len(c2) > 7 and c2[7].isdigit() else 0)
-                            pm_str = c2[9] if len(c2) > 9 else (c2[8] if len(c2) > 8 else "0")
+                            tot_idx = (cols.index("Tot") + offset) if "Tot" in cols else 8
+                            pm_idx = (cols.index("+/-") + offset) if "+/-" in cols else 9
+                            shots = int(c2[tot_idx]) if 0 <= tot_idx < len(c2) and c2[tot_idx].isdigit() else 0
+                            pm_str = c2[pm_idx] if 0 <= pm_idx < len(c2) else "0"
                             plus_minus = int(pm_str.replace("+", ""))
                         except (ValueError, IndexError):
                             continue
 
                         pen_count, pen_mins = 0, 0
-                        pen_col = c2[-1] if len(c2) >= 10 else ""
+                        pen_idx = (cols.index("Pen") + offset) if "Pen" in cols else -1
+                        pen_col = c2[pen_idx] if (pen_idx != -1 and 0 <= pen_idx < len(c2)) else (c2[-1] if len(c2) >= 10 else "")
                         if "-" in pen_col:
                             parts = pen_col.split("-")
                             try:
@@ -608,11 +621,11 @@ def parse_legacy_boxscore(soup, url, html):
 
     # 2. PARSE GOALIES
     goalies = []
-    for t in soup.find_all("table"):
+    for t in leaf_tables:
         rows = t.find_all("tr")
         for i, r in enumerate(rows):
             cols = [c.get_text(strip=True) for c in r.find_all(["td", "th"])]
-            if len(cols) >= 4 and cols[0] == "Northeastern" and "Minutes" in cols and "GA" in cols:
+            if len(cols) >= 4 and is_nu_team_label(cols[0]) and "Minutes" in cols and "GA" in cols:
                 for r2 in rows[i + 1:]:
                     c2 = [c.get_text(strip=True) for c in r2.find_all(["td", "th"])]
                     if not c2 or any(x in str(c2).lower() for x in ["totals", "team", "saves by prd", "shots by prd"]):
@@ -666,7 +679,7 @@ def parse_legacy_boxscore(soup, url, html):
     # 3. PARSE SCORING SUMMARY
     goal_events = []
     seen_legacy_goals = set()
-    for t in soup.find_all("table"):
+    for t in leaf_tables:
         txt = t.get_text()
         if "Scoring Summary" in txt and "Scored by" in txt:
             nu_running = 0
@@ -745,7 +758,7 @@ def parse_legacy_boxscore(soup, url, html):
     # 4. PARSE PENALTY SUMMARY
     penalty_events = []
     in_pen_section = False
-    for t in soup.find_all("table"):
+    for t in leaf_tables:
         txt = t.get_text()
         if "Penalty Summary" in txt and "Offense" in txt:
             for r in t.find_all("tr"):
@@ -787,7 +800,7 @@ def parse_legacy_boxscore(soup, url, html):
 
 def parse_boxscore(html: str, url: str):
     soup = BeautifulSoup(html, "html.parser")
-    if "sidearm" in html or "nuhuskies.com" in url:
+    if "/boxscore/" in url.lower():
         return parse_modern_boxscore(soup, url, html)
     else:
         return parse_legacy_boxscore(soup, url, html)
@@ -804,29 +817,47 @@ async def gather_all_game_urls(client: httpx.AsyncClient):
         modern_url = f"https://nuhuskies.com/sports/mens-ice-hockey/schedule/{season_str}"
 
         season_links = []
-        try:
-            res_legacy = await client.get(legacy_url, timeout=6.0)
-            if res_legacy.status_code == 200:
-                soup = BeautifulSoup(res_legacy.text, "html.parser")
-                for a in soup.find_all("a", href=True):
-                    href = a["href"].lower()
-                    if href.endswith(".htm") and not any(x in href for x in ["teamcume", "teamgbg", "confstat", "plystat", "teamstat"]):
-                        season_links.append(urllib.parse.urljoin(legacy_url, a["href"]))
-        except Exception:
-            pass
-
-        if not season_links or len(season_links) < 5:
+        if year == 2011:
+            # For 2011-12, use the 33 verified working .aspx box score URLs on nuhuskies.com
+            # (excluding the Oct 2 exhibition vs St. Francis Xavier and the broken /boxscore/3363 link)
+            # plus the Beanpot semifinal vs Boston College (bp2.htm) from static.gonu.com.
             try:
                 res_modern = await client.get(modern_url, timeout=6.0)
                 if res_modern.status_code == 200:
                     soup = BeautifulSoup(res_modern.text, "html.parser")
                     for a in soup.find_all("a", href=True):
-                        href = a["href"].lower()
-                        text = a.get_text(strip=True).lower()
-                        if ("boxscore" in href or "box score" in text or "stats" in text or "/stats/" in href) and "roster" not in href and "cumulative" not in href:
-                            season_links.append(urllib.parse.urljoin("https://nuhuskies.com", a["href"]))
+                        href = a["href"]
+                        href_low = href.lower()
+                        text = a.get_text(" ", strip=True).lower()
+                        if "box" in text and href_low.endswith(".aspx") and "1002114319" not in href_low:
+                            season_links.append(urllib.parse.urljoin("https://nuhuskies.com", href))
             except Exception:
                 pass
+            season_links.append("https://static.gonu.com/custompages/mhockey/MHK1112/HTML/bp2.htm")
+        else:
+            try:
+                res_legacy = await client.get(legacy_url, timeout=6.0)
+                if res_legacy.status_code == 200:
+                    soup = BeautifulSoup(res_legacy.text, "html.parser")
+                    for a in soup.find_all("a", href=True):
+                        href = a["href"].lower()
+                        if href.endswith(".htm") and not any(x in href for x in ["teamcume", "teamgbg", "confstat", "plystat", "teamstat"]):
+                            season_links.append(urllib.parse.urljoin(legacy_url, a["href"]))
+            except Exception:
+                pass
+
+            if not season_links or len(season_links) < 5:
+                try:
+                    res_modern = await client.get(modern_url, timeout=6.0)
+                    if res_modern.status_code == 200:
+                        soup = BeautifulSoup(res_modern.text, "html.parser")
+                        for a in soup.find_all("a", href=True):
+                            href = a["href"].lower()
+                            text = a.get_text(strip=True).lower()
+                            if ("boxscore" in href or "box score" in text or "stats" in text or "/stats/" in href) and "roster" not in href and "cumulative" not in href and "boxscore/3363" not in href:
+                                season_links.append(urllib.parse.urljoin("https://nuhuskies.com", a["href"]))
+                except Exception:
+                    pass
 
         unique_season = list(set(season_links))
         if unique_season:
@@ -926,7 +957,7 @@ async def run_pipeline():
             return "2000-12-29"
         if d.startswith("Oct.27,"):
             d = d.replace("Oct.27,", "Oct. 27,")
-        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%b %d, %Y", "%B %d, %Y", "%b. %d, %Y"):
+        for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%b %d, %Y", "%B %d, %Y", "%b. %d, %Y"):
             try:
                 return datetime.strptime(d, fmt).strftime("%Y-%m-%d")
             except ValueError:

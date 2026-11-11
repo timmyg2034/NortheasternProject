@@ -326,6 +326,10 @@ def extract_python_code(text: str) -> str:
 
 
 def run_python_code(code: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, df5: pd.DataFrame, df6: pd.DataFrame) -> str:
+    pd.set_option("display.max_colwidth", None)
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.width", 1000)
+    pd.set_option("display.max_rows", 200)
     local_env = {"df1": df1, "df2": df2, "df3": df3, "df4": df4, "df5": df5, "df6": df6, "pd": pd}
     stdout_buf = io.StringIO()
     with contextlib.redirect_stdout(stdout_buf):

@@ -38,7 +38,7 @@ jobs:
 
       - name: Run extraction pipeline
         run: |
-          python audit_boxscores.py
+          python NUExtractorEngine.py
 
       - name: Commit and push changes
         run: |
@@ -51,8 +51,7 @@ jobs:
                   northeastern_goal_events.csv \
                   northeastern_penalty_events.csv \
                   northeastern_game_results.csv \
-                  northeastern_shootout_events.csv \
-                  docs/boxscore_audit.json
+                  northeastern_shootout_events.csv
           
           if ! git diff --cached --quiet; then
             TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
