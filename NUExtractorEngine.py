@@ -1000,6 +1000,8 @@ NICKNAME_MAP = {
     "james": "jim",
     "jimmy": "jim",
     "william": "billy",
+    "willie": "billy",
+    "bill": "billy",
     "charles": "chuck",
     "timothy": "tim",
     "donald": "donny",
