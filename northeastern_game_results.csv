@@ -52,7 +52,7 @@ date,opponent,nu_goals,opp_goals,outcome,overtime_status,is_overtime,is_shootout
 2000-12-09,Dartmouth,3,2,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-15.htm
 2000-12-29,Rensselaer,3,2,W,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-16.htm
 2000-12-29,Union,3,5,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0102/HTML/game-18.htm
-2000-12-30,St. Lawrence,3,4,L,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-17.htm
+2000-12-30,St. Lawrence,3,4,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-17.htm
 2001-01-04,UMass Lowell,1,2,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-18.htm
 2001-01-12,UMass-Amherst,4,2,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-19.htm
 2001-01-13,UMass-Amherst,0,2,L,REG,0,0,None,1,UMass-Amherst,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-20.htm
@@ -178,9 +178,9 @@ date,opponent,nu_goals,opp_goals,outcome,overtime_status,is_overtime,is_shootout
 2004-02-28,Boston University,6,3,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0304/HTML/game32.htm
 2004-03-05,Massachusetts,4,0,W,REG,0,0,None,1,Northeastern,https://static.gonu.com/custompages/mhockey/MHK0304/HTML/game33.htm
 2004-03-06,Massachusetts,3,2,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0304/HTML/game34.htm
-2004-10-08,NU,0,2,L,REG,0,0,None,1,NU,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game01.htm
-2004-10-09,NU,0,6,L,REG,0,0,None,1,NU,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game02.htm
-2004-10-16,Denver,0,2,L,REG,0,0,None,1,Denver,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game03.htm
+2004-10-08,Michigan,4,2,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game01.htm
+2004-10-09,Miami University,2,6,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game02.htm
+2004-10-16,Denver,2,4,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game03.htm
 2004-10-19,RPI,4,7,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game04.htm
 2004-10-23,Colgate,4,3,W,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game05.htm
 2004-10-30,North Dakota,3,3,T,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game06.htm
@@ -436,35 +436,40 @@ date,opponent,nu_goals,opp_goals,outcome,overtime_status,is_overtime,is_shootout
 2011-03-11,Boston University,2,5,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1011/HTML/nu-bu4.htm
 2011-03-13,Boston University,5,4,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1011/HTML/nu-bu5.htm
 2011-03-18,Boston College,4,5,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1011/HTML/hea1bcnu.htm
-2011-10-07,Massachusetts,3,3,T,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm1umass.htm
-2011-10-14,New Hampshire,4,0,W,REG,0,0,None,1,Northeastern,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm3unh.htm
-2011-10-22,Boston College,3,4,L,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm5bc.htm
-2011-11-04,Merrimack,1,1,T,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/hnumer2.htm
-2011-11-05,Merrimack,2,3,L,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm8merr.htm
-2011-11-11,Boston College,1,2,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/11-11-11.htm
-2011-11-12,Massachusetts,2,4,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/111211nu.htm
-2011-11-18,Providence College,5,2,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/11-18-11.htm
-2011-11-19,VERMONT,4,1,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm12uvm.htm
-2011-11-25,Michigan,4,1,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/um112511.htm
-2011-12-02,Notre Dame,9,2,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/nu1202.htm
-2011-12-03,Notre Dame,2,1,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/nu1203.htm
-2011-12-10,UMass Lowell,3,2,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm16uml.htm
-2011-12-30,Princeton,3,3,T,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/classic1.htm
-2012-01-13,Boston University,3,4,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm19bu.htm
-2012-01-14,Boston College,1,2,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/1-14-12.htm
-2012-01-20,UMass Lowell,0,4,L,REG,0,0,None,1,UMass Lowell,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/umlhk19.htm
-2012-01-21,UMass Lowell,2,3,L,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm22uml.htm
-2012-01-27,VERMONT,8,3,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/012712.htm
-2012-01-28,VERMONT,4,2,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/012812.htm
-2012-02-03,Massachusetts,4,3,W,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm25mass.htm
+2011-10-07,Massachusetts,3,3,T,OT,1,0,None,0,None,https://nuhuskies.com/sports/2011/10/7/MHOCKEY_1007114957.aspx
+2011-10-09,Maine,3,6,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/10/9/MHOCKEY_1009114048.aspx
+2011-10-14,New Hampshire,4,0,W,REG,0,0,None,1,Northeastern,https://nuhuskies.com/sports/2011/10/14/WHOCKEY_1014113333.aspx
+2011-10-21,Merrimack,1,4,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/10/21/MHOCKEY_1021114011.aspx
+2011-10-22,Boston College,3,4,L,OT,1,0,None,0,None,https://nuhuskies.com/sports/2011/10/22/MHOCKEY_1022115506.aspx
+2011-10-29,New Hampshire,2,5,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/10/30/MHOCKEY_1030110703.aspx
+2011-11-04,Merrimack,1,1,T,OT,1,0,None,0,None,https://nuhuskies.com/sports/2011/11/4/MHOCKEY_1104112448.aspx
+2011-11-05,Merrimack,2,3,L,OT,1,0,None,0,None,https://nuhuskies.com/sports/2011/11/5/MHOCKEY_1105113130.aspx
+2011-11-11,Boston College,1,2,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/11/11/MHOCKEY_1111114209.aspx
+2011-11-12,Massachusetts,2,4,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/11/12/MHOCKEY_1112112557.aspx
+2011-11-18,Providence College,5,2,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/11/18/MHOCKEY_1118112359.aspx
+2011-11-19,VERMONT,4,1,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/11/19/MHOCKEY_1119111924.aspx
+2011-11-25,Michigan,4,1,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/11/25/MHOCKEY_1125110532.aspx
+2011-12-02,Notre Dame,9,2,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/12/2/MHOCKEY_1202113350.aspx
+2011-12-03,Notre Dame,2,1,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/12/4/MHOCKEY_1204112055.aspx
+2011-12-10,UMass Lowell,3,2,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/12/10/MHOCKEY_1210113438.aspx
+2011-12-30,Princeton,3,3,T,OT,1,0,None,0,None,https://nuhuskies.com/sports/2011/12/30/MHOCKEY_1230113131.aspx
+2011-12-31,Minnesota,3,2,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/2011/12/31/MHOCKEY_1231111207.aspx
+2012-01-13,Boston University,3,4,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/2012/1/13/MHOCKEY_0113122013.aspx
+2012-01-14,Boston College,1,2,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/2012/1/14/MHOCKEY_0114122341.aspx
+2012-01-20,UMass Lowell,0,4,L,REG,0,0,None,1,UMass Lowell,https://nuhuskies.com/sports/2012/1/20/MHOCKEY_0120125353.aspx
+2012-01-21,UMass Lowell,2,3,L,OT,1,0,None,0,None,https://nuhuskies.com/sports/2012/1/21/MHOCKEY_0121124358.aspx
+2012-01-27,VERMONT,8,3,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/2012/1/28/MHOCKEY_0128121233.aspx
+2012-01-28,VERMONT,4,2,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/2012/1/28/MHOCKEY_0128125854.aspx
+2012-02-03,Massachusetts,4,3,W,OT,1,0,None,0,None,https://nuhuskies.com/sports/2012/2/3/MHOCKEY_0203122837.aspx
 2012-02-06,Boston College,1,7,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/bp2.htm
-2012-02-10,New Hampshire,2,3,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/021012.htm
-2012-02-13,Harvard,2,3,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/bp3.htm
-2012-02-17,Providence College,1,1,T,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm29pc.htm
-2012-02-18,Providence College,2,2,T,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm30pc.htm
-2012-02-24,Maine,4,2,W,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm31main.htm
-2012-02-25,Maine,1,7,L,REG,0,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm32main.htm
-2012-03-03,Boston University,5,4,W,OT,1,0,None,0,None,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm34bu.htm
+2012-02-10,New Hampshire,2,3,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/2012/2/10/MHOCKEY_0210123352.aspx
+2012-02-13,Harvard,2,3,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/2012/2/13/MHOCKEY_0213121939.aspx
+2012-02-17,Providence College,1,1,T,OT,1,0,None,0,None,https://nuhuskies.com/sports/2012/2/17/MHOCKEY_0217124717.aspx
+2012-02-18,Providence College,2,2,T,OT,1,0,None,0,None,https://nuhuskies.com/sports/2012/2/18/MHOCKEY_0218124615.aspx
+2012-02-24,Maine,4,2,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/2012/2/24/WHOCKEY_0224122300.aspx
+2012-02-25,Maine,1,7,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/2012/2/25/MHOCKEY_0225122953.aspx
+2012-03-02,Boston University,2,5,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/2012/3/2/MHOCKEY_0302122152.aspx
+2012-03-03,Boston University,5,4,W,OT,1,0,None,0,None,https://nuhuskies.com/sports/2012/3/3/MHOCKEY_0303125635.aspx
 2012-10-10,MERRIMACK,4,2,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/mens-ice-hockey/stats/2012-13/merrimack/boxscore/3767
 2012-10-13,BOSTON COLLEGE,3,1,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/mens-ice-hockey/stats/2012-13/boston-college/boxscore/3768
 2012-10-20,Boston College,0,3,L,REG,0,0,None,1,Boston College,https://nuhuskies.com/sports/mens-ice-hockey/stats/2012-13/boston-college/boxscore/3769
@@ -567,8 +572,8 @@ date,opponent,nu_goals,opp_goals,outcome,overtime_status,is_overtime,is_shootout
 2015-02-06,Massachusetts,5,3,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/massachusetts/boxscore/5060
 2015-02-13,Connecticut,9,0,W,REG,0,0,None,1,Northeastern,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/connecticut/boxscore/5062
 2015-02-14,Connecticut,6,1,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/connecticut/boxscore/5063
-2015-02-20,Maine,0,4,L,REG,0,0,None,1,Maine,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/maine/boxscore/5064
-2015-02-21,Maine,0,6,L,REG,0,0,None,1,Maine,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/maine/boxscore/5065
+2015-02-20,Maine,6,4,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/maine/boxscore/5064
+2015-02-21,Maine,3,6,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/maine/boxscore/5065
 2015-02-23,Boston University,3,4,L,OT,1,0,None,0,None,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/boston-university/boxscore/5061
 2015-02-27,Boston University,6,5,W,REG,0,0,None,0,None,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/boston-university/boxscore/5066
 2015-02-28,Boston University,1,6,L,REG,0,0,None,0,None,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/boston-university/boxscore/5067

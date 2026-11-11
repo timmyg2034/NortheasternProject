@@ -58,7 +58,7 @@ date,opponent,nu_goals,opp_goals,goalie_name,decision,minutes,goals_against,empt
 2000-12-29,Rensselaer,3,2,Mike Gilhooly,W,77:20,2,0,37,39,0.949,0,1,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-16.htm
 2000-12-29,Union,3,5,Jason Braun,,29:10,1,0,9,10,0.900,0,0,https://static.gonu.com/custompages/mhockey/MHK0102/HTML/game-18.htm
 2000-12-29,Union,3,5,Keni Gibson,L,29:40,4,0,8,12,0.667,0,0,https://static.gonu.com/custompages/mhockey/MHK0102/HTML/game-18.htm
-2000-12-30,St. Lawrence,3,4,Mike Gilhooly,L,59:38,4,0,28,32,0.875,0,1,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-17.htm
+2000-12-30,St. Lawrence,3,4,Mike Gilhooly,L,59:38,4,0,28,32,0.875,0,0,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-17.htm
 2001-01-04,UMass Lowell,1,2,Mike Gilhooly,L,59:00,2,0,19,21,0.905,0,0,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-18.htm
 2001-01-12,UMass-Amherst,4,2,Mike Gilhooly,W,60:00,2,0,35,37,0.946,0,0,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-19.htm
 2001-01-13,UMass-Amherst,0,2,Mike Gilhooly,L,59:13,1,0,16,17,0.941,0,0,https://static.gonu.com/custompages/mhockey/MHK0001/HTML/game-20.htm
@@ -199,6 +199,9 @@ date,opponent,nu_goals,opp_goals,goalie_name,decision,minutes,goals_against,empt
 2004-02-28,Boston University,6,3,Keni Gibson,W,60:00,3,0,28,31,0.903,0,0,https://static.gonu.com/custompages/mhockey/MHK0304/HTML/game32.htm
 2004-03-05,Massachusetts,4,0,Keni Gibson,W,60:00,0,0,38,38,1.000,1,0,https://static.gonu.com/custompages/mhockey/MHK0304/HTML/game33.htm
 2004-03-06,Massachusetts,3,2,Keni Gibson,W,60:00,2,0,37,39,0.949,0,0,https://static.gonu.com/custompages/mhockey/MHK0304/HTML/game34.htm
+2004-10-08,Michigan,4,2,Keni Gibson,W,60:00,2,0,31,33,0.939,0,0,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game01.htm
+2004-10-09,Miami University,2,6,Adam Geragosian,L,58:34,5,0,16,21,0.762,0,0,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game02.htm
+2004-10-16,Denver,2,4,Keni Gibson,L,60:00,4,0,33,37,0.892,0,0,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game03.htm
 2004-10-19,RPI,4,7,Keni Gibson,L,59:05,5,0,20,25,0.800,0,0,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game04.htm
 2004-10-23,Colgate,4,3,Keni Gibson,W,64:56,3,0,15,18,0.833,0,1,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game05.htm
 2004-10-30,North Dakota,3,3,Keni Gibson,T,64:55,3,0,25,28,0.893,0,1,https://static.gonu.com/custompages/mhockey/MHK0405/HTML/game06.htm
@@ -392,6 +395,44 @@ date,opponent,nu_goals,opp_goals,goalie_name,decision,minutes,goals_against,empt
 2009-03-15,Massachusetts,3,2,Brad Thiessen,W,70:26,2,0,35,37,0.946,0,1,https://static.gonu.com/custompages/mhockey/MHK0809/HTML/game39.htm
 2009-03-20,UMass Lowell,2,3,Brad Thiessen,OTL,63:00,3,0,41,44,0.932,0,1,https://static.gonu.com/custompages/mhockey/MHK0809/HTML/game40.htm
 2009-03-28,Cornell,2,3,Brad Thiessen,L,59:42,3,0,29,32,0.906,0,0,https://static.gonu.com/custompages/mhockey/MHK0809/HTML/game41.htm
+2009-10-09,Colorado College,2,4,Chris Rawlings,L,59:15,4,0,33,37,0.892,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/nu-cc1.htm
+2009-10-10,Colorado College,4,3,Chris Rawlings,W,60:00,3,0,34,37,0.919,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/nu-cc2.htm
+2009-10-16,Bentley University,3,2,Chris Rawlings,W,59:52,2,0,27,29,0.931,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm3bentl.htm
+2009-10-23,UNH,2,4,Chris Rawlings,L,59:27,4,0,30,34,0.882,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/102309m.htm
+2009-10-24,UMass Lowell,1,3,Chris Rawlings,L,59:38,2,0,30,32,0.938,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/umlgm4.htm
+2009-11-06,Boston University,1,0,Chris Rawlings,W,59:46,0,0,43,43,1.000,1,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm6bu.htm
+2009-11-07,Boston College,1,5,Chris Rawlings,L,60:00,5,0,29,34,0.853,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/110709.htm
+2009-11-13,MAINE,2,6,Chris Rawlings,L,50:24,6,0,20,26,0.769,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm8maine.htm
+2009-11-13,MAINE,2,6,Bryan Mountain,,9:22,0,0,0,0,.000,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm8maine.htm
+2009-11-14,MAINE,5,2,Chris Rawlings,W,59:56,2,0,34,36,0.944,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm9maine.htm
+2009-11-20,Providence College,4,1,Chris Rawlings,W,60:00,1,0,28,29,0.966,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm10prov.htm
+2009-11-21,Providence College,3,3,Chris Rawlings,T,64:40,3,0,36,39,0.923,0,1,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/11-21-09.htm
+2009-11-27,Vermont,2,3,Chris Rawlings,L,59:04,3,0,23,26,0.885,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm12verm.htm
+2009-12-04,Merrimack,1,3,Bryan Mountain,L,59:53,3,0,14,17,0.824,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/hnumer.htm
+2009-12-05,Merrimack,2,1,Bryan Mountain,W,59:56,1,0,24,25,0.960,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm14merr.htm
+2009-12-12,MAINE,1,5,Chris Rawlings,L,38:03,4,0,16,20,0.800,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/game17.htm
+2009-12-12,MAINE,1,5,Bryan Mountain,,21:57,1,0,10,11,0.909,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/game17.htm
+2010-01-02,Dartmouth,7,0,Chris Rawlings,W,60:00,0,0,32,32,1.000,1,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/nu-dart.htm
+2010-01-03,UMass Lowell,2,1,Chris Rawlings,W,59:56,1,0,28,29,0.966,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/nu-uml.htm
+2010-01-09,UMass Lowell,5,6,Chris Rawlings,OTL,64:23,6,0,25,31,0.806,0,1,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm18uml.htm
+2010-01-10,Massachusetts,1,4,Bryan Mountain,L,60:00,4,0,20,24,0.833,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm19mass.htm
+2010-01-15,Vermont,3,1,Chris Rawlings,W,60:00,1,0,18,19,0.947,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/011510.htm
+2010-01-16,Vermont,2,9,Chris Rawlings,L,55:40,7,0,12,19,0.632,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/011610.htm
+2010-01-16,Vermont,2,9,Bryan Mountain,,4:20,2,0,3,5,0.600,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/011610.htm
+2010-01-19,Providence College,3,1,Chris Rawlings,W,60:00,1,0,23,24,0.958,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm22prov.htm
+2010-01-29,UMass Lowell,2,1,Chris Rawlings,W,60:00,1,0,23,24,0.958,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm23uml.htm
+2010-02-01,Boston University,1,2,Chris Rawlings,L,58:32,2,0,33,35,0.943,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/bp-2.htm
+2010-02-05,Merrimack,5,1,Chris Rawlings,W,60:00,1,0,37,38,0.974,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/hnumer2.htm
+2010-02-08,Harvard,4,1,Chris Rawlings,W,60:00,1,0,27,28,0.964,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/bp-3.htm
+2010-02-12,Massachusetts,2,0,Chris Rawlings,W,59:52,0,0,31,31,1.000,1,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/021210nu.htm
+2010-02-13,Massachusetts,6,3,Chris Rawlings,W,60:00,3,0,34,37,0.919,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm28umas.htm
+2010-02-19,Boston College,3,2,Chris Rawlings,W,59:54,2,0,38,40,0.950,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm29bc.htm
+2010-02-21,Boston College,1,7,Chris Rawlings,L,51:43,6,0,39,45,0.867,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/2-21-10.htm
+2010-02-21,Boston College,1,7,Bryan Mountain,,8:17,1,0,4,5,0.800,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/2-21-10.htm
+2010-02-26,UNH,4,4,Chris Rawlings,T,64:59,4,0,36,40,0.900,0,1,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm31unh.htm
+2010-02-27,UNH,1,3,Chris Rawlings,L,58:55,2,0,20,22,0.909,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/022709m.htm
+2010-03-05,Boston University,4,5,Chris Rawlings,L,59:35,5,0,28,33,0.848,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/nu-bu.htm
+2010-03-06,Boston University,3,4,Chris Rawlings,L,58:35,4,0,38,42,0.905,0,0,https://static.gonu.com/custompages/mhockey/MHK0910/HTML/gm34bu.htm
 2010-10-08,Providence College,2,3,Chris Rawlings,L,59:16,3,0,26,29,0.897,0,0,https://static.gonu.com/custompages/mhockey/MHK1011/HTML/pcnu10-8.htm
 2010-10-09,Boston College,0,2,Chris Rawlings,L,59:57,1,0,33,34,0.971,0,0,https://static.gonu.com/custompages/mhockey/MHK1011/HTML/gm2bc.htm
 2010-10-15,RPI,2,2,Chris Rawlings,T,64:46,2,0,30,32,0.938,0,1,https://static.gonu.com/custompages/mhockey/MHK1011/HTML/gm3rpi.htm
@@ -433,36 +474,43 @@ date,opponent,nu_goals,opp_goals,goalie_name,decision,minutes,goals_against,empt
 2011-03-13,Boston University,5,4,Chris Rawlings,W,60:00,4,0,31,35,0.886,0,0,https://static.gonu.com/custompages/mhockey/MHK1011/HTML/nu-bu5.htm
 2011-03-18,Boston College,4,5,Chris Rawlings,,40:00,4,0,23,27,0.852,0,0,https://static.gonu.com/custompages/mhockey/MHK1011/HTML/hea1bcnu.htm
 2011-03-18,Boston College,4,5,Clay Witt,L,17:33,1,0,5,6,0.833,0,0,https://static.gonu.com/custompages/mhockey/MHK1011/HTML/hea1bcnu.htm
-2011-10-07,Massachusetts,3,3,Chris Rawlings,T,63:48,3,0,36,39,0.923,0,1,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm1umass.htm
-2011-10-14,New Hampshire,4,0,Chris Rawlings,W,60:00,0,0,27,27,1.000,1,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm3unh.htm
-2011-10-22,Boston College,3,4,Chris Rawlings,OTL,64:58,4,0,39,43,0.907,0,1,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm5bc.htm
-2011-11-04,Merrimack,1,1,Chris Rawlings,T,80:00,1,0,34,35,0.971,0,1,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/hnumer2.htm
-2011-11-05,Merrimack,2,3,Chris Rawlings,OTL,64:59,3,0,28,31,0.903,0,1,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm8merr.htm
-2011-11-11,Boston College,1,2,Chris Rawlings,L,60:00,2,0,34,36,0.944,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/11-11-11.htm
-2011-11-12,Massachusetts,2,4,Chris Rawlings,L,59:24,3,0,39,42,0.929,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/111211nu.htm
-2011-11-18,Providence College,5,2,Chris Rawlings,W,60:00,2,0,19,21,0.905,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/11-18-11.htm
-2011-11-19,VERMONT,4,1,Chris Rawlings,W,60:00,1,0,38,39,0.974,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm12uvm.htm
-2011-11-25,Michigan,4,1,Chris Rawlings,W,60:00,1,0,33,34,0.971,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/um112511.htm
-2011-12-02,Notre Dame,9,2,Chris Rawlings,W,60:00,2,0,25,27,0.926,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/nu1202.htm
-2011-12-03,Notre Dame,2,1,Chris Rawlings,W,60:00,1,0,22,23,0.957,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/nu1203.htm
-2011-12-10,UMass Lowell,3,2,Chris Rawlings,W,60:00,2,0,38,40,0.950,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm16uml.htm
-2011-12-30,Princeton,3,3,Chris Rawlings,T,65:00,3,0,23,26,0.885,0,1,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/classic1.htm
-2012-01-13,Boston University,3,4,Chris Rawlings,L,58:40,4,0,26,30,0.867,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm19bu.htm
-2012-01-14,Boston College,1,2,Chris Rawlings,L,59:12,2,0,28,30,0.933,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/1-14-12.htm
-2012-01-20,UMass Lowell,0,4,Chris Rawlings,L,59:33,4,0,28,32,0.875,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/umlhk19.htm
-2012-01-21,UMass Lowell,2,3,Chris Rawlings,OTL,62:50,3,0,22,25,0.880,0,1,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm22uml.htm
-2012-01-27,VERMONT,8,3,Chris Rawlings,W,59:50,3,0,31,34,0.912,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/012712.htm
-2012-01-28,VERMONT,4,2,Chris Rawlings,W,60:00,2,0,23,25,0.920,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/012812.htm
-2012-02-03,Massachusetts,4,3,Chris Rawlings,W,60:21,3,0,28,31,0.903,0,1,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm25mass.htm
+2011-10-07,Massachusetts,3,3,Chris Rawlings,T,63:48,3,0,36,39,0.923,0,1,https://nuhuskies.com/sports/2011/10/7/MHOCKEY_1007114957.aspx
+2011-10-09,Maine,3,6,Chris Rawlings,L,48:08,6,0,23,29,0.793,0,0,https://nuhuskies.com/sports/2011/10/9/MHOCKEY_1009114048.aspx
+2011-10-14,New Hampshire,4,0,Chris Rawlings,W,60:00,0,0,27,27,1.000,1,0,https://nuhuskies.com/sports/2011/10/14/WHOCKEY_1014113333.aspx
+2011-10-21,Merrimack,1,4,Chris Rawlings,L,46:09,3,0,36,39,0.923,0,0,https://nuhuskies.com/sports/2011/10/21/MHOCKEY_1021114011.aspx
+2011-10-21,Merrimack,1,4,Clay Witt,,11:42,0,0,7,7,1.000,1,0,https://nuhuskies.com/sports/2011/10/21/MHOCKEY_1021114011.aspx
+2011-10-22,Boston College,3,4,Chris Rawlings,OTL,64:58,4,0,39,43,0.907,0,1,https://nuhuskies.com/sports/2011/10/22/MHOCKEY_1022115506.aspx
+2011-10-29,New Hampshire,2,5,Clay Witt,L,60:00,5,0,33,38,0.868,0,0,https://nuhuskies.com/sports/2011/10/30/MHOCKEY_1030110703.aspx
+2011-11-04,Merrimack,1,1,Chris Rawlings,T,80:00,1,0,34,35,0.971,0,1,https://nuhuskies.com/sports/2011/11/4/MHOCKEY_1104112448.aspx
+2011-11-05,Merrimack,2,3,Chris Rawlings,OTL,64:59,3,0,28,31,0.903,0,1,https://nuhuskies.com/sports/2011/11/5/MHOCKEY_1105113130.aspx
+2011-11-11,Boston College,1,2,Chris Rawlings,L,60:00,2,0,34,36,0.944,0,0,https://nuhuskies.com/sports/2011/11/11/MHOCKEY_1111114209.aspx
+2011-11-12,Massachusetts,2,4,Chris Rawlings,L,59:24,3,0,39,42,0.929,0,0,https://nuhuskies.com/sports/2011/11/12/MHOCKEY_1112112557.aspx
+2011-11-18,Providence College,5,2,Chris Rawlings,W,60:00,2,0,19,21,0.905,0,0,https://nuhuskies.com/sports/2011/11/18/MHOCKEY_1118112359.aspx
+2011-11-19,VERMONT,4,1,Chris Rawlings,W,60:00,1,0,38,39,0.974,0,0,https://nuhuskies.com/sports/2011/11/19/MHOCKEY_1119111924.aspx
+2011-11-25,Michigan,4,1,Chris Rawlings,W,60:00,1,0,33,34,0.971,0,0,https://nuhuskies.com/sports/2011/11/25/MHOCKEY_1125110532.aspx
+2011-12-02,Notre Dame,9,2,Chris Rawlings,W,60:00,2,0,25,27,0.926,0,0,https://nuhuskies.com/sports/2011/12/2/MHOCKEY_1202113350.aspx
+2011-12-03,Notre Dame,2,1,Chris Rawlings,W,60:00,1,0,22,23,0.957,0,0,https://nuhuskies.com/sports/2011/12/4/MHOCKEY_1204112055.aspx
+2011-12-10,UMass Lowell,3,2,Chris Rawlings,W,60:00,2,0,38,40,0.950,0,0,https://nuhuskies.com/sports/2011/12/10/MHOCKEY_1210113438.aspx
+2011-12-30,Princeton,3,3,Chris Rawlings,T,65:00,3,0,23,26,0.885,0,1,https://nuhuskies.com/sports/2011/12/30/MHOCKEY_1230113131.aspx
+2011-12-31,Minnesota,3,2,Chris Rawlings,W,60:00,2,0,31,33,0.939,0,0,https://nuhuskies.com/sports/2011/12/31/MHOCKEY_1231111207.aspx
+2012-01-13,Boston University,3,4,Chris Rawlings,L,58:40,4,0,26,30,0.867,0,0,https://nuhuskies.com/sports/2012/1/13/MHOCKEY_0113122013.aspx
+2012-01-14,Boston College,1,2,Chris Rawlings,L,59:12,2,0,28,30,0.933,0,0,https://nuhuskies.com/sports/2012/1/14/MHOCKEY_0114122341.aspx
+2012-01-20,UMass Lowell,0,4,Chris Rawlings,L,59:33,4,0,28,32,0.875,0,0,https://nuhuskies.com/sports/2012/1/20/MHOCKEY_0120125353.aspx
+2012-01-21,UMass Lowell,2,3,Chris Rawlings,OTL,62:50,3,0,22,25,0.880,0,1,https://nuhuskies.com/sports/2012/1/21/MHOCKEY_0121124358.aspx
+2012-01-27,VERMONT,8,3,Chris Rawlings,W,59:50,3,0,31,34,0.912,0,0,https://nuhuskies.com/sports/2012/1/28/MHOCKEY_0128121233.aspx
+2012-01-28,VERMONT,4,2,Chris Rawlings,W,60:00,2,0,23,25,0.920,0,0,https://nuhuskies.com/sports/2012/1/28/MHOCKEY_0128125854.aspx
+2012-02-03,Massachusetts,4,3,Chris Rawlings,W,60:21,3,0,28,31,0.903,0,1,https://nuhuskies.com/sports/2012/2/3/MHOCKEY_0203122837.aspx
 2012-02-06,Boston College,1,7,Chris Rawlings,L,39:52,5,0,24,29,0.828,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/bp2.htm
-2012-02-10,New Hampshire,2,3,Chris Rawlings,L,58:31,3,0,28,31,0.903,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/021012.htm
-2012-02-13,Harvard,2,3,Clay Witt,L,59:01,3,0,36,39,0.923,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/bp3.htm
-2012-02-17,Providence College,1,1,Chris Rawlings,T,64:57,1,0,22,23,0.957,0,1,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm29pc.htm
-2012-02-18,Providence College,2,2,Chris Rawlings,T,65:00,2,0,47,49,0.959,0,1,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm30pc.htm
-2012-02-24,Maine,4,2,Chris Rawlings,W,60:00,2,0,29,31,0.935,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm31main.htm
-2012-02-25,Maine,1,7,Chris Rawlings,L,9:52,3,0,1,4,0.250,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm32main.htm
-2012-02-25,Maine,1,7,Clay Witt,,36:58,4,0,14,18,0.778,0,0,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm32main.htm
-2012-03-03,Boston University,5,4,Clay Witt,W,62:35,4,0,36,40,0.900,0,1,https://static.gonu.com/custompages/mhockey/MHK1112/HTML/gm34bu.htm
+2012-02-10,New Hampshire,2,3,Chris Rawlings,L,58:31,3,0,28,31,0.903,0,0,https://nuhuskies.com/sports/2012/2/10/MHOCKEY_0210123352.aspx
+2012-02-13,Harvard,2,3,Clay Witt,L,59:01,3,0,36,39,0.923,0,0,https://nuhuskies.com/sports/2012/2/13/MHOCKEY_0213121939.aspx
+2012-02-17,Providence College,1,1,Chris Rawlings,T,64:57,1,0,22,23,0.957,0,1,https://nuhuskies.com/sports/2012/2/17/MHOCKEY_0217124717.aspx
+2012-02-18,Providence College,2,2,Chris Rawlings,T,65:00,2,0,47,49,0.959,0,1,https://nuhuskies.com/sports/2012/2/18/MHOCKEY_0218124615.aspx
+2012-02-24,Maine,4,2,Chris Rawlings,W,60:00,2,0,29,31,0.935,0,0,https://nuhuskies.com/sports/2012/2/24/WHOCKEY_0224122300.aspx
+2012-02-25,Maine,1,7,Chris Rawlings,L,9:52,3,0,1,4,0.250,0,0,https://nuhuskies.com/sports/2012/2/25/MHOCKEY_0225122953.aspx
+2012-02-25,Maine,1,7,Clay Witt,,36:58,4,0,14,18,0.778,0,0,https://nuhuskies.com/sports/2012/2/25/MHOCKEY_0225122953.aspx
+2012-03-02,Boston University,2,5,Chris Rawlings,L,40:00,4,0,16,20,0.800,0,0,https://nuhuskies.com/sports/2012/3/2/MHOCKEY_0302122152.aspx
+2012-03-02,Boston University,2,5,Clay Witt,,15:53,0,0,6,6,1.000,1,0,https://nuhuskies.com/sports/2012/3/2/MHOCKEY_0302122152.aspx
+2012-03-03,Boston University,5,4,Clay Witt,W,62:35,4,0,36,40,0.900,0,1,https://nuhuskies.com/sports/2012/3/3/MHOCKEY_0303125635.aspx
 2012-10-10,MERRIMACK,4,2,Chris Rawlings,W,60:00,2,0,32,34,0.941,0,0,https://nuhuskies.com/sports/mens-ice-hockey/stats/2012-13/merrimack/boxscore/3767
 2012-10-13,BOSTON COLLEGE,3,1,Chris Rawlings,W,60:00,1,0,31,32,0.969,0,0,https://nuhuskies.com/sports/mens-ice-hockey/stats/2012-13/boston-college/boxscore/3768
 2012-10-20,Boston College,0,3,Chris Rawlings,L,60:00,3,0,24,27,0.889,0,0,https://nuhuskies.com/sports/mens-ice-hockey/stats/2012-13/boston-college/boxscore/3769
@@ -575,6 +623,8 @@ date,opponent,nu_goals,opp_goals,goalie_name,decision,minutes,goals_against,empt
 2015-02-06,Massachusetts,5,3,Clay Witt,W,60:00,3,0,19,22,0.864,0,0,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/massachusetts/boxscore/5060
 2015-02-13,Connecticut,9,0,Clay Witt,W,60:00,0,0,27,27,1.000,1,0,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/connecticut/boxscore/5062
 2015-02-14,Connecticut,6,1,Derick Roy,W,60:00,1,0,30,31,0.968,0,0,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/connecticut/boxscore/5063
+2015-02-20,Maine,6,4,Clay Witt,W,60:00,4,0,24,28,0.857,0,0,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/maine/boxscore/5064
+2015-02-21,Maine,3,6,Derick Roy,L,59:14,5,0,23,28,0.821,0,0,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/maine/boxscore/5065
 2015-02-23,Boston University,3,4,Clay Witt,L,60:51,4,0,30,34,0.882,0,1,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/boston-university/boxscore/5061
 2015-02-27,Boston University,6,5,Clay Witt,W,60:00,5,0,24,29,0.828,0,0,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/boston-university/boxscore/5066
 2015-02-28,Boston University,1,6,Clay Witt,L,60:00,6,0,29,35,0.829,0,0,https://nuhuskies.com/sports/mens-ice-hockey/stats/2014-15/boston-university/boxscore/5067
