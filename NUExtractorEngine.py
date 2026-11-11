@@ -963,9 +963,9 @@ HEAD_COACHES = {
 KNOWN_LEADERSHIP = {
     "1999-00": {"C": ["Roger Holeczy"], "A": ["Billy Newson", "William Newson", "Todd Barclay", "Graig Mischler", "Craig Mischler"]},
     "2000-01": {"C": ["Jim Fahey", "James Fahey"], "A": ["Graig Mischler", "Craig Mischler", "Chris Lynch"]},
-    "2001-02": {"C": ["Jim Fahey", "James Fahey"], "A": ["Chris Lynch", "Mike Ryan", "Michael Ryan", "Trevor Reschny"]},
+    "2001-02": {"C": ["Jim Fahey", "James Fahey"], "A": ["Chris Lynch", "Willie Levesque", "William Levesque", "Mike Ryan", "Michael Ryan", "Trevor Reschny"]},
     "2002-03": {"C": ["Mike Ryan", "Michael Ryan"], "A": ["Trevor Reschny", "Eric Ortlip"]},
-    "2003-04": {"C": ["Trevor Reschny"], "A": ["Jason Guerriero", "Eric Ortlip", "Tim Judy", "Timothy Judy"]},
+    "2003-04": {"C": ["Trevor Reschny"], "A": ["Jason Guerriero", "Eric Ortlip", "Brian Tudrick", "Tim Judy", "Timothy Judy"]},
     "2004-05": {"C": ["Jason Guerriero"], "A": ["Tim Judy", "Timothy Judy", "Donny Grover", "Donald Grover", "Chuck Tomes", "Charles Tomes"]},
     "2005-06": {"C": ["Chuck Tomes", "Charles Tomes"], "A": ["Mike Morris", "Michael Morris", "Bryan Esner", "Jimmy Russo", "James Russo"]},
     "2006-07": {"C": ["Mike Morris", "Michael Morris"], "A": ["Joe Vitale", "Joseph Vitale", "Ray Ortiz", "Raymond Ortiz", "Jimmy Russo", "James Russo"]},
@@ -1268,7 +1268,7 @@ def parse_modern_roster_html(html: str, season: str, url: str) -> tuple[list[dic
             lines = [ln.strip() for ln in card_text.split("\n") if ln.strip()]
             for i, ln in enumerate(lines):
                 if ln.lower() in ("major", "academic major") and i + 1 < len(lines):
-                    rec["major"] = lines[i + 1]
+                    rec["major"] = re.sub(r"\s*Related Content.*$", "", lines[i + 1], flags=re.IGNORECASE).strip()
                 elif ln.lower() in ("last team", "previous team") and i + 1 < len(lines) and not rec["previous_team"]:
                     rec["previous_team"] = lines[i + 1]
                 elif ln.lower() in ("previous school", "high school") and i + 1 < len(lines) and not rec["previous_school"]:
@@ -1292,7 +1292,7 @@ def parse_bio_for_metadata(bio_html: str) -> dict:
                 continue
             val = nxt.get_text(" ", strip=True)
             if "major" in label and val:
-                info["major"] = val
+                info["major"] = re.sub(r"\s*Related Content.*$", "", val, flags=re.IGNORECASE).strip()
             elif label in ("shoots", "catches", "s/c") and val:
                 info["shoots"] = "Left" if val.upper().startswith("L") else ("Right" if val.upper().startswith("R") else val)
             elif label in ("last team", "previous team") and val:
@@ -1304,11 +1304,11 @@ def parse_bio_for_metadata(bio_html: str) -> dict:
     text = soup.get_text(" ", strip=True)
     if not info["major"]:
         m = re.search(
-            r"(?:[Mm]ajoring in|[Mm]ajor(?:s)? is|[Gg]raduated with a degree in|[Pp]ursuing a (?:master's )?degree in)\s+([A-Za-z\s,&\-]+?)(?:\.|;|,\s*with|\s+at\s+Northeastern|\s+from\s+Northeastern|\s+and\s+is\s+|\s+Class\s+of)",
+            r"(?:[Mm]ajoring in|[Mm]ajor(?:s)? is|[Gg]raduated with a degree in|[Pp]ursuing a (?:master's )?degree in)\s+([A-Za-z\s,&\-]+?)(?:\.|;|,\s*with|\s+at\s+Northeastern|\s+from\s+Northeastern|\s+and\s+is\s+|\s+Class\s+of|\s+Related\s+Content)",
             text,
         )
         if m:
-            maj = m.group(1).strip()
+            maj = re.sub(r"\s*Related Content.*$", "", m.group(1), flags=re.IGNORECASE).strip()
             if 3 <= len(maj) <= 65:
                 info["major"] = maj
     if not info["shoots"]:
@@ -1594,20 +1594,42 @@ def parse_legacy_teamcume(html: str, season: str, url: str) -> tuple[dict[str, d
     return skater_stats, goalie_stats
 
 
+LEGACY_ROSTER_TYPO_MAP = {
+    "Jim Mahey": "Jim Fahey",
+    "Ryan Gianand": "Ryan Ginand",
+    "Mike Binninnton": "Mike Binnington",
+}
+
+
 def parse_legacy_history_roster(html: str, season: str, url: str) -> list[dict]:
     soup = BeautifulSoup(html, "html.parser")
     players = {}
+
+    candidate_tables = []
     for table in soup.find_all("table"):
         rows = table.find_all("tr")
-        if len(rows) < 5:
+        if len(rows) < 15:
             continue
         headers = [c.get_text(" ", strip=True).lower() for c in rows[0].find_all(["th", "td"])]
-        if not any("name" in h or "player" in h for h in headers):
-            if len(rows) > 1:
-                headers = [c.get_text(" ", strip=True).lower() for c in rows[1].find_all(["th", "td"])]
-        if not any("name" in h or "player" in h for h in headers):
-            continue
+        if not any("name" in h or "player" in h for h in headers) and len(rows) > 1:
+            headers = [c.get_text(" ", strip=True).lower() for c in rows[1].find_all(["th", "td"])]
+        if any("name" in h or "player" in h for h in headers) and any("pos" in h or "hometown" in h for h in headers):
+            candidate_tables.append((table, rows, headers))
 
+    if not candidate_tables:
+        return []
+
+    # mhky-90s-rosters has 1990-91..1999-00 in chronological order (1999-00 is the last table)
+    # mhky-00s-rosters has 2000-01..2008-09 in chronological order (index = yr - 2000)
+    yr = int(season[:4])
+    if season == "1999-00":
+        selected_tables = [candidate_tables[-1]]
+    elif 2000 <= yr <= 2008 and (yr - 2000) < len(candidate_tables):
+        selected_tables = [candidate_tables[yr - 2000]]
+    else:
+        selected_tables = candidate_tables[:1]
+
+    for table, rows, headers in selected_tables:
         col_map = {}
         for idx, h in enumerate(headers):
             if h in ("#", "no", "no.") or "num" in h:
@@ -1643,6 +1665,7 @@ def parse_legacy_history_roster(html: str, season: str, url: str) -> list[dict]:
                 inline_capt = m_capt.group(1).upper()
                 raw_name = re.sub(r"\s*\([CA]\)\s*$", "", raw_name).strip()
             raw_name = clean_person_name(raw_name)
+            raw_name = LEGACY_ROSTER_TYPO_MAP.get(raw_name, raw_name)
 
             def get_c(k):
                 i = col_map.get(k)
@@ -1695,6 +1718,280 @@ def parse_legacy_history_roster(html: str, season: str, url: str) -> list[dict]:
     return list(players.values())
 
 
+HOCKEY_EAST_OPPONENTS = {
+    "Boston College",
+    "Boston University",
+    "Maine",
+    "Massachusetts",
+    "UMass Lowell",
+    "Merrimack",
+    "New Hampshire",
+    "Providence",
+    "Vermont",
+    "UConn",
+    "Notre Dame",
+}
+
+
+def is_hockey_east_conf_game(season: str, date_str: str, opponent: str) -> bool:
+    if opponent not in HOCKEY_EAST_OPPONENTS:
+        return False
+    yr = int(season[:4])
+    if opponent == "Vermont" and yr < 2005:
+        return False
+    if opponent == "UConn" and yr < 2014:
+        return False
+    if opponent == "Notre Dame" and not (2013 <= yr <= 2016):
+        return False
+    # Exclude postseason (mid-March onward) and Beanpot Mondays in February
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        if dt.month == 3 and dt.day >= 10:
+            return False
+        if dt.month == 2 and dt.weekday() == 0 and opponent in ("Boston College", "Boston University"):
+            return False
+    except Exception:
+        pass
+    return True
+
+
+def build_season_stats_from_game_logs(
+    season: str,
+    all_skaters: list[dict],
+    all_goalies: list[dict],
+    all_goals: list[dict],
+    all_games: list[dict],
+) -> tuple[dict[str, dict], dict[str, dict]]:
+    skater_stats = {}
+    goalie_stats = {}
+
+    # Pre-index goal events for this season by (date, opponent) and by scorer
+    goals_by_game = {}
+    for g_ev in all_goals:
+        d = g_ev.get("date", "")
+        if date_to_season(d) != season:
+            continue
+        opp = g_ev.get("opponent", "")
+        goals_by_game.setdefault((d, opp), []).append(g_ev)
+
+    # Sort goals in each game chronologically by period & time_seconds to identify FG (first goal of game) and GTG
+    first_goal_key_by_game = {}
+    for gkey, g_list in goals_by_game.items():
+        def _period_ord(p):
+            pu = str(p).upper()
+            if pu in ("1", "1ST"):
+                return 1
+            if pu in ("2", "2ND"):
+                return 2
+            if pu in ("3", "3RD"):
+                return 3
+            return 4
+
+        sorted_g = sorted(g_list, key=lambda x: (_period_ord(x.get("period", "")), safe_int(x.get("time_seconds", 0))))
+        if sorted_g and sorted_g[0].get("team") == "Northeastern":
+            first_goal_key_by_game[gkey] = normalize_player_key(sorted_g[0].get("scorer", ""))
+
+    # Aggregate skater game logs
+    for sk in all_skaters:
+        d = sk.get("date", "")
+        if date_to_season(d) != season:
+            continue
+        pname = sk.get("player_name", "")
+        pkey = normalize_player_key(pname)
+        if not pkey:
+            continue
+        opp = sk.get("opponent", "")
+        is_conf = is_hockey_east_conf_game(season, d, opp)
+        rec = skater_stats.setdefault(
+            pkey,
+            {
+                "player_name": pname,
+                "jersey_number": "",
+                "gp": 0, "goals": 0, "assists": 0, "points": 0, "shots": 0, "shot_pct": 0.0,
+                "plus_minus": 0, "ppg": 0, "shg": 0, "fg": 0, "gwg": 0, "gtg": 0,
+                "otg": 0, "htg": 0, "uag": 0, "penalties": 0, "pim": 0,
+                "minor_penalties": 0, "major_penalties": 0, "other_penalties": 0, "blocked_shots": 0,
+                "conf_gp": 0, "conf_goals": 0, "conf_assists": 0, "conf_points": 0, "conf_shots": 0,
+                "conf_shot_pct": 0.0, "conf_plus_minus": 0, "conf_ppg": 0, "conf_shg": 0,
+                "conf_fg": 0, "conf_gwg": 0, "conf_gtg": 0, "conf_otg": 0, "conf_htg": 0,
+                "conf_uag": 0, "conf_penalties": 0, "conf_pim": 0, "conf_blocked_shots": 0,
+            },
+        )
+        g = safe_int(sk.get("goals", 0))
+        a = safe_int(sk.get("assists", 0))
+        pts = safe_int(sk.get("points", 0))
+        sh = safe_int(sk.get("shots", 0))
+        pm = safe_int(sk.get("plus_minus", 0))
+        pn = safe_int(sk.get("penalties", 0))
+        pim = safe_int(sk.get("penalty_minutes", 0))
+        blk = safe_int(sk.get("blocked_shots", 0))
+        gwg = safe_int(sk.get("gwg", 0))
+
+        rec["gp"] += 1
+        rec["goals"] += g
+        rec["assists"] += a
+        rec["points"] += pts
+        rec["shots"] += sh
+        rec["plus_minus"] += pm
+        rec["penalties"] += pn
+        rec["pim"] += pim
+        rec["blocked_shots"] += blk
+        rec["gwg"] += gwg
+        if g >= 3:
+            rec["htg"] += 1
+
+        if is_conf:
+            rec["conf_gp"] += 1
+            rec["conf_goals"] += g
+            rec["conf_assists"] += a
+            rec["conf_points"] += pts
+            rec["conf_shots"] += sh
+            rec["conf_plus_minus"] += pm
+            rec["conf_penalties"] += pn
+            rec["conf_pim"] += pim
+            rec["conf_blocked_shots"] += blk
+            rec["conf_gwg"] += gwg
+            if g >= 3:
+                rec["conf_htg"] += 1
+
+    # Add special goal counts (PPG, SHG, FG, OTG, UAG) from goal events
+    for (d, opp), g_list in goals_by_game.items():
+        is_conf = is_hockey_east_conf_game(season, d, opp)
+        fg_pkey = first_goal_key_by_game.get((d, opp))
+        if fg_pkey and fg_pkey in skater_stats:
+            skater_stats[fg_pkey]["fg"] += 1
+            if is_conf:
+                skater_stats[fg_pkey]["conf_fg"] += 1
+
+        for g_ev in g_list:
+            if g_ev.get("team") != "Northeastern":
+                continue
+            pkey = normalize_player_key(g_ev.get("scorer", ""))
+            if pkey not in skater_stats:
+                continue
+            rec = skater_stats[pkey]
+            strength = str(g_ev.get("strength", "")).upper()
+            if "PP" in strength:
+                rec["ppg"] += 1
+                if is_conf:
+                    rec["conf_ppg"] += 1
+            if "SH" in strength:
+                rec["shg"] += 1
+                if is_conf:
+                    rec["conf_shg"] += 1
+            if str(g_ev.get("period", "")).upper().startswith("OT"):
+                rec["otg"] += 1
+                if is_conf:
+                    rec["conf_otg"] += 1
+            if not g_ev.get("primary_assist") and not g_ev.get("secondary_assist"):
+                rec["uag"] += 1
+                if is_conf:
+                    rec["conf_uag"] += 1
+
+    for rec in skater_stats.values():
+        rec["shot_pct"] = round(rec["goals"] / rec["shots"], 3) if rec["shots"] > 0 else 0.0
+        rec["conf_shot_pct"] = round(rec["conf_goals"] / rec["conf_shots"], 3) if rec["conf_shots"] > 0 else 0.0
+
+    # Aggregate goalie game logs
+    for go in all_goalies:
+        d = go.get("date", "")
+        if date_to_season(d) != season:
+            continue
+        gname = go.get("goalie_name", "")
+        pkey = normalize_player_key(gname)
+        if not pkey:
+            continue
+        opp = go.get("opponent", "")
+        is_conf = is_hockey_east_conf_game(season, d, opp)
+        rec = goalie_stats.setdefault(
+            pkey,
+            {
+                "player_name": gname,
+                "jersey_number": "",
+                "goalie_gp": 0, "goalie_gs": 0, "_sec": 0, "goalie_minutes": "0:00",
+                "ga": 0, "gaa": 0.0, "ppga": 0, "shga": 0, "enga": 0,
+                "saves": 0, "save_pct": 0.0, "wins": 0, "losses": 0, "ties": 0, "shutouts": 0,
+                "conf_goalie_gp": 0, "conf_goalie_gs": 0, "_conf_sec": 0, "conf_goalie_minutes": "0:00",
+                "conf_ga": 0, "conf_gaa": 0.0, "conf_saves": 0, "conf_save_pct": 0.0,
+                "conf_wins": 0, "conf_losses": 0, "conf_ties": 0, "conf_shutouts": 0,
+            },
+        )
+        mins_str = str(go.get("minutes", "0:00")).strip()
+        sec = 0
+        if ":" in mins_str:
+            mp = mins_str.split(":", 1)
+            sec = safe_int(mp[0]) * 60 + safe_int(mp[1])
+        else:
+            sec = safe_int(mins_str) * 60
+
+        ga = safe_int(go.get("goals_against", 0))
+        enga = safe_int(go.get("empty_net_goals", 0))
+        sv = safe_int(go.get("saves", 0))
+        sho = safe_int(go.get("shutouts", 0))
+        dec = str(go.get("decision", "")).strip().upper()
+
+        rec["goalie_gp"] += 1
+        if dec in ("W", "L", "T") or sec >= 2400:
+            rec["goalie_gs"] += 1
+        rec["_sec"] += sec
+        rec["ga"] += ga
+        rec["enga"] += enga
+        rec["saves"] += sv
+        rec["shutouts"] += sho
+        if dec == "W":
+            rec["wins"] += 1
+        elif dec == "L":
+            rec["losses"] += 1
+        elif dec == "T":
+            rec["ties"] += 1
+
+        if is_conf:
+            rec["conf_goalie_gp"] += 1
+            if dec in ("W", "L", "T") or sec >= 2400:
+                rec["conf_goalie_gs"] += 1
+            rec["_conf_sec"] += sec
+            rec["conf_ga"] += ga
+            rec["conf_saves"] += sv
+            rec["conf_shutouts"] += sho
+            if dec == "W":
+                rec["conf_wins"] += 1
+            elif dec == "L":
+                rec["conf_losses"] += 1
+            elif dec == "T":
+                rec["conf_ties"] += 1
+
+    for rec in goalie_stats.values():
+        sec = rec.pop("_sec", 0)
+        rec["goalie_minutes"] = f"{sec // 60}:{sec % 60:02d}"
+        rec["gaa"] = round((rec["ga"] * 3600.0) / sec, 2) if sec > 0 else 0.0
+        tot_sh = rec["saves"] + rec["ga"]
+        rec["save_pct"] = round(rec["saves"] / tot_sh, 3) if tot_sh > 0 else 0.0
+
+        csec = rec.pop("_conf_sec", 0)
+        rec["conf_goalie_minutes"] = f"{csec // 60}:{csec % 60:02d}"
+        rec["conf_gaa"] = round((rec["conf_ga"] * 3600.0) / csec, 2) if csec > 0 else 0.0
+        ctot_sh = rec["conf_saves"] + rec["conf_ga"]
+        rec["conf_save_pct"] = round(rec["conf_saves"] / ctot_sh, 3) if ctot_sh > 0 else 0.0
+
+        # Ensure goalies also appear in skater_stats with their GP so they get full rows
+        gpkey = normalize_player_key(rec["player_name"])
+        if gpkey not in skater_stats:
+            skater_stats[gpkey] = {
+                "player_name": rec["player_name"],
+                "jersey_number": rec.get("jersey_number", ""),
+                "gp": rec["goalie_gp"], "goals": 0, "assists": 0, "points": 0, "shots": 0, "shot_pct": 0.0,
+                "plus_minus": 0, "ppg": 0, "shg": 0, "fg": 0, "gwg": 0, "gtg": 0,
+                "otg": 0, "htg": 0, "uag": 0, "penalties": 0, "pim": 0,
+                "minor_penalties": 0, "major_penalties": 0, "other_penalties": 0, "blocked_shots": 0,
+                "conf_gp": rec["conf_goalie_gp"], "conf_goals": 0, "conf_assists": 0, "conf_points": 0, "conf_shots": 0,
+                "conf_shot_pct": 0.0, "conf_plus_minus": 0, "conf_ppg": 0, "conf_shg": 0,
+                "conf_fg": 0, "conf_gwg": 0, "conf_gtg": 0, "conf_otg": 0, "conf_htg": 0,
+                "conf_uag": 0, "conf_penalties": 0, "conf_pim": 0, "conf_blocked_shots": 0,
+            }
+
+    return skater_stats, goalie_stats
+
+
 async def scrape_rosters_and_cumulative_stats(
     client: httpx.AsyncClient,
     semaphore: asyncio.Semaphore,
@@ -1702,7 +1999,8 @@ async def scrape_rosters_and_cumulative_stats(
     all_skaters: list[dict],
     all_goalies: list[dict],
     all_goals: list[dict],
-) -> tuple[list[dict], list[dict]]:
+    all_games: list[dict],
+) -> tuple[list[dict], list[dict], dict]:
     print("\n4. Scraping seasonal rosters, leadership (C/A), bios, and cumulative season stats (1999-2027)...")
     seasons = [f"{yr}-{str(yr + 1)[-2:]}" for yr in range(1999, 2027)]
 
@@ -1865,6 +2163,11 @@ async def scrape_rosters_and_cumulative_stats(
                     srec["uag"] = sp.get("uag", 0)
                     srec["htg"] = sp.get("htg", 0)
 
+        # Fallback: if cumulative stats page wasn't available or didn't match (e.g., 1999-00 to 2011-12),
+        # aggregate complete Overall & Hockey East Conference cumulative stats from the parsed game logs!
+        if not sk_map and yr <= 2025:
+            sk_map, go_map = build_season_stats_from_game_logs(sea, all_skaters, all_goalies, all_goals, all_games)
+
         roster_pkeys_for_sea = {pk for (s, pk) in rosters_by_season_key.keys() if s == sea}
         all_pkeys = sorted(set(sk_map.keys()) | set(go_map.keys()) | roster_pkeys_for_sea)
         for pkey in all_pkeys:
@@ -1876,7 +2179,7 @@ async def scrape_rosters_and_cumulative_stats(
             role = (roster_rec or {}).get("captain_role") or lookup_leadership_role(sea, pname)
             pos = (roster_rec or {}).get("position") or ("G" if pkey in go_map and sk.get("shots", 0) == 0 else "F")
 
-            # If this player was missing from rosters_by_season_key (e.g., legacy seasons without full roster table), add them!
+            # If this player was missing from rosters_by_season_key (e.g., mid-season callup), add them!
             if not roster_rec:
                 roster_rec = {
                     "season": sea,
@@ -2086,7 +2389,7 @@ async def run_pipeline():
                 r["date"] = standardize_date(r.get("date", ""))
 
         all_rosters, all_season_stats, rosters_by_season_key = await scrape_rosters_and_cumulative_stats(
-            client, semaphore, index, all_skaters, all_goalies, all_goals
+            client, semaphore, index, all_skaters, all_goalies, all_goals, all_games
         )
 
         with open(INDEX_FILE, "w", encoding="utf-8") as f:
