@@ -47,19 +47,21 @@ with col_title:
 with st.expander("ℹ️ Data Sources & Coverage Disclaimer"):
     st.markdown("""
     **Primary Data Sources:**
-    - All game-by-game records are scraped and parsed directly from official Northeastern Athletics archives:
-      - **2012–13 to Present:** Official Sidearm box scores via [nuhuskies.com](https://nuhuskies.com)
-      - **1999–00 to 2011–12:** Legacy athletic archives via [static.gonu.com](https://static.gonu.com)
-    - Whenever you ask about a specific game, direct links to the official box score are provided.
+    - All game-by-game records, seasonal rosters, and cumulative statistics are scraped and parsed directly from official Northeastern Athletics archives:
+      - **2011–12 to Present:** Official Sidearm box scores, rosters, and cumulative stats via [nuhuskies.com](https://nuhuskies.com)
+      - **1999–00 to 2010–11:** Legacy athletic archives and cumulative `teamcume.htm` reports via [static.gonu.com](https://static.gonu.com)
+    - Whenever you ask about a specific game, season roster, or cumulative stat line, direct links to the official box score, roster, or stats page are provided.
 
     **Coverage & Metric Availability:**
-    - **Goals, Assists, Points, Shots, +/-**: Complete coverage across all 996 games from **1999–00 to present** (~18,000 player records).
-    - **Goalie Performance (Saves, GA, Decisions, Shutouts)**: Complete coverage from **1999–00 to present** (1,040 goalie records).
+    - **Rosters, Captains (`C` / `A`) & Player Bios**: Complete coverage from **1999–00 to 2026–27** including Captains (`C`), Alternate Captains (`A`), position (`F`, `D`, `G`), class year (`Fr.`, `So.`, `Jr.`, `Sr.`, `Gr.`), height, weight, shooting hand, hometown, previous team/school, academic major, and head coach.
+    - **Cumulative Season & Hockey East Conference Stats**: Complete overall and conference skater & goalie stats from **1999–00 to present**, including `GP`, `GS`, `G`, `A`, `PTS`, `SH%`, `+/-`, `PPG`, `SHG`, `FG` (first goals), `GWG`, `GTG`, `OTG`, `HTG` (hat tricks), `UAG` (unassisted goals), `GAA`, `SV%`, and `W-L-T`.
+    - **Game-by-Game Goals, Assists, Points, Shots, +/-**: Complete coverage across all 996+ games from **1999–00 to present** (~18,000 player game logs, enriched with season, position, class year, and captaincy role).
+    - **Goalie Performance (Saves, GA, Decisions, Shutouts)**: Complete game-by-game and seasonal coverage from **1999–00 to present**.
     - **Game Outcomes, Overtime & Shutouts**: Complete game-by-game tracking including regular, overtime (OT, 2OT, 3OT), and shutout outcomes.
-    - **Shootouts**: Detailed tracking of all shootout games and shot-by-shot attempts (shooter name, round, MADE/MISSED result, opposing goalie).
-    - **Goal Scoring Timeline & Game-Winning Goals (GWG)**: Complete coverage from **1999–00 to present** (7,050+ goal events).
+    - **Shootouts**: Detailed tracking of all shootout games, shootout winners, and shot-by-shot attempts (shooter name, round, MADE/MISSED result, opposing goalie, deciding shootout goal).
+    - **Goal Scoring Timeline & Game-Winning Goals (GWG)**: Complete coverage from **1999–00 to present** (7,050+ goal events with exact period timestamps and seconds remaining).
     - **Penalty Infractions & Minutes**: Complete coverage from **1999–00 to present** (16,700+ penalties).
-    - **Blocked Shots (`BLK`) & Faceoffs (`FO`)**: Officially tracked from **2012–13 to present** (6,956 blocks, 15,284 faceoff wins). The NCAA and Northeastern did not track blocked shots or faceoffs in box scores prior to 2012.
+    - **Blocked Shots (`BLK`) & Faceoffs (`FO`)**: Officially tracked from **2012–13 to present** (6,956+ blocks, 15,284+ faceoff wins). The NCAA and Northeastern did not track blocked shots or faceoffs in box scores prior to 2012.
     - **Pre-1999 Note**: Digital game-by-game box scores prior to October 1999 are not published in athletic web archives.
     """)
 
@@ -157,7 +159,7 @@ def standardize_date(d):
     return d
 
 
-# 3. Load All 6 Datasets into Memory
+# 3. Load All 8 Datasets into Memory
 @st.cache_data
 def load_data():
     skater_df = pd.read_csv("northeastern_hockey_stats_mcp.csv")
@@ -166,12 +168,17 @@ def load_data():
     penalties_df = pd.read_csv("northeastern_penalty_events.csv") if os.path.exists("northeastern_penalty_events.csv") else pd.DataFrame()
     games_df = pd.read_csv("northeastern_game_results.csv") if os.path.exists("northeastern_game_results.csv") else pd.DataFrame()
     shootouts_df = pd.read_csv("northeastern_shootout_events.csv") if os.path.exists("northeastern_shootout_events.csv") else pd.DataFrame()
+    rosters_df = pd.read_csv("northeastern_rosters.csv") if os.path.exists("northeastern_rosters.csv") else pd.DataFrame()
+    season_stats_df = pd.read_csv("northeastern_season_stats.csv") if os.path.exists("northeastern_season_stats.csv") else pd.DataFrame()
 
     # Clean skaters
     if "opponent" in skater_df.columns:
         skater_df["opponent"] = skater_df["opponent"].fillna("").apply(clean_opponent_name)
     if "player_name" in skater_df.columns:
         skater_df["player_name"] = skater_df["player_name"].fillna("").apply(clean_person_name)
+    for col in ["season", "position", "class_year", "captain_role"]:
+        if col in skater_df.columns:
+            skater_df[col] = skater_df[col].fillna("None" if col == "captain_role" else "").astype(str)
     for col in ["nu_goals", "opp_goals", "goals", "assists", "points", "shots", "plus_minus", "penalties", "penalty_minutes", "faceoffs_won", "faceoffs_lost", "blocked_shots", "gwg"]:
         if col in skater_df.columns:
             skater_df[col] = pd.to_numeric(skater_df[col], errors="coerce").fillna(0)
@@ -181,6 +188,9 @@ def load_data():
         goalie_df["opponent"] = goalie_df["opponent"].fillna("").apply(clean_opponent_name)
     if "goalie_name" in goalie_df.columns:
         goalie_df["goalie_name"] = goalie_df["goalie_name"].fillna("").apply(clean_person_name)
+    for col in ["season", "class_year", "captain_role"]:
+        if col in goalie_df.columns:
+            goalie_df[col] = goalie_df[col].fillna("None" if col == "captain_role" else "").astype(str)
     for col in ["nu_goals", "opp_goals", "goals_against", "empty_net_goals", "saves", "shots_against", "save_pct"]:
         if col in goalie_df.columns:
             goalie_df[col] = pd.to_numeric(goalie_df[col], errors="coerce").fillna(0)
@@ -252,19 +262,53 @@ def load_data():
         if "is_shootout_winner" in shootouts_df.columns:
             shootouts_df["is_shootout_winner"] = pd.to_numeric(shootouts_df["is_shootout_winner"], errors="coerce").fillna(0)
 
-    # Standardize dates and sort all DataFrames chronologically (1999 -> 2026+) using stable sort
+    # Clean rosters
+    if not rosters_df.empty:
+        if "player_name" in rosters_df.columns:
+            rosters_df["player_name"] = rosters_df["player_name"].fillna("").apply(clean_person_name)
+        for col in ["season", "jersey_number", "captain_role", "position", "class_year", "height", "shoots", "hometown", "previous_team", "previous_school", "major", "head_coach", "roster_url"]:
+            if col in rosters_df.columns:
+                rosters_df[col] = rosters_df[col].fillna("None" if col == "captain_role" else "").astype(str)
+        for col in ["is_captain", "is_alternate_captain", "is_leadership", "height_inches", "weight"]:
+            if col in rosters_df.columns:
+                rosters_df[col] = pd.to_numeric(rosters_df[col], errors="coerce").fillna(0)
+
+    # Clean cumulative season stats
+    if not season_stats_df.empty:
+        if "player_name" in season_stats_df.columns:
+            season_stats_df["player_name"] = season_stats_df["player_name"].fillna("").apply(clean_person_name)
+        for col in ["season", "jersey_number", "captain_role", "position", "class_year", "height", "shoots", "hometown", "previous_team", "major", "head_coach", "goalie_minutes", "conf_goalie_minutes", "stats_url"]:
+            if col in season_stats_df.columns:
+                season_stats_df[col] = season_stats_df[col].fillna("None" if col == "captain_role" else "").astype(str)
+        num_cols = [
+            "is_captain", "is_alternate_captain", "is_leadership", "weight",
+            "gp", "goals", "assists", "points", "shots", "shot_pct", "plus_minus",
+            "ppg", "shg", "fg", "gwg", "gtg", "otg", "htg", "uag",
+            "penalties", "pim", "minor_penalties", "major_penalties", "other_penalties", "blocked_shots",
+            "conf_gp", "conf_goals", "conf_assists", "conf_points", "conf_shots", "conf_shot_pct",
+            "conf_plus_minus", "conf_ppg", "conf_shg", "conf_fg", "conf_gwg", "conf_gtg",
+            "conf_otg", "conf_htg", "conf_uag", "conf_penalties", "conf_pim", "conf_blocked_shots",
+            "goalie_gp", "goalie_gs", "ga", "gaa", "ppga", "shga", "enga", "saves", "save_pct",
+            "wins", "losses", "ties", "shutouts",
+            "conf_goalie_gp", "conf_goalie_gs", "conf_ga", "conf_gaa", "conf_saves", "conf_save_pct",
+            "conf_wins", "conf_losses", "conf_ties", "conf_shutouts",
+        ]
+        for col in num_cols:
+            if col in season_stats_df.columns:
+                season_stats_df[col] = pd.to_numeric(season_stats_df[col], errors="coerce").fillna(0)
+
+    # Standardize dates and sort all game-level DataFrames chronologically (1999 -> 2026+) using stable sort
     for df in [skater_df, goalie_df, goals_df, penalties_df, games_df, shootouts_df]:
         if not df.empty and "date" in df.columns:
             df["date"] = df["date"].apply(standardize_date)
             df.sort_values("date", kind="mergesort", inplace=True)
             df.reset_index(drop=True, inplace=True)
 
-    return skater_df, goalie_df, goals_df, penalties_df, games_df, shootouts_df
-
+    return skater_df, goalie_df, goals_df, penalties_df, games_df, shootouts_df, rosters_df, season_stats_df
 
 
 try:
-    df_skaters, df_goalies, df_goals, df_penalties, df_games, df_shootouts = load_data()
+    df_skaters, df_goalies, df_goals, df_penalties, df_games, df_shootouts, df_rosters, df_season_stats = load_data()
 except FileNotFoundError:
     st.error("Datasets not found. Please ensure CSV files are uploaded to the repository.")
     st.stop()
@@ -325,12 +369,25 @@ def extract_python_code(text: str) -> str:
     return text.strip()
 
 
-def run_python_code(code: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, df5: pd.DataFrame, df6: pd.DataFrame) -> str:
+def run_python_code(
+    code: str,
+    df1: pd.DataFrame,
+    df2: pd.DataFrame,
+    df3: pd.DataFrame,
+    df4: pd.DataFrame,
+    df5: pd.DataFrame,
+    df6: pd.DataFrame,
+    df7: pd.DataFrame,
+    df8: pd.DataFrame,
+) -> str:
     pd.set_option("display.max_colwidth", None)
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", 1000)
     pd.set_option("display.max_rows", 200)
-    local_env = {"df1": df1, "df2": df2, "df3": df3, "df4": df4, "df5": df5, "df6": df6, "pd": pd}
+    local_env = {
+        "df1": df1, "df2": df2, "df3": df3, "df4": df4,
+        "df5": df5, "df6": df6, "df7": df7, "df8": df8, "pd": pd,
+    }
     stdout_buf = io.StringIO()
     with contextlib.redirect_stdout(stdout_buf):
         tree = ast.parse(code, mode="exec")
@@ -357,15 +414,30 @@ def format_chat_history(messages: list, max_turns: int = 8) -> str:
     return "\n".join(lines)
 
 
-def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame, df4: pd.DataFrame, df5: pd.DataFrame, df6: pd.DataFrame, chat_history: list = None) -> str:
+def answer_question(
+    question: str,
+    df1: pd.DataFrame,
+    df2: pd.DataFrame,
+    df3: pd.DataFrame,
+    df4: pd.DataFrame,
+    df5: pd.DataFrame,
+    df6: pd.DataFrame,
+    df7: pd.DataFrame,
+    df8: pd.DataFrame,
+    chat_history: list = None,
+) -> str:
     all_opponents = sorted(set(df1["opponent"].dropna().unique()) | set(df2["opponent"].dropna().unique()) | (set(df5["opponent"].dropna().unique()) if not df5.empty else set()))
     history_text = format_chat_history(chat_history or [])
     code_prompt = (
         "You are a Python data analyst for Northeastern Men's Hockey.\n"
-        "Six pandas DataFrames are already loaded in memory:\n"
-        "1. `df1` (skaters): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'player_name', 'goals', 'assists', 'points', 'shots', 'plus_minus', 'penalties', 'penalty_minutes', 'faceoffs_won', 'faceoffs_lost', 'blocked_shots', 'gwg', 'boxscore_url']\n"
+        "Eight pandas DataFrames are already loaded in memory:\n"
+        "1. `df1` (game-by-game skaters): columns = ['date', 'season', 'opponent', 'nu_goals', 'opp_goals', 'player_name', 'position', 'class_year', 'captain_role', 'goals', 'assists', 'points', 'shots', 'plus_minus', 'penalties', 'penalty_minutes', 'faceoffs_won', 'faceoffs_lost', 'blocked_shots', 'gwg', 'is_overtime', 'is_shutout', 'boxscore_url']\n"
+        "   - `season`: Season string e.g. '2025-26', '2024-25', ..., '1999-00'\n"
+        "   - `position`: 'F' (Forward), 'D' (Defenseman), 'G' (Goalie)\n"
+        "   - `class_year`: 'Fr.', 'So.', 'Jr.', 'Sr.', 'Gr.'\n"
+        "   - `captain_role`: 'C' (Captain), 'A' (Alternate/Assistant Captain), or 'None'\n"
         "   - `gwg`: 1 if this skater scored the official Game-Winning Goal in this game, 0 otherwise\n"
-        "2. `df2` (goalies): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'goalie_name', 'decision', 'minutes', 'goals_against', 'empty_net_goals', 'saves', 'shots_against', 'save_pct', 'boxscore_url']\n"
+        "2. `df2` (game-by-game goalies): columns = ['date', 'season', 'opponent', 'nu_goals', 'opp_goals', 'goalie_name', 'class_year', 'captain_role', 'decision', 'minutes', 'goals_against', 'empty_net_goals', 'saves', 'shots_against', 'save_pct', 'shutouts', 'is_overtime', 'boxscore_url']\n"
         "3. `df3` (scoring events & timeline): columns = ['date', 'opponent', 'period', 'time', 'time_seconds', 'seconds_remaining', 'team', 'scorer', 'primary_assist', 'secondary_assist', 'strength', 'is_gwg', 'nu_score_after', 'opp_score_after', 'boxscore_url']\n"
         "   - `period`: Formatted as strings '1st', '2nd', '3rd', 'OT'. For third period, filter with `'3rd'`.\n"
         "   - `time`: Official box score timestamp showing TIME ELAPSED in the period ('MM:SS' like '19:59', or 'MM:SS.t' with tenths of a second in the final minute of modern games like '19:59.8', '19:59.7', '19:59.4').\n"
@@ -391,11 +463,32 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         "   - `goalie_team`: team defending the shootout attempt\n"
         "   - `goalie_name`: goaltender who faced the shot\n"
         "   - `shootout_winner`: team that won the shootout ('Northeastern' or opponent name)\n"
-        "   - `is_shootout_winner`: 1 if this specific attempt was the official winning/deciding shootout goal for the team that won the shootout, 0 otherwise\n\n"
+        "   - `is_shootout_winner`: 1 if this specific attempt was the official winning/deciding shootout goal for the team that won the shootout, 0 otherwise\n"
+        "7. `df7` (seasonal rosters, captains/alternates & player bios, 1999-00 to 2026-27): columns = ['season', 'jersey_number', 'player_name', 'captain_role', 'is_captain', 'is_alternate_captain', 'is_leadership', 'position', 'class_year', 'height', 'height_inches', 'weight', 'shoots', 'hometown', 'previous_team', 'previous_school', 'major', 'head_coach', 'roster_url']\n"
+        "   - `captain_role`: 'C' (Captain), 'A' (Alternate/Assistant Captain), 'None' (regular roster player)\n"
+        "   - `is_captain`: 1 if Captain ('C'), 0 otherwise\n"
+        "   - `is_alternate_captain`: 1 if Alternate Captain ('A'), 0 otherwise\n"
+        "   - `is_leadership`: 1 if Captain or Alternate Captain ('C' or 'A'), 0 otherwise\n"
+        "   - `position`: 'F', 'D', 'G'; `class_year`: 'Fr.', 'So.', 'Jr.', 'Sr.', 'Gr.'\n"
+        "   - `height` (e.g. '6-2'), `height_inches` (int inches, e.g. 74), `weight` (int lbs), `shoots` ('Left' or 'Right'), `hometown`, `previous_team`, `previous_school`, `major` (academic major), `head_coach` ('Bruce Crowder', 'Greg Cronin', 'Jim Madigan', 'Jerry Keefe')\n"
+        "8. `df8` (cumulative season skater & goalie stats — Overall & Hockey East Conference, 1999-00 to 2026-27): columns = ['season', 'jersey_number', 'player_name', 'captain_role', 'is_captain', 'is_alternate_captain', 'is_leadership', 'position', 'class_year', 'height', 'weight', 'shoots', 'hometown', 'previous_team', 'major', 'head_coach', 'gp', 'goals', 'assists', 'points', 'shots', 'shot_pct', 'plus_minus', 'ppg', 'shg', 'fg', 'gwg', 'gtg', 'otg', 'htg', 'uag', 'penalties', 'pim', 'minor_penalties', 'major_penalties', 'other_penalties', 'blocked_shots', 'conf_gp', 'conf_goals', 'conf_assists', 'conf_points', 'conf_shots', 'conf_shot_pct', 'conf_plus_minus', 'conf_ppg', 'conf_shg', 'conf_fg', 'conf_gwg', 'conf_gtg', 'conf_otg', 'conf_htg', 'conf_uag', 'conf_penalties', 'conf_pim', 'conf_blocked_shots', 'goalie_gp', 'goalie_gs', 'goalie_minutes', 'ga', 'gaa', 'ppga', 'shga', 'enga', 'saves', 'save_pct', 'wins', 'losses', 'ties', 'shutouts', 'conf_goalie_gp', 'conf_goalie_gs', 'conf_goalie_minutes', 'conf_ga', 'conf_gaa', 'conf_saves', 'conf_save_pct', 'conf_wins', 'conf_losses', 'conf_ties', 'conf_shutouts', 'stats_url']\n"
+        "   - Overall skater columns: `gp`, `goals`, `assists`, `points`, `shots`, `shot_pct`, `plus_minus`, `ppg` (power-play goals), `shg` (shorthanded goals), `fg` (first goals), `gwg` (game-winning goals), `gtg` (game-tying goals), `otg` (overtime goals), `htg` (hat tricks), `uag` (unassisted goals), `penalties`, `pim`, `minor_penalties`, `major_penalties`, `other_penalties`, `blocked_shots`\n"
+        "   - Hockey East Conference skater columns: `conf_gp`, `conf_goals`, `conf_assists`, `conf_points`, `conf_shots`, `conf_shot_pct`, `conf_plus_minus`, `conf_ppg`, `conf_shg`, `conf_fg`, `conf_gwg`, `conf_gtg`, `conf_otg`, `conf_htg`, `conf_uag`, `conf_penalties`, `conf_pim`, `conf_blocked_shots`\n"
+        "   - Overall goalie columns: `goalie_gp`, `goalie_gs` (games started), `goalie_minutes`, `ga`, `gaa` (goals against average), `ppga`, `shga`, `enga`, `saves`, `save_pct`, `wins`, `losses`, `ties`, `shutouts`\n"
+        "   - Hockey East Conference goalie columns: `conf_goalie_gp`, `conf_goalie_gs`, `conf_goalie_minutes`, `conf_ga`, `conf_gaa`, `conf_saves`, `conf_save_pct`, `conf_wins`, `conf_losses`, `conf_ties`, `conf_shutouts`\n\n"
         f"Valid standardized `opponent` names in the dataset: {all_opponents}\n\n"
         "Important conventions:\n"
         "- All player names are formatted as 'First Last' (e.g., 'Devon Levi', 'Adam Gaudette', 'Hunter McDonald', 'Aidan McDonough'). Always filter with `.str.contains(..., case=False, na=False)`.\n"
         "- `opponent` uses standardized school names (e.g., 'Boston University' for BU, 'Boston College' for BC, 'Massachusetts' for UMass, 'Massachusetts Lowell' for UMass Lowell / UML, 'Connecticut' for UConn, 'New Hampshire' for UNH, 'Rensselaer' for RPI).\n"
+        "- CAPTAINS (`C`) & ALTERNATE / ASSISTANT CAPTAINS (`A`):\n"
+        "  - Use `df7` (rosters) and `df8` (cumulative season stats) for season-level or career captain/alternate captain questions (e.g. 'Who were the captains in 2025-26?', 'Who are the captains for 2026-27?', 'Which captain scored the most points in a season?', 'How many goals did captains and alternate captains score by season?', 'Which players served as captain for multiple seasons?').\n"
+        "  - Filter Captains with `captain_role == 'C'` (or `is_captain == 1`), Alternate/Assistant Captains with `captain_role == 'A'` (or `is_alternate_captain == 1`), and all Leadership (Captains + Alternate Captains) with `captain_role.isin(['C', 'A'])` (or `is_leadership == 1`).\n"
+        "  - For single-game or opponent-specific captain/alternate captain questions (e.g. 'Most points in a game by a captain', 'Captain goals against BU'), use `df1` (which also has `season`, `captain_role`, `position`, and `class_year` on every game log!).\n"
+        "- CUMULATIVE SEASON STATS vs GAME-BY-GAME LOGS:\n"
+        "  - Prefer `df8` for full-season totals, career totals across seasons, Hockey East conference stats (`conf_*`), games played (`gp`), games started (`goalie_gs`), shooting percentage (`shot_pct`), power-play/shorthanded/first/game-tying/overtime/unassisted goals (`ppg`, `shg`, `fg`, `gtg`, `otg`, `uag`), hat tricks (`htg`), GAA (`gaa`), and stats broken down by position (`'F'`, `'D'`, `'G'`), class year (`'Fr.'`, `'So.'`, `'Jr.'`, `'Sr.'`, `'Gr.'`), or head coach.\n"
+        "  - Prefer `df1`–`df6` when filtering by a specific `opponent`, `date`, game outcome, period, timestamp, penalty infraction, or shootout.\n"
+        "- ROSTER & BIOGRAPHICAL QUERIES (`df7`):\n"
+        "  - Use `df7` for jersey numbers (`jersey_number`), height (`height`, `height_inches`), weight (`weight`), shooting/catching hand (`shoots`), hometown (`hometown`), previous junior/prep team (`previous_team`), previous school (`previous_school`), academic major (`major`), and head coach (`head_coach`).\n"
         "- In `df2`, `decision` is 'W' for win, 'L' for loss, 'T' for tie.\n"
         "- In `df3` and `df4`, `period` values are strings: `'1st'`, `'2nd'`, `'3rd'`, `'OT'`. When the user asks for 1st/2nd/3rd period, match `'1st'`, `'2nd'`, or `'3rd'` (not numbers like `3` or words like `'third'`).\n"
         "- TIMED GOALS & LAST-SECOND / BUZZER-BEATER GOALS: In `df3`, `time` is TIME ELAPSED in the period ('00:01' is 1 second INTO the period, whereas '19:59' or '19:59.8' is the LAST SECOND of a regulation period). Because modern box scores include tenths of a second in the final minute ('19:59.4', '19:59.7', '19:59.8') while legacy box scores use '19:59', NEVER use exact equality `df3['time'] == '19:59'` or `int()` on split time strings! Instead, ALWAYS use the precomputed numeric columns `seconds_remaining` and `time_seconds` (or `.str.startswith()`):\n"
@@ -409,16 +502,16 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         "- SHOOTOUT WINNERS & WINNING SHOOTOUT GOALS: In `df6`, `result == 'MADE'` ONLY means a player made their individual shootout attempt — a player can score (`result == 'MADE'`) in a shootout that their team LOST (e.g., Dylan Hryckowian made a Round 2 attempt against Boston University on 2026-02-02, but BU won that shootout 2-1 on Cole Hutson's Round 3 goal). NEVER filter `result == 'MADE'` alone when asked for a **winning shootout goal** (or shootout winner / deciding shootout goal)! Instead, ALWAYS filter `df6['is_shootout_winner'] == 1`. When asked for the most recent winning shootout goal, print BOTH:\n"
         "  1. Most recent Northeastern winning shootout goal: `df6[(df6['is_shootout_winner'] == 1) & (df6['shooter_team'] == 'Northeastern')].tail(1)`\n"
         "  2. Most recent winning shootout goal overall (including opponents): `df6[df6['is_shootout_winner'] == 1].tail(1)` and all attempts from that shootout game so the full context is clear.\n"
-        "- DATES & CHRONOLOGICAL ORDERING: In all DataFrames (`df1` to `df6`), `date` is standardized in ISO format `'YYYY-MM-DD'` (e.g., `'2026-10-31'`) and pre-sorted in ascending chronological order from oldest (1999) to newest (2026).\n"
+        "- DATES & CHRONOLOGICAL ORDERING: In all game-level DataFrames (`df1` to `df6`), `date` is standardized in ISO format `'YYYY-MM-DD'` (e.g., `'2026-03-14'`) and pre-sorted in ascending chronological order from oldest (1999) to newest (2026).\n"
         "  - For the MOST RECENT game in the dataset, simply inspect `df5.iloc[-1]` (or `df5.tail(1)`).\n"
         "  - For the EARLIEST game in the dataset, inspect `df5.iloc[0]` (or `df5.head(1)`).\n"
         "  - For the most recent game against a specific opponent, filter and take `.tail(1)`: e.g. `df5[df5['opponent'] == 'Boston College'].tail(1)`.\n"
         "  - When filtering or sorting by date, you can compare strings directly (e.g. `df5['date'] >= '2026-01-01'`) or use `pd.to_datetime(df['date'])`.\n"
-        "- CONVERSATION CONTEXT: Use the Recent Conversation History below to resolve pronouns or omitted context in follow-up questions (e.g., 'How many goals did he have?', 'What about against BU?', 'Who had the shootout winner?').\n"
+        "- CONVERSATION CONTEXT: Use the Recent Conversation History below to resolve pronouns or omitted context in follow-up questions (e.g., 'How many goals did he have?', 'What about against BU?', 'Who were the alternate captains that year?').\n"
         "- CRITICAL EXISTENCE CHECK: Never blindly run `.sum()` or `.count()` on a filtered DataFrame without checking if the player and opponent actually exist! If the user asks about a specific player/goalie and/or opponent:\n"
-        "  1. Check if the player name appears in `df1['player_name']`, `df2['goalie_name']`, `df3['scorer']`, `df4['player_name']`, `df6['shooter_name']`, or `df6['goalie_name']`. Print `player_exists: True/False`.\n"
+        "  1. Check if the player name appears in `df1['player_name']`, `df2['goalie_name']`, `df3['scorer']`, `df4['player_name']`, `df6['shooter_name']`, `df6['goalie_name']`, `df7['player_name']`, or `df8['player_name']`. Print `player_exists: True/False`.\n"
         "  2. Check if the opponent appears in `df1['opponent']`, `df2['opponent']`, or `df5['opponent']`. Print `opponent_exists: True/False`.\n"
-        "  3. Only if both exist, filter and print the requested stats (include `boxscore_url` if relevant for game lookups).\n\n"
+        "  3. Only if both exist, filter and print the requested stats (include `boxscore_url`, `roster_url`, or `stats_url` if relevant).\n\n"
         f"Recent Conversation History:\n{history_text}\n\n"
         "Write ONLY a single ```python ... ``` code block that performs these checks and uses `print()` to output the results.\n\n"
         f"Current User Question: {question}"
@@ -428,7 +521,7 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
     code = extract_python_code(message_to_text(msg))
 
     try:
-        execution_output = run_python_code(code, df1, df2, df3, df4, df5, df6)
+        execution_output = run_python_code(code, df1, df2, df3, df4, df5, df6, df7, df8)
     except Exception as err:
         retry_prompt = (
             f"{code_prompt}\n\nYour previous code:\n```python\n{code}\n```\n"
@@ -437,7 +530,7 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         )
         msg_retry = llm.invoke(retry_prompt)
         code = extract_python_code(message_to_text(msg_retry))
-        execution_output = run_python_code(code, df1, df2, df3, df4, df5, df6)
+        execution_output = run_python_code(code, df1, df2, df3, df4, df5, df6, df7, df8)
 
     final_prompt = (
         "You are a friendly, knowledgeable Northeastern Men's Hockey statistics assistant speaking to hockey fans.\n"
@@ -446,13 +539,13 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         f"Computed Result from Historical Dataset (1999–present):\n{execution_output}\n\n"
         "Instructions:\n"
         "- Provide a clear, accurate, and conversational answer based strictly on the computed result above, taking into account the conversation history.\n"
-        "- If a box score URL is available in the computed result for a specific game lookup, provide it as a markdown link: [View Official Box Score](<url>).\n"
+        "- If a box score URL, roster URL, or season stats URL is available in the computed result for a specific lookup, provide it as a markdown link (e.g., [View Official Box Score](<url>), [View Official Roster](<url>), or [View Official Season Stats](<url>)).\n"
         "- If a user asks about blocked shots or faceoffs for seasons prior to 2012–13, politely inform them that in-game blocked shots and faceoffs were not officially recorded by the NCAA or Northeastern prior to the 2012–13 season.\n"
         "- If a user asks about game-by-game stats prior to October 1999, clarify that digital athletic box score archives begin with the 1999–00 season.\n"
         "- If no records exist for the requested player, opponent, or matchup (e.g., `player_exists: False`, `opponent_exists: False`, or 0 matching games), NEVER claim the player recorded 0 stats in that matchup. Instead, clearly state that you didn't find any records for that player and/or against that school in the historical dataset (1999–present), and ask the user to confirm the player or school name.\n"
-        "- NEVER mention internal variable names like `df1`, `df2`, `df3`, `df4`, `df5`, `df6`, `player_exists`, `opponent_exists`, pandas DataFrames, CSV files, or Python code.\n"
-        "- Instead, refer naturally to 'skater statistics', 'goalie statistics', 'scoring summary', 'penalty infractions', 'game results & overtime', or 'shootout attempts' from Northeastern Athletics archives.\n"
-        "- If the user is just saying hello or asking what you can do, greet them warmly and suggest a few exciting example questions (e.g., 'Who scored the game-winning goal against BU in the Beanpot?', 'Which games went to overtime or shootouts?', 'How many shutouts did Devon Levi record?', 'Who made or missed shootout attempts against Boston College?', or 'Show me the team\\'s top goal scorers vs. Maine.')."
+        "- NEVER mention internal variable names like `df1`, `df2`, `df3`, `df4`, `df5`, `df6`, `df7`, `df8`, `player_exists`, `opponent_exists`, pandas DataFrames, CSV files, or Python code.\n"
+        "- Instead, refer naturally to 'skater statistics', 'goalie statistics', 'scoring summary', 'penalty infractions', 'game results & overtime', 'shootout attempts', 'team rosters & captaincy history', or 'cumulative season & Hockey East statistics' from Northeastern Athletics archives.\n"
+        "- If the user is just saying hello or asking what you can do, greet them warmly and suggest a few exciting example questions (e.g., 'Who were the captains and alternate captains in 2025-26, and how many points did they score?', 'Which captain had the highest-scoring season since 1999?', 'Who scored the game-winning goal against BU in the Beanpot?', 'How many Hockey East conference points did Aidan McDonough have?', or 'How many shutouts did Devon Levi record?')."
     )
     final_msg = llm.invoke(final_prompt)
     return message_to_text(final_msg)
@@ -470,19 +563,31 @@ for msg in st.session_state.messages:
         st.markdown(msg["content"])
 
 # 6. Capture User Input and Process the Query
-if prompt := st.chat_input("e.g. Who scored the game-winning goal against BC in 2023?"):
+if prompt := st.chat_input("e.g. Who scored the most points as a captain, or who scored the GWG against BC in 2023?"):
     prior_history = list(st.session_state.messages)
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
     with st.chat_message("assistant", avatar=assistant_avatar):
-        with st.spinner("Querying the historical box scores..."):
+        with st.spinner("Querying the historical archives..."):
             try:
-                response = answer_question(prompt, df_skaters, df_goalies, df_goals, df_penalties, df_games, df_shootouts, chat_history=prior_history)
+                response = answer_question(
+                    prompt,
+                    df_skaters,
+                    df_goalies,
+                    df_goals,
+                    df_penalties,
+                    df_games,
+                    df_shootouts,
+                    df_rosters,
+                    df_season_stats,
+                    chat_history=prior_history,
+                )
                 st.markdown(response)
                 st.session_state.messages.append({"role": "assistant", "content": response})
             except Exception as e:
                 error_msg = f"Sorry, I encountered an error running that calculation: {e}"
                 st.error(error_msg)
                 st.session_state.messages.append({"role": "assistant", "content": error_msg})
+

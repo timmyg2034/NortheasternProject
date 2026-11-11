@@ -45,13 +45,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          # Stage all 6 CSV datasets
+          # Stage all 8 CSV datasets
           git add northeastern_hockey_stats_mcp.csv \
                   northeastern_goalie_stats.csv \
                   northeastern_goal_events.csv \
                   northeastern_penalty_events.csv \
                   northeastern_game_results.csv \
-                  northeastern_shootout_events.csv
+                  northeastern_shootout_events.csv \
+                  northeastern_rosters.csv \
+                  northeastern_season_stats.csv
           
           if ! git diff --cached --quiet; then
             TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M UTC")
