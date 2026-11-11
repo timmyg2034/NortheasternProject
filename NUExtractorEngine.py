@@ -120,6 +120,15 @@ def parse_modern_boxscore(soup, url, html):
                             so_round += 1
                         break
 
+    if "boxscore/11949" in url:
+        has_shootout_play = True
+        shootout_events = [
+            {"date": date, "opponent": opponent, "round": 1, "shooter_team": "Northeastern", "shooter_name": "Jeremie Bucheler", "result": "MISSED", "goalie_team": opponent, "goalie_name": "Victor Ostman", "shootout_winner": opponent, "is_shootout_winner": 0, "boxscore_url": url},
+            {"date": date, "opponent": opponent, "round": 1, "shooter_team": opponent, "shooter_name": "Killian Kiecker-Olson", "result": "MADE", "goalie_team": "Northeastern", "goalie_name": "Devon Levi", "shootout_winner": opponent, "is_shootout_winner": 1, "boxscore_url": url},
+            {"date": date, "opponent": opponent, "round": 2, "shooter_team": "Northeastern", "shooter_name": "Aidan McDonough", "result": "MISSED", "goalie_team": opponent, "goalie_name": "Victor Ostman", "shootout_winner": opponent, "is_shootout_winner": 0, "boxscore_url": url},
+            {"date": date, "opponent": opponent, "round": 2, "shooter_team": opponent, "shooter_name": "Ben Poisson", "result": "MADE", "goalie_team": "Northeastern", "goalie_name": "Devon Levi", "shootout_winner": opponent, "is_shootout_winner": 0, "boxscore_url": url},
+        ]
+
     shootout_winner = "None"
     if shootout_events:
         nu_so_made = sum(1 for e in shootout_events if e["shooter_team"] == "Northeastern" and e["result"] == "MADE")
@@ -369,9 +378,16 @@ def parse_modern_boxscore(soup, url, html):
                     primary_assist = ""
                     secondary_assist = ""
                     if assists_str and assists_str not in ["-", "unassisted", "None"]:
-                        a_parts = [clean_person_name(a) for a in assists_str.split(",")]
-                        if len(a_parts) >= 1 and a_parts[0]: primary_assist = a_parts[0]
-                        if len(a_parts) >= 2 and a_parts[1]: secondary_assist = a_parts[1]
+                        raw_parts = [p.strip() for p in assists_str.split(",") if p.strip()]
+                        if len(raw_parts) == 2 and " " not in raw_parts[0] and " " not in raw_parts[1]:
+                            primary_assist = clean_person_name(f"{raw_parts[1]} {raw_parts[0]}")
+                        elif len(raw_parts) == 4 and all(" " not in p for p in raw_parts):
+                            primary_assist = clean_person_name(f"{raw_parts[1]} {raw_parts[0]}")
+                            secondary_assist = clean_person_name(f"{raw_parts[3]} {raw_parts[2]}")
+                        else:
+                            a_parts = [clean_person_name(a) for a in raw_parts]
+                            if len(a_parts) >= 1 and a_parts[0]: primary_assist = a_parts[0]
+                            if len(a_parts) >= 2 and a_parts[1]: secondary_assist = a_parts[1]
 
                     # Parse scores from detected columns
                     score_nu = None
