@@ -681,7 +681,7 @@ def parse_legacy_boxscore(soup, url, html):
     seen_legacy_goals = set()
     for t in leaf_tables:
         txt = t.get_text()
-        if "Scoring Summary" in txt and "Scored by" in txt:
+        if "Scored by" in txt and "Prd" in txt:
             nu_running = 0
             opp_running = 0
             gwg_goal_num = (opp_goals + 1) if nu_goals > opp_goals else -1
@@ -760,7 +760,7 @@ def parse_legacy_boxscore(soup, url, html):
     in_pen_section = False
     for t in leaf_tables:
         txt = t.get_text()
-        if "Penalty Summary" in txt and "Offense" in txt:
+        if "Offense" in txt and "Player" in txt and "Prd" in txt:
             for r in t.find_all("tr"):
                 cols = [c.get_text(strip=True) for c in r.find_all(["td", "th"])]
                 if cols and cols[0] == "Prd" and "Player" in cols and "Offense" in cols:
