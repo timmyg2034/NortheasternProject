@@ -27,11 +27,30 @@ SO_PATTERN = re.compile(
 def clean_person_name(name):
     name = str(name).strip()
     name = re.sub(r'^[*\s\d]+', '', name).strip()
+    name = re.sub(r'/\d+$', '', name).strip()
     if "," in name:
         parts = [p.strip() for p in name.split(",", 1)]
         if len(parts) == 2 and parts[0] and parts[1]:
-            return f"{parts[1]} {parts[0]}"
-    return name
+            name = f"{parts[1]} {parts[0]}"
+    tokens = name.split()
+    fixed = [t.capitalize() if (len(t) > 2 and t.isupper()) else t for t in tokens]
+    return " ".join(fixed)
+
+
+def parse_period_time(period: str, time_str: str):
+    """Returns (time_seconds, seconds_remaining) for a hockey period timestamp."""
+    t_str = str(time_str).strip()
+    if not re.match(r'^\d{1,2}:\d{2}(?:\.\d+)?$', t_str):
+        return 0.0, 0.0
+    m_str, s_str = t_str.split(":", 1)
+    t_sec = round(int(m_str) * 60 + float(s_str), 1)
+    prd = str(period).strip()
+    if prd in ("1st", "2nd", "3rd"):
+        sec_rem = round(max(0.0, 1200.0 - t_sec), 1)
+    else:
+        prd_len = 300.0 if t_sec <= 300.0 else 1200.0
+        sec_rem = round(max(0.0, prd_len - t_sec), 1)
+    return t_sec, sec_rem
 
 
 def url_to_filename(url: str) -> str:
@@ -390,11 +409,14 @@ def parse_modern_boxscore(soup, url, html):
                                     s["gwg"] = 1
                                     break
 
+                    t_sec, sec_rem = parse_period_time(prd, time_str)
                     goal_events.append({
                         "date": date,
                         "opponent": opponent,
                         "period": prd,
                         "time": time_str,
+                        "time_seconds": t_sec,
+                        "seconds_remaining": sec_rem,
                         "team": team,
                         "scorer": scorer,
                         "primary_assist": primary_assist,
@@ -627,6 +649,7 @@ def parse_legacy_boxscore(soup, url, html):
 
     # 3. PARSE SCORING SUMMARY
     goal_events = []
+    seen_legacy_goals = set()
     for t in soup.find_all("table"):
         txt = t.get_text()
         if "Scoring Summary" in txt and "Scored by" in txt:
@@ -639,11 +662,20 @@ def parse_legacy_boxscore(soup, url, html):
                 cols = [c.get_text(strip=True) for c in r.find_all(["td", "th"])]
                 if len(cols) >= 6 and cols[0] != "#" and re.match(r'^(?:1st|2nd|3rd|ot|2ot|3ot)\b', cols[1].strip(), re.IGNORECASE):
                     prd = cols[1].strip()
-                    time_str = cols[2]
+                    time_str = cols[2].strip()
+                    if not re.match(r'^\d{1,2}:\d{2}(?:\.\d+)?$', time_str):
+                        continue
                     team_code = cols[3]
-                    strength = cols[4] if len(cols) > 4 else "EVEN"
+                    strength = cols[4].strip().upper() if len(cols) > 4 else "EV"
+                    if strength == "EVEN":
+                        strength = "EV"
                     raw_scorer = cols[5] if len(cols) > 5 else ""
                     scorer = clean_person_name(re.sub(r'/\d+', '', raw_scorer))
+                    dedup_key = (prd, time_str, scorer.lower())
+                    if dedup_key in seen_legacy_goals:
+                        continue
+                    seen_legacy_goals.add(dedup_key)
+
                     assists_str = cols[6] if len(cols) > 6 else ""
 
                     if re.match(r'^(?:ot|2ot|3ot)\b', prd, re.IGNORECASE):
@@ -654,7 +686,9 @@ def parse_legacy_boxscore(soup, url, html):
                     primary_assist = ""
                     secondary_assist = ""
                     if assists_str and assists_str not in ["-", "unassisted", "None"]:
-                        a_tokens = [clean_person_name(x) for x in re.split(r'[,;]|\s{2,}', assists_str) if x.strip()]
+                        a_tokens = [clean_person_name(re.sub(r'/\d+', '', x)) for x in re.split(r';|\s{2,}|(?<=/\d),\s*|(?<=/\d\d),\s*', assists_str) if x.strip()]
+                        if len(a_tokens) == 1 and "," in a_tokens[0]:
+                            a_tokens = [clean_person_name(x) for x in a_tokens[0].split(",") if x.strip()]
                         if len(a_tokens) >= 1: primary_assist = a_tokens[0]
                         if len(a_tokens) >= 2: secondary_assist = a_tokens[1]
 
@@ -672,11 +706,14 @@ def parse_legacy_boxscore(soup, url, html):
                                 s["gwg"] = 1
                                 break
 
+                    t_sec, sec_rem = parse_period_time(prd, time_str)
                     goal_events.append({
                         "date": date,
                         "opponent": opponent,
                         "period": prd,
                         "time": time_str,
+                        "time_seconds": t_sec,
+                        "seconds_remaining": sec_rem,
                         "team": "Northeastern" if is_nu else opponent,
                         "scorer": scorer,
                         "primary_assist": primary_assist,
@@ -915,7 +952,7 @@ async def run_pipeline():
         for r in all_goals:
             r["date"] = standardize_date(r.get("date", ""))
         all_goals.sort(key=lambda x: x.get("date", ""))
-        goal_keys = ["date", "opponent", "period", "time", "team", "scorer", "primary_assist", "secondary_assist", "strength", "is_gwg", "nu_score_after", "opp_score_after", "boxscore_url"]
+        goal_keys = ["date", "opponent", "period", "time", "time_seconds", "seconds_remaining", "team", "scorer", "primary_assist", "secondary_assist", "strength", "is_gwg", "nu_score_after", "opp_score_after", "boxscore_url"]
         with open(goals_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=goal_keys)
             w.writeheader()

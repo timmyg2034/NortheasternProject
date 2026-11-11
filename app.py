@@ -187,12 +187,17 @@ def load_data():
 
     # Clean goals
     if not goals_df.empty:
+        if "time" in goals_df.columns:
+            goals_df["time"] = goals_df["time"].fillna("").astype(str).str.strip()
+            goals_df = goals_df[goals_df["time"].str.match(r"^\d{1,2}:\d{2}(?:\.\d+)?$")].copy()
         if "opponent" in goals_df.columns:
             goals_df["opponent"] = goals_df["opponent"].fillna("").apply(clean_opponent_name)
+        if "team" in goals_df.columns:
+            goals_df["team"] = goals_df["team"].fillna("").apply(lambda x: clean_opponent_name(x) if x != "Northeastern" else x)
         for c in ["scorer", "primary_assist", "secondary_assist"]:
             if c in goals_df.columns:
                 goals_df[c] = goals_df[c].fillna("").apply(clean_person_name)
-        for col in ["is_gwg", "nu_score_after", "opp_score_after"]:
+        for col in ["time_seconds", "seconds_remaining", "is_gwg", "nu_score_after", "opp_score_after"]:
             if col in goals_df.columns:
                 goals_df[col] = pd.to_numeric(goals_df[col], errors="coerce").fillna(0)
 
@@ -200,6 +205,8 @@ def load_data():
     if not penalties_df.empty:
         if "opponent" in penalties_df.columns:
             penalties_df["opponent"] = penalties_df["opponent"].fillna("").apply(clean_opponent_name)
+        if "team" in penalties_df.columns:
+            penalties_df["team"] = penalties_df["team"].fillna("").apply(lambda x: clean_opponent_name(x) if x != "Northeastern" else x)
         if "player_name" in penalties_df.columns:
             penalties_df["player_name"] = penalties_df["player_name"].fillna("").apply(clean_person_name)
         # Exclude TEAM, TM, bench minors, and formatting artifacts from player penalties
@@ -245,11 +252,11 @@ def load_data():
         if "is_shootout_winner" in shootouts_df.columns:
             shootouts_df["is_shootout_winner"] = pd.to_numeric(shootouts_df["is_shootout_winner"], errors="coerce").fillna(0)
 
-    # Standardize dates and sort all DataFrames chronologically (1999 -> 2026+)
+    # Standardize dates and sort all DataFrames chronologically (1999 -> 2026+) using stable sort
     for df in [skater_df, goalie_df, goals_df, penalties_df, games_df, shootouts_df]:
         if not df.empty and "date" in df.columns:
             df["date"] = df["date"].apply(standardize_date)
-            df.sort_values("date", inplace=True)
+            df.sort_values("date", kind="mergesort", inplace=True)
             df.reset_index(drop=True, inplace=True)
 
     return skater_df, goalie_df, goals_df, penalties_df, games_df, shootouts_df
@@ -355,9 +362,12 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         "1. `df1` (skaters): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'player_name', 'goals', 'assists', 'points', 'shots', 'plus_minus', 'penalties', 'penalty_minutes', 'faceoffs_won', 'faceoffs_lost', 'blocked_shots', 'gwg', 'boxscore_url']\n"
         "   - `gwg`: 1 if this skater scored the official Game-Winning Goal in this game, 0 otherwise\n"
         "2. `df2` (goalies): columns = ['date', 'opponent', 'nu_goals', 'opp_goals', 'goalie_name', 'decision', 'minutes', 'goals_against', 'empty_net_goals', 'saves', 'shots_against', 'save_pct', 'boxscore_url']\n"
-        "3. `df3` (scoring events & timeline): columns = ['date', 'opponent', 'period', 'time', 'team', 'scorer', 'primary_assist', 'secondary_assist', 'strength', 'is_gwg', 'nu_score_after', 'opp_score_after', 'boxscore_url']\n"
+        "3. `df3` (scoring events & timeline): columns = ['date', 'opponent', 'period', 'time', 'time_seconds', 'seconds_remaining', 'team', 'scorer', 'primary_assist', 'secondary_assist', 'strength', 'is_gwg', 'nu_score_after', 'opp_score_after', 'boxscore_url']\n"
         "   - `period`: Formatted as strings '1st', '2nd', '3rd', 'OT'. For third period, filter with `'3rd'`.\n"
-        "   - `strength`: 'EV', 'PP', 'SH', 'EN'\n"
+        "   - `time`: Official box score timestamp showing TIME ELAPSED in the period ('MM:SS' like '19:59', or 'MM:SS.t' with tenths of a second in the final minute of modern games like '19:59.8', '19:59.7', '19:59.4').\n"
+        "   - `time_seconds`: Float of seconds elapsed in the period (0.0 to 1200.0 in regulation periods '1st'/'2nd'/'3rd'; 0.0 to 300.0 in regular-season 'OT', or up to 1200.0 in 20-minute playoff 'OT'). E.g. '19:59' = 1199.0, '19:59.8' = 1199.8.\n"
+        "   - `seconds_remaining`: Float of seconds remaining on the game clock in that period (e.g. 1.0 for '19:59', 0.2 for '19:59.8', 0.3 for '19:59.7', 0.6 for '19:59.4').\n"
+        "   - `strength`: 'EV', 'PP', 'SH', 'EN', 'EX'\n"
         "   - `is_gwg`: 1 if this specific goal was the official Game-Winning Goal, 0 otherwise\n"
         "4. `df4` (penalty events & infractions): columns = ['date', 'opponent', 'period', 'time', 'team', 'player_name', 'penalty_minutes', 'infraction', 'boxscore_url']\n"
         "   - `period`: Formatted as strings '1st', '2nd', '3rd', 'OT'.\n"
@@ -384,6 +394,13 @@ def answer_question(question: str, df1: pd.DataFrame, df2: pd.DataFrame, df3: pd
         "- `opponent` uses standardized school names (e.g., 'Boston University' for BU, 'Boston College' for BC, 'Massachusetts' for UMass, 'Massachusetts Lowell' for UMass Lowell / UML, 'Connecticut' for UConn, 'New Hampshire' for UNH, 'Rensselaer' for RPI).\n"
         "- In `df2`, `decision` is 'W' for win, 'L' for loss, 'T' for tie.\n"
         "- In `df3` and `df4`, `period` values are strings: `'1st'`, `'2nd'`, `'3rd'`, `'OT'`. When the user asks for 1st/2nd/3rd period, match `'1st'`, `'2nd'`, or `'3rd'` (not numbers like `3` or words like `'third'`).\n"
+        "- TIMED GOALS & LAST-SECOND / BUZZER-BEATER GOALS: In `df3`, `time` is TIME ELAPSED in the period ('00:01' is 1 second INTO the period, whereas '19:59' or '19:59.8' is the LAST SECOND of a regulation period). Because modern box scores include tenths of a second in the final minute ('19:59.4', '19:59.7', '19:59.8') while legacy box scores use '19:59', NEVER use exact equality `df3['time'] == '19:59'` or `int()` on split time strings! Instead, ALWAYS use the precomputed numeric columns `seconds_remaining` and `time_seconds` (or `.str.startswith()`):\n"
+        "  - Goals in the **last second of the game (3rd period)**: filter `df3[(df3['period'] == '3rd') & (df3['seconds_remaining'] <= 1.0)]` (which captures all goals at 19:59 through 19:59.9!). Also check late overtime goals with `df3[(df3['period'] == 'OT') & (df3['seconds_remaining'] <= 5.0)]`.\n"
+        "  - Goals in the **last second of ANY period**: filter `df3[df3['seconds_remaining'] <= 1.0]`.\n"
+        "  - Goals in the **final N seconds / final minute**: filter `df3['seconds_remaining'] <= N` (e.g. `<= 10.0` for final 10 seconds, `<= 60.0` for final minute).\n"
+        "  - **Fastest goals** to start a game or period: filter or sort by `df3['time_seconds']` ascending.\n"
+        "  - Goals at a **specific timestamp** (e.g. '19:59'): use `df3['time'].str.startswith('19:59')` so both `'19:59'` and `'19:59.x'` match.\n"
+        "  - When printing timed goal results, print `['date', 'opponent', 'period', 'time', 'seconds_remaining', 'team', 'scorer', 'strength', 'nu_score_after', 'opp_score_after', 'boxscore_url']` and separate Northeastern goals (`team == 'Northeastern'`) from opponent goals (`team != 'Northeastern'`) so both are clear.\n"
         "- PENALTIES & BENCH MINORS: In `df4`, `infraction` records the specific penalty type (e.g. 'ROUGHING', 'TRIPPING', 'SLASHING', 'HOOKING', 'INTERFERENCE', 'CROSS-CHECKING'). Never include 'TEAM', 'Team', or 'TM' as a player! Those are team bench minors (e.g. too many men on ice). When answering who had the most penalties or penalty minutes, only include actual human players.\n"
         "- SHOOTOUT WINNERS & WINNING SHOOTOUT GOALS: In `df6`, `result == 'MADE'` ONLY means a player made their individual shootout attempt — a player can score (`result == 'MADE'`) in a shootout that their team LOST (e.g., Dylan Hryckowian made a Round 2 attempt against Boston University on 2026-02-02, but BU won that shootout 2-1 on Cole Hutson's Round 3 goal). NEVER filter `result == 'MADE'` alone when asked for a **winning shootout goal** (or shootout winner / deciding shootout goal)! Instead, ALWAYS filter `df6['is_shootout_winner'] == 1`. When asked for the most recent winning shootout goal, print BOTH:\n"
         "  1. Most recent Northeastern winning shootout goal: `df6[(df6['is_shootout_winner'] == 1) & (df6['shooter_team'] == 'Northeastern')].tail(1)`\n"
