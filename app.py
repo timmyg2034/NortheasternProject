@@ -66,17 +66,47 @@ with st.expander("ℹ️ Data Sources & Coverage Disclaimer"):
     """)
 
 # 2. Securely Load the Gemini API Key
-api_key = None
+default_api_key = None
 try:
-    api_key = st.secrets.get("GEMINI_API_KEY")
+    default_api_key = st.secrets.get("GEMINI_API_KEY")
 except Exception:
     pass
-if not api_key:
-    api_key = os.getenv("GEMINI_API_KEY")
+if not default_api_key:
+    default_api_key = os.getenv("GEMINI_API_KEY")
 
+# Sidebar: API settings, session controls, and cache indicators
+with st.sidebar:
+    st.header("⚙️ Settings & API")
+    custom_api_key = st.text_input(
+        "Custom Gemini API Key (optional)",
+        type="password",
+        value=st.session_state.get("custom_gemini_api_key", ""),
+        help="If the shared daily quota is reached, supply your personal Google AI Studio API key here to bypass limits.",
+        key="custom_gemini_api_key_input",
+    )
+    if custom_api_key:
+        st.session_state["custom_gemini_api_key"] = custom_api_key.strip()
+    elif "custom_gemini_api_key" in st.session_state and not custom_api_key:
+        del st.session_state["custom_gemini_api_key"]
+
+    active_api_key = st.session_state.get("custom_gemini_api_key") or default_api_key
+    if st.session_state.get("custom_gemini_api_key"):
+        st.success("Using custom Gemini API key")
+    elif default_api_key:
+        st.caption("Using default shared Gemini API key")
+
+    cached_count = len(st.session_state.get("query_cache", {}))
+    st.caption(f"⚡ Queries cached this session: {cached_count}")
+
+    if st.button("🗑️ Clear Chat History"):
+        st.session_state.messages = []
+        st.rerun()
+
+api_key = active_api_key
 if not api_key:
-    st.warning("Please configure your GEMINI_API_KEY in the application secrets to enable the AI agent.")
+    st.warning("Please configure your GEMINI_API_KEY in application secrets or enter a personal API key in the sidebar.")
     st.stop()
+
 
 
 def clean_opponent_name(name):
@@ -389,6 +419,131 @@ fallback_llms = [
 llm = primary_llm.with_fallbacks(fallback_llms)
 
 
+@st.cache_resource
+def get_global_query_cache() -> dict:
+    """Persistent shared query cache across app reruns and user sessions."""
+    return {}
+
+
+def normalize_query_for_cache(prompt: str) -> str:
+    """Normalize query text for cache key matching."""
+    p = prompt.strip().lower()
+    p = re.sub(r"[?!.,;:]+$", "", p).strip()
+    p = re.sub(r"\s+", " ", p)
+    return p
+
+
+def get_cache_key(prompt: str, chat_history: list = None) -> str:
+    """Generate a cache key accounting for standalone queries vs conversational context."""
+    norm_prompt = normalize_query_for_cache(prompt)
+    if not chat_history:
+        return f"standalone::{norm_prompt}"
+    last_turn = chat_history[-1].get("content", "") if chat_history else ""
+    norm_last = normalize_query_for_cache(last_turn[:120])
+    return f"ctx::{norm_last}::{norm_prompt}"
+
+
+def check_cache(cache_key: str) -> str | None:
+    """Check session cache first, then global shared cache."""
+    # 1. Session state cache
+    session_cache = st.session_state.setdefault("query_cache", {})
+    if cache_key in session_cache:
+        return session_cache[cache_key]
+    # 2. Global shared cache
+    try:
+        g_cache = get_global_query_cache()
+        if cache_key in g_cache:
+            session_cache[cache_key] = g_cache[cache_key]
+            return g_cache[cache_key]
+    except Exception:
+        pass
+    return None
+
+
+def store_in_cache(cache_key: str, response: str):
+    """Store successful response in both session and global caches."""
+    if not response or not isinstance(response, str):
+        return
+    st.session_state.setdefault("query_cache", {})[cache_key] = response
+    try:
+        g_cache = get_global_query_cache()
+        g_cache[cache_key] = response
+    except Exception:
+        pass
+
+
+def classify_api_error(err: Exception) -> tuple[str, str]:
+    """
+    Classify an API exception into ('per_minute', msg), ('daily', msg), or ('generic', msg).
+    Provides actionable, clear user messages for Streamlit banners.
+    """
+    msg = str(err)
+    msg_lower = msg.lower()
+
+    is_exhausted = any(k in msg_lower for k in [
+        "429",
+        "resourceexhausted",
+        "resource_exhausted",
+        "quota",
+        "rate limit",
+        "ratelimit",
+        "too many requests",
+        "exhausted",
+    ])
+
+    if not is_exhausted:
+        return "generic", f"Sorry, I encountered an error running that calculation: {err}"
+
+    # Explicit daily quota indicators
+    is_daily = any(k in msg_lower for k in [
+        "per day",
+        "per_day",
+        "requests per day",
+        "requestsperday",
+        "daily",
+        "day limit",
+        "rpd",
+        "free tier limit",
+    ])
+
+    # Per-minute rate limit indicators
+    is_per_minute = any(k in msg_lower for k in [
+        "per minute",
+        "per_minute",
+        "requests per minute",
+        "requestsperminute",
+        "tokens per minute",
+        "tokensperminute",
+        "rpm",
+        "tpm",
+        "rate limit",
+        "ratelimit",
+        "retry after",
+        "retry_after",
+    ])
+
+    if is_per_minute and not is_daily:
+        friendly = (
+            "⏳ **High Traffic Alert — Per-Minute Rate Limit Reached**\n\n"
+            "The assistant has temporarily reached Google Gemini's per-minute request rate limit across our model ladder.\n\n"
+            "**What to do:**\n"
+            "- ⏱️ **Wait 30–60 seconds** and ask your question again — it will resume automatically.\n"
+            "- 🔑 **Custom API Key**: You can enter your own free Google Gemini API key in the left sidebar under **Settings & API** to bypass shared rate limits anytime."
+        )
+        return "per_minute", friendly
+
+    # Daily / general quota limit
+    friendly = (
+        "🏒 **Daily API Quota Limit Reached**\n\n"
+        "The Northeastern Men's Hockey assistant has reached its free daily Google Gemini API quota across all fallback models.\n\n"
+        "**What to do:**\n"
+        "- 🌅 **Reset Time**: The shared quota resets automatically every day at midnight Pacific Time (3:00 AM Eastern Time).\n"
+        "- 🔑 **Instant Access**: You can supply your own free Google Gemini API key in the left sidebar under **Custom Gemini API Key** to continue exploring stats immediately!"
+    )
+    return "daily", friendly
+
+
+
 def message_to_text(msg) -> str:
     content = msg.content if hasattr(msg, "content") else msg
     if isinstance(content, str):
@@ -632,16 +787,26 @@ def answer_question(
     return message_to_text(final_msg)
 
 
-# 5. Initialize Chat History in Session State
+# 5. Initialize Chat History & Cache in Session State
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "query_cache" not in st.session_state:
+    st.session_state.query_cache = {}
 
 assistant_avatar = LOGO_PATH if HAS_LOGO else None
 
 for msg in st.session_state.messages:
     avatar = assistant_avatar if msg["role"] == "assistant" else None
     with st.chat_message(msg["role"], avatar=avatar):
-        st.markdown(msg["content"])
+        if msg.get("is_error"):
+            if msg.get("error_type") == "per_minute":
+                st.warning(msg["content"])
+            else:
+                st.error(msg["content"])
+        else:
+            st.markdown(msg["content"])
+            if msg.get("cached"):
+                st.caption("⚡ *Retrieved from query cache*")
 
 # 6. Capture User Input and Process the Query
 if prompt := st.chat_input("e.g. Who scored the most points as a captain, or who scored the GWG against BC in 2023?"):
@@ -650,25 +815,47 @@ if prompt := st.chat_input("e.g. Who scored the most points as a captain, or who
     with st.chat_message("user"):
         st.markdown(prompt)
 
+    cache_key = get_cache_key(prompt, prior_history)
+    cached_response = check_cache(cache_key)
+
     with st.chat_message("assistant", avatar=assistant_avatar):
-        with st.spinner("Querying the historical archives..."):
-            try:
-                response = answer_question(
-                    prompt,
-                    df_skaters,
-                    df_goalies,
-                    df_goals,
-                    df_penalties,
-                    df_games,
-                    df_shootouts,
-                    df_rosters,
-                    df_season_stats,
-                    chat_history=prior_history,
-                )
-                st.markdown(response)
-                st.session_state.messages.append({"role": "assistant", "content": response})
-            except Exception as e:
-                error_msg = f"Sorry, I encountered an error running that calculation: {e}"
-                st.error(error_msg)
-                st.session_state.messages.append({"role": "assistant", "content": error_msg})
+        if cached_response:
+            st.markdown(cached_response)
+            st.caption("⚡ *Retrieved from query cache*")
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": cached_response,
+                "cached": True,
+            })
+        else:
+            with st.spinner("Querying the historical archives..."):
+                try:
+                    response = answer_question(
+                        prompt,
+                        df_skaters,
+                        df_goalies,
+                        df_goals,
+                        df_penalties,
+                        df_games,
+                        df_shootouts,
+                        df_rosters,
+                        df_season_stats,
+                        chat_history=prior_history,
+                    )
+                    st.markdown(response)
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                    store_in_cache(cache_key, response)
+                except Exception as e:
+                    err_type, friendly_msg = classify_api_error(e)
+                    if err_type == "per_minute":
+                        st.warning(friendly_msg)
+                    else:
+                        st.error(friendly_msg)
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": friendly_msg,
+                        "is_error": True,
+                        "error_type": err_type,
+                    })
+
 
