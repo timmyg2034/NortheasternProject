@@ -131,7 +131,7 @@ def _records(df) -> list[dict[str, Any]]:
     return df.fillna("").to_dict(orient="records")
 
 
-@app.get("/api/health")
+@app.api_route("/api/health", methods=["GET", "HEAD"])
 def health() -> dict[str, Any]:
     ds = _require_datasets()
     latest_game = str(ds.games["date"].iloc[-1]) if not ds.games.empty else None
@@ -839,9 +839,9 @@ if FRONTEND_DIST_DIR.is_dir():
     if assets_dir.is_dir():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
-    @app.get("/{full_path:path}", include_in_schema=False)
+    @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     def serve_spa(full_path: str):
-        if full_path.startswith("api/"):
+        if full_path.startswith("api/") or any(part.startswith(".") for part in full_path.split("/") if part):
             raise HTTPException(status_code=404, detail="Not found")
         candidate = (FRONTEND_DIST_DIR / full_path).resolve()
         if full_path and candidate.is_file() and candidate.is_relative_to(FRONTEND_DIST_DIR.resolve()):
