@@ -1243,6 +1243,7 @@ def parse_modern_roster_html(html: str, season: str, url: str) -> tuple[list[dic
                 "major": "",
                 "head_coach": HEAD_COACHES.get(season, ""),
                 "roster_url": url,
+                "image_url": "",
             }
 
     # 2. Also inspect Sidearm person cards for major / previous school / captain badge if present
@@ -1258,6 +1259,10 @@ def parse_modern_roster_html(html: str, season: str, url: str) -> tuple[list[dic
             if h_tag:
                 cname = clean_person_name(h_tag.get_text(" ", strip=True))
         if not cname:
+            img_tag = card.find("img", alt=True)
+            if img_tag:
+                cname = clean_person_name(re.sub(r"\s*-\s*View Profile.*$", "", img_tag["alt"], flags=re.IGNORECASE))
+        if not cname:
             continue
         pkey = normalize_player_key(cname)
         href = a_tag.get("href", "")
@@ -1266,6 +1271,12 @@ def parse_modern_roster_html(html: str, season: str, url: str) -> tuple[list[dic
 
         if pkey in players_by_key:
             rec = players_by_key[pkey]
+            img_tag = card.find("img")
+            if img_tag:
+                src = img_tag.get("data-src") or img_tag.get("src") or ""
+                if src and "placeholder" not in src.lower():
+                    src = re.sub(r"width=\d+", "width=300", src)
+                    rec["image_url"] = src if src.startswith("http") else f"https://nuhuskies.com{src}"
             # Look for major or previous school in card text
             lines = [ln.strip() for ln in card_text.split("\n") if ln.strip()]
             for i, ln in enumerate(lines):
@@ -2484,7 +2495,7 @@ async def run_pipeline():
             "season", "jersey_number", "player_name", "captain_role", "is_captain",
             "is_alternate_captain", "is_leadership", "position", "class_year",
             "height", "height_inches", "weight", "shoots", "hometown",
-            "previous_team", "previous_school", "major", "head_coach", "roster_url",
+            "previous_team", "previous_school", "major", "head_coach", "roster_url", "image_url",
         ]
         with open(rosters_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=roster_keys)

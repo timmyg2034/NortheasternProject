@@ -1,0 +1,1827 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import LegalModal from "./LegalModals.jsx";
+import BugReportModal from "./BugReportModal.jsx";
+import OPPONENT_LOGOS from "./opponentLogos.json";
+
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+
+const STARTER_QUESTIONS = [
+  "Who leads Northeastern in points this season?",
+  "What is our record against Boston University since 2015?",
+  "Who were the captains in 2025-26?",
+  "Who scored the most recent winning shootout goal?",
+  "How many shutouts did Devon Levi record?",
+];
+
+const HOCKEY_EAST_SET = new Set([
+  "Boston College",
+  "Boston University",
+  "Connecticut",
+  "Maine",
+  "Massachusetts",
+  "Massachusetts Lowell",
+  "Merrimack",
+  "New Hampshire",
+  "Providence",
+  "Vermont",
+]);
+
+function PawsIcon({ large = false }) {
+  return (
+    <img
+      src="/paws_logo.png"
+      alt=""
+      aria-hidden="true"
+      className={large ? "paws-icon-lg" : "paws-icon"}
+    />
+  );
+}
+
+function TrophyIcon() {
+  return (
+    <svg className="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6m12 5h1.5a2.5 2.5 0 0 0 0-5H18M6 4h12v6a6 6 0 0 1-12 0V4Zm6 12v4m-4 0h8" />
+    </svg>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg className="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2m8-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm14 10v-2a4 4 0 0 0-3-3.87m-4-12a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function SwordsIcon() {
+  return (
+    <svg className="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="11" cy="11" r="8" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
+function CaptainBadge({ role }) {
+  if (role === "C") return <span className="pill pill-c" title="Captain">C</span>;
+  if (role === "A") return <span className="pill pill-a" title="Alternate Captain">A</span>;
+  return null;
+}
+
+function OpponentLogo({ name, large = false }) {
+  const src = OPPONENT_LOGOS[name];
+  if (!src) return null;
+  return (
+    <img
+      src={src}
+      alt=""
+      aria-hidden="true"
+      className={large ? "opp-logo-lg" : "opp-logo-sm"}
+      loading="lazy"
+    />
+  );
+}
+
+function OutcomeBadge({ outcome }) {
+  if (outcome === "W") return <span className="pill pill-w">W</span>;
+  if (outcome === "L") return <span className="pill pill-l">L</span>;
+  return <span className="pill pill-t">{outcome || "T"}</span>;
+}
+
+function hasModernTracking(season) {
+  if (!season || season === "all") return true;
+  const yr = parseInt(String(season).slice(0, 4), 10);
+  return Number.isFinite(yr) && yr >= 2012;
+}
+
+function formatRatio3(num, den) {
+  const n = Number(num || 0);
+  const d = Number(den || 0);
+  if (!d) return null;
+  return (n / d).toFixed(3).replace(/^0/, "");
+}
+
+function formatPct3(won, lost) {
+  return formatRatio3(won, Number(won || 0) + Number(lost || 0));
+}
+
+export default function App() {
+  const [tab, setTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("tab");
+    return ["chat", "leaders", "roster", "rivalry"].includes(t) ? t : "chat";
+  });
+  const [seasons, setSeasons] = useState([]);
+  const [opponents, setOpponents] = useState([]);
+  const [selectedSeason, setSelectedSeason] = useState("");
+  const [health, setHealth] = useState(null);
+
+  // Chat state
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
+  const [drawerUseContext, setDrawerUseContext] = useState(true);
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
+  const [legalModal, setLegalModal] = useState(null); // "disclaimer" | "privacy" | "terms" | null
+  const [bugModalOpen, setBugModalOpen] = useState(false);
+  const messagesEndRef = useRef(null);
+  const drawerEndRef = useRef(null);
+
+  // Leaders / Stats state
+  const [leaders, setLeaders] = useState(null);
+  const [leadersLoading, setLeadersLoading] = useState(false);
+  const [leaderSort, setLeaderSort] = useState({ key: "points", dir: "desc" });
+  const [leaderScope, setLeaderScope] = useState("all");
+  const [leaderOpponent, setLeaderOpponent] = useState("");
+  const [statsView, setStatsView] = useState("players"); // "players" | "team"
+
+  // Roster state
+  const [roster, setRoster] = useState(null);
+  const [rosterLoading, setRosterLoading] = useState(false);
+  const [rosterSearch, setRosterSearch] = useState("");
+  const [rosterView, setRosterView] = useState("position"); // "position" | "all"
+
+  // Rivalry state
+  const [selectedRival, setSelectedRival] = useState("Boston University");
+  const [rivalryScope, setRivalryScope] = useState("all"); // "season" | "all"
+  const [rivalry, setRivalry] = useState(null);
+  const [rivalryLoading, setRivalryLoading] = useState(false);
+
+  // Player profile state
+  const [selectedPlayer, setSelectedPlayer] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("player") || null;
+  });
+  const [playerData, setPlayerData] = useState(null);
+  const [playerLoading, setPlayerLoading] = useState(false);
+  const [playerError, setPlayerError] = useState("");
+  const [playerScope, setPlayerScope] = useState("all");
+  const [playerLogSeason, setPlayerLogSeason] = useState("all");
+  const hasInAppHistory = useRef(false);
+
+  useEffect(() => {
+    // Seed initial history state so Mouse Button 4 / Back returns cleanly
+    window.history.replaceState({ tab, player: selectedPlayer }, "", window.location.href);
+
+    function handlePopState(e) {
+      const state = e.state;
+      if (state) {
+        setTab(state.tab || "chat");
+        setSelectedPlayer(state.player || null);
+      } else {
+        const params = new URLSearchParams(window.location.search);
+        const t = params.get("tab");
+        setTab(["chat", "leaders", "roster", "rivalry"].includes(t) ? t : "chat");
+        setSelectedPlayer(params.get("player") || null);
+      }
+      setPlayerError("");
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  function navigateTab(nextTab) {
+    if (nextTab === tab && !selectedPlayer) return;
+    hasInAppHistory.current = true;
+    setTab(nextTab);
+    setSelectedPlayer(null);
+    setPlayerData(null);
+    setPlayerError("");
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", nextTab);
+    url.searchParams.delete("player");
+    window.history.pushState({ tab: nextTab, player: null }, "", url.toString());
+  }
+
+  function openPlayer(name) {
+    hasInAppHistory.current = true;
+    setSelectedPlayer(name);
+    setPlayerScope("all");
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    url.searchParams.set("player", name);
+    window.history.pushState({ tab, player: name }, "", url.toString());
+  }
+
+  function closePlayer() {
+    if (hasInAppHistory.current) {
+      window.history.back();
+      return;
+    }
+    setSelectedPlayer(null);
+    setPlayerData(null);
+    setPlayerError("");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("player");
+    window.history.replaceState({ tab, player: null }, "", url.toString());
+  }
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/health`)
+      .then((r) => r.json())
+      .then((data) => setHealth(data))
+      .catch(() => {});
+
+    fetch(`${API_BASE}/api/seasons`)
+      .then((r) => r.json())
+      .then((data) => {
+        const s = data.seasons || [];
+        setSeasons(s);
+        setOpponents(data.opponents || []);
+        if (s.length > 0) setSelectedSeason(s[0]);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSeason) return;
+    if (tab === "leaders") {
+      setLeadersLoading(true);
+      const params = new URLSearchParams({
+        season: selectedSeason,
+        scope: leaderScope,
+        limit: "35",
+      });
+      if (leaderOpponent) {
+        params.set("opponent", leaderOpponent);
+      }
+      fetch(`${API_BASE}/api/leaders?${params.toString()}`)
+        .then((r) => r.json())
+        .then((data) => {
+          setLeaders(data);
+          if (leaderOpponent && !(data.opponents || []).includes(leaderOpponent)) {
+            setLeaderOpponent("");
+          }
+        })
+        .finally(() => setLeadersLoading(false));
+    } else if (tab === "roster") {
+      const rosterSeason = selectedSeason === "all" ? (seasons[0] || "") : selectedSeason;
+      if (selectedSeason === "all" && rosterSeason) {
+        setSelectedSeason(rosterSeason);
+      }
+      if (!rosterSeason) return;
+      setRosterLoading(true);
+      fetch(`${API_BASE}/api/roster?season=${encodeURIComponent(rosterSeason)}`)
+        .then((r) => r.json())
+        .then((data) => setRoster(data))
+        .finally(() => setRosterLoading(false));
+    }
+  }, [tab, selectedSeason, leaderScope, leaderOpponent, seasons]);
+
+  useEffect(() => {
+    if (tab !== "rivalry" || !selectedRival) return;
+    if (rivalryScope === "season" && !seasons[0]) return;
+    setRivalryLoading(true);
+    const params = new URLSearchParams({ opponent: selectedRival });
+    if (rivalryScope === "season" && seasons[0]) {
+      params.set("season", seasons[0]);
+    }
+    fetch(`${API_BASE}/api/rivalry?${params.toString()}`)
+      .then((r) => r.json())
+      .then((data) => setRivalry(data))
+      .finally(() => setRivalryLoading(false));
+  }, [tab, selectedRival, rivalryScope, seasons]);
+
+  useEffect(() => {
+    if (!selectedPlayer) return;
+    setPlayerLoading(true);
+    setPlayerError("");
+    fetch(`${API_BASE}/api/player?name=${encodeURIComponent(selectedPlayer)}`)
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.detail || "Player not found");
+        setPlayerData(data);
+        const logSeasons = Array.from(
+          new Set((data.game_logs || []).map((g) => g.season).filter(Boolean))
+        ).sort((a, b) => b.localeCompare(a));
+        setPlayerLogSeason(logSeasons[0] || "all");
+      })
+      .catch((err) => setPlayerError(err.message))
+      .finally(() => setPlayerLoading(false));
+  }, [selectedPlayer]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    drawerEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, chatLoading, chatDrawerOpen]);
+
+  const pageContext = useMemo(() => {
+    if (selectedPlayer) {
+      return `User is viewing Player Profile for ${selectedPlayer}.`;
+    }
+    if (tab === "leaders") {
+      return `User is viewing ${selectedSeason === "all" ? "All-Time" : selectedSeason} Leaders (${leaderScope === "conference" ? "Hockey East" : "All Games"}${leaderOpponent ? `, vs. ${leaderOpponent}` : ""}).`;
+    }
+    if (tab === "roster") {
+      return `User is viewing ${selectedSeason} Roster.`;
+    }
+    if (tab === "rivalry") {
+      return `User is viewing Opponent history vs. ${selectedRival}.`;
+    }
+    return null;
+  }, [selectedPlayer, tab, selectedSeason, leaderScope, leaderOpponent, selectedRival]);
+
+  const sortedSkaters = useMemo(() => {
+    if (!leaders?.skaters) return [];
+    const list = [...leaders.skaters];
+    const { key, dir } = leaderSort;
+    list.sort((a, b) => {
+      const av = Number(a[key] ?? 0);
+      const bv = Number(b[key] ?? 0);
+      return dir === "desc" ? bv - av : av - bv;
+    });
+    return list;
+  }, [leaders, leaderSort]);
+
+  const filteredRoster = useMemo(() => {
+    if (!roster?.players) return [];
+    const q = rosterSearch.trim().toLowerCase();
+    if (!q) return roster.players;
+    return roster.players.filter(
+      (p) =>
+        String(p.player_name || "").toLowerCase().includes(q) ||
+        String(p.jersey_number || "").toLowerCase().includes(q) ||
+        String(p.hometown || "").toLowerCase().includes(q) ||
+        String(p.position || "").toLowerCase().includes(q)
+    );
+  }, [roster, rosterSearch]);
+
+  function toggleSort(key) {
+    setLeaderSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "desc" ? "asc" : "desc" }
+        : { key, dir: "desc" }
+    );
+  }
+
+  async function sendQuestion(questionText) {
+    const q = questionText.trim();
+    if (!q || chatLoading) return;
+
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    setMessages((prev) => [...prev, { role: "user", content: q }]);
+    setInput("");
+    setChatLoading(true);
+
+    try {
+      const activeContext =
+        selectedPlayer || tab !== "chat"
+          ? (drawerUseContext ? pageContext : null)
+          : null;
+
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: q,
+          history,
+          context: activeContext,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || "Failed to fetch answer.");
+      }
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: data.answer, cached: data.cached },
+      ]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: `Sorry, something went wrong: ${err.message}` },
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
+  }
+
+  const hockeyEastOpponents = useMemo(
+    () => opponents.filter((o) => HOCKEY_EAST_SET.has(o)),
+    [opponents]
+  );
+  const otherOpponents = useMemo(
+    () => opponents.filter((o) => !HOCKEY_EAST_SET.has(o)),
+    [opponents]
+  );
+
+  return (
+    <div className="app-shell">
+      <div className="sticky-top">
+        <header className="app-header">
+          <div className="brand">
+            <img
+              src="/nu_husky_logo.png"
+              alt="Northeastern Huskies logo"
+              className="brand-logo"
+            />
+            <div>
+              <h1>Northeastern Men&apos;s Hockey</h1>
+              <p>
+                DogHouse Stats Explorer &bull; 1999&ndash;Present
+                {health?.games_count ? ` • ${health.games_count} Games` : ""}
+              </p>
+            </div>
+          </div>
+          {health?.latest_game_date && (
+            <div className="header-pill">
+              <span className="header-pill-label">
+                <span className="live-dot" aria-hidden="true" />
+                Latest Game
+              </span>
+              <span className="header-pill-date">{health.latest_game_date}</span>
+            </div>
+          )}
+        </header>
+
+        <nav className="tab-bar" aria-label="Main navigation">
+          <button
+            className={`tab-btn ${!selectedPlayer && tab === "chat" ? "active" : ""}`}
+            onClick={() => navigateTab("chat")}
+          >
+            <PawsIcon />
+            <span>Ask Paws</span>
+          </button>
+          <button
+            className={`tab-btn ${!selectedPlayer && tab === "leaders" ? "active" : ""}`}
+            onClick={() => navigateTab("leaders")}
+          >
+            <TrophyIcon />
+            <span>Stats</span>
+          </button>
+          <button
+            className={`tab-btn ${!selectedPlayer && tab === "roster" ? "active" : ""}`}
+            onClick={() => navigateTab("roster")}
+          >
+            <UsersIcon />
+            <span>Roster</span>
+          </button>
+          <button
+            className={`tab-btn ${!selectedPlayer && tab === "rivalry" ? "active" : ""}`}
+            onClick={() => navigateTab("rivalry")}
+          >
+            <SwordsIcon />
+            <span>Opponents</span>
+          </button>
+        </nav>
+      </div>
+
+      <main className="main-content">
+        {!noticeDismissed && (
+          <div className="notice-banner" role="note">
+            <span>
+              <strong>Unofficial Fan Analytics:</strong> Stats are scraped from public
+              archives and <strong>Ask Paws</strong> uses AI (Google Gemini) to query
+              data&mdash;please verify important figures against official{" "}
+              <a href="https://nuhuskies.com" target="_blank" rel="noreferrer" style={{ color: "inherit", fontWeight: 700 }}>
+                nuhuskies.com
+              </a>{" "}
+              box scores.
+            </span>
+            <button
+              type="button"
+              className="notice-close"
+              onClick={() => setNoticeDismissed(true)}
+              aria-label="Dismiss notice"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+        {selectedPlayer ? (
+          <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className="controls-row">
+              <button type="button" className="btn-ghost" onClick={closePlayer}>
+                &larr; Back to {tab === "roster" ? "Roster" : "Leaders"}
+              </button>
+              {playerData?.bio?.roster_url && (
+                <a
+                  href={playerData.bio.roster_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-ghost"
+                  style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                >
+                  Official Bio
+                </a>
+              )}
+            </div>
+
+            {playerLoading && (
+              <div className="card">
+                <p className="muted">Loading player statistics...</p>
+              </div>
+            )}
+
+            {playerError && (
+              <div className="card">
+                <p className="muted">{playerError}</p>
+              </div>
+            )}
+
+            {!playerLoading && !playerError && playerData && (
+              <>
+                <div className="player-hero">
+                  <div className="player-hero-left">
+                    {playerData.bio.image_url ? (
+                      <img
+                        src={playerData.bio.image_url}
+                        alt={playerData.bio.player_name}
+                        className="player-avatar-lg"
+                      />
+                    ) : (
+                      <div className="jersey-box">
+                        {playerData.bio.jersey_number || "--"}
+                      </div>
+                    )}
+                    <div>
+                      <h2>
+                        {playerData.bio.jersey_number ? `#${playerData.bio.jersey_number} ` : ""}
+                        {playerData.bio.player_name}{" "}
+                        <CaptainBadge role={playerData.bio.captain_role} />
+                      </h2>
+                      <div className="player-meta-line">
+                        {[
+                          playerData.bio.position,
+                          playerData.bio.class_year,
+                          playerData.bio.seasons_played?.length
+                            ? `${playerData.bio.seasons_played.length} Season${playerData.bio.seasons_played.length > 1 ? "s" : ""}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ")}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <h3>Player Bio</h3>
+                  <div className="bio-grid">
+                    <div className="bio-item">
+                      <div className="bio-k">Ht / Wt</div>
+                      <div className="bio-v">
+                        {playerData.bio.height
+                          ? `${playerData.bio.height}${playerData.bio.weight ? ` / ${playerData.bio.weight} lbs` : ""}`
+                          : "-"}
+                      </div>
+                    </div>
+                    <div className="bio-item">
+                      <div className="bio-k">Shoots</div>
+                      <div className="bio-v">{playerData.bio.shoots || "-"}</div>
+                    </div>
+                    <div className="bio-item">
+                      <div className="bio-k">Hometown</div>
+                      <div className="bio-v">{playerData.bio.hometown || "-"}</div>
+                    </div>
+                    <div className="bio-item">
+                      <div className="bio-k">Previous Team</div>
+                      <div className="bio-v">{playerData.bio.previous_team || "-"}</div>
+                    </div>
+                    {playerData.bio.major && (
+                      <div className="bio-item">
+                        <div className="bio-k">Major</div>
+                        <div className="bio-v">{playerData.bio.major}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {playerData.career_skater && !playerData.is_goalie && (
+                  <div className="card">
+                    <h3>Career Totals</h3>
+                    <div className="stat-grid" style={{ marginBottom: 0 }}>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_skater.gp}</div>
+                        <div className="lbl">GP</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_skater.goals}</div>
+                        <div className="lbl">Goals</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_skater.assists}</div>
+                        <div className="lbl">Assists</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_skater.points}</div>
+                        <div className="lbl">Points</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">
+                          {playerData.career_skater.plus_minus > 0
+                            ? `+${playerData.career_skater.plus_minus}`
+                            : playerData.career_skater.plus_minus}
+                        </div>
+                        <div className="lbl">+/-</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_skater.pim}</div>
+                        <div className="lbl">PIM</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {playerData.career_goalie && (
+                  <div className="card">
+                    <h3>Career Goalie Totals</h3>
+                    <div className="stat-grid" style={{ marginBottom: 0 }}>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_goalie.goalie_gp}</div>
+                        <div className="lbl">GP</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{`${playerData.career_goalie.wins}-${playerData.career_goalie.losses}-${playerData.career_goalie.ties}`}</div>
+                        <div className="lbl">W-L-T</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{Number(playerData.career_goalie.gaa).toFixed(2)}</div>
+                        <div className="lbl">GAA</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{Number(playerData.career_goalie.save_pct).toFixed(3)}</div>
+                        <div className="lbl">SV%</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_goalie.shutouts}</div>
+                        <div className="lbl">Shutouts</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {playerData.seasons?.length > 0 && (
+                  <div className="card">
+                    <div className="card-header">
+                      <h2>Season-by-Season Stats</h2>
+                      <div className="segmented" role="group" aria-label="Season stats scope">
+                        <button
+                          type="button"
+                          className={`segmented-btn ${playerScope === "all" ? "active" : ""}`}
+                          onClick={() => setPlayerScope("all")}
+                        >
+                          All Games
+                        </button>
+                        <button
+                          type="button"
+                          className={`segmented-btn ${playerScope === "conference" ? "active" : ""}`}
+                          onClick={() => setPlayerScope("conference")}
+                        >
+                          Hockey East
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="table-wrap">
+                      {playerData.is_goalie ? (
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Season</th>
+                              <th>GP</th>
+                              <th>W-L-T</th>
+                              <th>GAA</th>
+                              <th>SV%</th>
+                              <th>SV</th>
+                              <th>GA</th>
+                              <th>SO</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {playerData.seasons.map((s) => {
+                              const p = playerScope === "conference" ? "conf_" : "";
+                              return (
+                                <tr key={s.season}>
+                                  <td><strong>{s.season}</strong></td>
+                                  <td>{s[`${p}goalie_gp`]}</td>
+                                  <td>{`${s[`${p}wins`]}-${s[`${p}losses`]}-${s[`${p}ties`]}`}</td>
+                                  <td>{Number(s[`${p}gaa`] || 0).toFixed(2)}</td>
+                                  <td>{Number(s[`${p}save_pct`] || 0).toFixed(3)}</td>
+                                  <td>{s[`${p}saves`]}</td>
+                                  <td>{s[`${p}ga`]}</td>
+                                  <td>{s[`${p}shutouts`]}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Season</th>
+                              <th>GP</th>
+                              <th>G</th>
+                              <th>A</th>
+                              <th>PTS</th>
+                              <th>SOG</th>
+                              <th>SH%</th>
+                              <th>+/-</th>
+                              <th>PPG</th>
+                              <th>SHG</th>
+                              <th>GWG</th>
+                              <th>BLK</th>
+                              <th>FO</th>
+                              <th>FO%</th>
+                              <th>PIM</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {playerData.seasons.map((s) => {
+                              const p = playerScope === "conference" ? "conf_" : "";
+                              const pm = s[`${p}plus_minus`];
+                              const tracked = hasModernTracking(s.season);
+                              const fow = s[`${p}faceoffs_won`];
+                              const fol = s[`${p}faceoffs_lost`];
+                              const foPct = tracked ? formatPct3(fow, fol) : null;
+                              return (
+                                <tr key={s.season}>
+                                  <td><strong>{s.season}</strong></td>
+                                  <td>{s[`${p}gp`]}</td>
+                                  <td>{s[`${p}goals`]}</td>
+                                  <td>{s[`${p}assists`]}</td>
+                                  <td><strong>{s[`${p}points`]}</strong></td>
+                                  <td>{s[`${p}shots`]}</td>
+                                  <td>{formatRatio3(s[`${p}goals`], s[`${p}shots`]) ?? ".000"}</td>
+                                  <td>{pm > 0 ? `+${pm}` : pm}</td>
+                                  <td>{s[`${p}ppg`]}</td>
+                                  <td>{s[`${p}shg`]}</td>
+                                  <td>{s[`${p}gwg`]}</td>
+                                  <td>{tracked ? s[`${p}blocked_shots`] : <span className="muted">N/A</span>}</td>
+                                  <td>{tracked ? `${fow || 0}-${fol || 0}` : <span className="muted">N/A</span>}</td>
+                                  <td>{foPct ?? <span className="muted">N/A</span>}</td>
+                                  <td>{s[`${p}pim`]}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {playerData.game_logs?.length > 0 && (() => {
+                  const logSeasons = Array.from(
+                    new Set(playerData.game_logs.map((g) => g.season).filter(Boolean))
+                  ).sort((a, b) => b.localeCompare(a));
+                  const visibleLogs =
+                    playerLogSeason === "all"
+                      ? playerData.game_logs
+                      : playerData.game_logs.filter((g) => g.season === playerLogSeason);
+
+                  return (
+                    <div className="card">
+                      <div className="card-header">
+                        <h2>Game Log ({visibleLogs.length} Games)</h2>
+                        <select
+                          aria-label="Filter game log by season"
+                          className="select-input"
+                          value={playerLogSeason}
+                          onChange={(e) => setPlayerLogSeason(e.target.value)}
+                        >
+                          <option value="all">All Seasons ({playerData.game_logs.length})</option>
+                          {logSeasons.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="table-wrap">
+                        {playerData.is_goalie ? (
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>Date</th>
+                                <th>Opponent</th>
+                                <th>Score</th>
+                                <th>Dec</th>
+                                <th>SV</th>
+                                <th>GA</th>
+                                <th>SV%</th>
+                                <th>Box</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {visibleLogs.map((g, i) => (
+                                <tr key={`${g.date}-${i}`}>
+                                  <td>{g.date}</td>
+                                  <td>{g.opponent}</td>
+                                  <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
+                                  <td>{g.decision}</td>
+                                  <td>{g.saves}</td>
+                                  <td>{g.goals_against}</td>
+                                  <td>{Number(g.save_pct || 0).toFixed(3)}</td>
+                                  <td>
+                                    {g.boxscore_url ? (
+                                      <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
+                                    ) : "-"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>Date</th>
+                                <th>Opponent</th>
+                                <th>Score</th>
+                                <th>G</th>
+                                <th>A</th>
+                                <th>PTS</th>
+                                <th>SOG</th>
+                                <th>+/-</th>
+                                <th>BLK</th>
+                                <th>FO</th>
+                                <th>FO%</th>
+                                <th>PIM</th>
+                                <th>Box</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {visibleLogs.map((g, i) => {
+                                const tracked = hasModernTracking(g.season);
+                                const foPct = tracked ? formatPct3(g.faceoffs_won, g.faceoffs_lost) : null;
+                                return (
+                                  <tr key={`${g.date}-${i}`}>
+                                    <td>{g.date}</td>
+                                    <td>
+                                      <span className="opp-with-logo">
+                                        <OpponentLogo name={g.opponent} />
+                                        <span>{g.opponent}</span>
+                                      </span>
+                                    </td>
+                                    <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
+                                    <td>{g.goals}</td>
+                                    <td>{g.assists}</td>
+                                    <td><strong>{g.points}</strong></td>
+                                    <td>{g.shots}</td>
+                                    <td>{g.plus_minus > 0 ? `+${g.plus_minus}` : g.plus_minus}</td>
+                                    <td>{tracked ? g.blocked_shots : <span className="muted">N/A</span>}</td>
+                                    <td>{tracked ? `${g.faceoffs_won}-${g.faceoffs_lost}` : <span className="muted">N/A</span>}</td>
+                                    <td>{foPct ?? <span className="muted">N/A</span>}</td>
+                                    <td>{g.penalty_minutes}</td>
+                                    <td>
+                                      {g.boxscore_url ? (
+                                        <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
+                                      ) : "-"}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+          </section>
+        ) : (
+        <>
+        {tab === "chat" && (
+          <section className="chat-box">
+            {messages.length === 0 ? (
+              <div className="card hero-card">
+                <h2>Ask Paws About Huskies Hockey</h2>
+                <p>
+                  Instant answers from official box scores, rosters, Beanpot games,
+                  shootouts, and Hockey East archives (1999&ndash;present).
+                </p>
+                <div className="starter-grid">
+                  {STARTER_QUESTIONS.map((q) => (
+                    <button
+                      key={q}
+                      className="starter-chip"
+                      onClick={() => sendQuestion(q)}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="controls-row">
+                <span className="muted">Conversation active</span>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => setMessages([])}
+                >
+                  Clear chat
+                </button>
+              </div>
+            )}
+
+            <div className="messages">
+              {messages.map((m, idx) => (
+                <div key={idx} className={`msg-row ${m.role}`}>
+                  <div className={`msg ${m.role}`}>
+                    {m.role === "assistant" ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {m.content}
+                      </ReactMarkdown>
+                    ) : (
+                      m.content
+                    )}
+                  </div>
+                  {m.role === "assistant" && m.cached && (
+                    <span className="msg-meta">Instant cached answer</span>
+                  )}
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="msg-row assistant">
+                  <div className="msg assistant">
+                    <span className="typing-dots">Querying NU archives...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <form
+              className="chat-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                sendQuestion(input);
+              }}
+            >
+              <input
+                className="text-input"
+                type="text"
+                aria-label="Ask Paws a hockey stats question"
+                placeholder="Ask Paws about players, games, Beanpot, shootouts..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={chatLoading}
+              />
+              <button
+                className="btn-primary"
+                type="submit"
+                disabled={chatLoading || !input.trim()}
+              >
+                Ask
+              </button>
+            </form>
+          </section>
+        )}
+
+        {(tab === "leaders" || tab === "roster") && (
+          <div className="controls-row">
+            <div className="controls-group">
+              <label htmlFor="season-select" className="field-label">
+                Season
+              </label>
+              <select
+                id="season-select"
+                className="select-input"
+                value={selectedSeason}
+                onChange={(e) => setSelectedSeason(e.target.value)}
+              >
+                {tab === "leaders" && (
+                  <option value="all">All Seasons (1999&ndash;Present)</option>
+                )}
+                {seasons.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+
+              {tab === "leaders" && (
+                <>
+                  <div className="segmented" role="group" aria-label="Game scope">
+                    <button
+                      type="button"
+                      className={`segmented-btn ${leaderScope === "all" ? "active" : ""}`}
+                      onClick={() => setLeaderScope("all")}
+                    >
+                      All Games
+                    </button>
+                    <button
+                      type="button"
+                      className={`segmented-btn ${leaderScope === "conference" ? "active" : ""}`}
+                      onClick={() => setLeaderScope("conference")}
+                    >
+                      Hockey East
+                    </button>
+                  </div>
+
+                  <select
+                    aria-label="Filter stats by opponent"
+                    className="select-input"
+                    value={leaderOpponent}
+                    onChange={(e) => setLeaderOpponent(e.target.value)}
+                  >
+                    <option value="">
+                      {leaderScope === "conference" ? "All Hockey East Opponents" : "All Opponents"}
+                    </option>
+                    {(leaders?.opponents || []).map((opp) => (
+                      <option key={opp} value={opp}>
+                        vs. {opp}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+            </div>
+
+            {tab === "leaders" && (
+              <div className="controls-group">
+                <div className="segmented" role="group" aria-label="Stats view">
+                  <button
+                    type="button"
+                    className={`segmented-btn ${statsView === "players" ? "active" : ""}`}
+                    onClick={() => setStatsView("players")}
+                  >
+                    Individual Players
+                  </button>
+                  <button
+                    type="button"
+                    className={`segmented-btn ${statsView === "team" ? "active" : ""}`}
+                    onClick={() => setStatsView("team")}
+                  >
+                    Team Stats
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {tab === "roster" && (
+              <div className="controls-group">
+                <div className="segmented" role="group" aria-label="Roster view">
+                  <button
+                    type="button"
+                    className={`segmented-btn ${rosterView === "position" ? "active" : ""}`}
+                    onClick={() => setRosterView("position")}
+                  >
+                    By Position
+                  </button>
+                  <button
+                    type="button"
+                    className={`segmented-btn ${rosterView === "all" ? "active" : ""}`}
+                    onClick={() => setRosterView("all")}
+                  >
+                    All Roster
+                  </button>
+                </div>
+
+                <div className="search-wrap">
+                  <SearchIcon />
+                  <input
+                    type="search"
+                    className="text-input search-input"
+                    aria-label="Filter roster by player, number, or hometown"
+                    placeholder="Filter by name, #, hometown..."
+                    value={rosterSearch}
+                    onChange={(e) => setRosterSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === "leaders" && statsView === "team" && (
+          <section className="card">
+            <div className="card-header">
+              <h2 className="opp-with-logo">
+                {leaderOpponent && <OpponentLogo name={leaderOpponent} large />}
+                <span>
+                  {selectedSeason === "all" ? "All-Time" : selectedSeason}{" "}
+                  {leaderOpponent
+                    ? `Team Stats vs. ${leaderOpponent}`
+                    : leaderScope === "conference"
+                      ? "Hockey East Team Stats"
+                      : "Team Stats"}
+                </span>
+              </h2>
+              <span className="muted">
+                {leaderOpponent
+                  ? `Filtered to games vs. ${leaderOpponent}`
+                  : leaderScope === "conference"
+                    ? "Hockey East conference games"
+                    : "All games"}
+              </span>
+            </div>
+            {leadersLoading && <p className="muted">Loading team stats...</p>}
+            {!leadersLoading && (!leaders?.team_stats || leaders.team_stats.games_played === 0) && (
+              <p className="muted">No team stats found for this filter combination.</p>
+            )}
+            {!leadersLoading && leaders?.team_stats && leaders.team_stats.games_played > 0 && (() => {
+              const ts = leaders.team_stats;
+              const diffStr = ts.goal_diff > 0 ? `+${ts.goal_diff}` : String(ts.goal_diff);
+              const winPctStr = Number(ts.win_pct || 0).toFixed(3).replace(/^0/, "");
+              const savePctStr = ts.saves > 0 ? Number(ts.save_pct || 0).toFixed(3).replace(/^0/, "") : null;
+              return (
+                <>
+                  <div className="stat-grid">
+                    <div className="stat-box">
+                      <div className="val">{`${ts.wins}-${ts.losses}-${ts.ties}`}</div>
+                      <div className="lbl">{`Record (${ts.games_played} GP)`}</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">{winPctStr}</div>
+                      <div className="lbl">Win %</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">{ts.goals_for}</div>
+                      <div className="lbl">{`Goals For (${ts.gf_per_game}/gm)`}</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">{ts.goals_against}</div>
+                      <div className="lbl">{`Goals Against (${ts.ga_per_game}/gm)`}</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">{diffStr}</div>
+                      <div className="lbl">Goal Diff</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">{ts.shots > 0 ? ts.shots : "N/A"}</div>
+                      <div className="lbl">{ts.shots > 0 ? `Shots (${ts.shot_pct}%)` : "Shots"}</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">{ts.shutouts_for}</div>
+                      <div className="lbl">{`Shutouts (${ts.shutouts_against} Against)`}</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">{ts.saves > 0 ? ts.saves : "N/A"}</div>
+                      <div className="lbl">{savePctStr ? `Saves (${savePctStr} SV%)` : "Saves"}</div>
+                    </div>
+                    {ts.ppg !== null && (
+                      <div className="stat-box">
+                        <div className="val">{`${ts.ppg} / ${ts.shg}`}</div>
+                        <div className="lbl">PPG / SHG</div>
+                      </div>
+                    )}
+                    <div className="stat-box">
+                      <div className="val">{ts.pim}</div>
+                      <div className="lbl">
+                        {hasModernTracking(selectedSeason)
+                          ? `PIM (${ts.blocked_shots} BLK)`
+                          : "Penalty Min"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedSeason === "all" && ts.season_breakdown?.length > 0 && (
+                    <>
+                      <h3 style={{ marginTop: 20 }}>Season-by-Season Record</h3>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Season</th>
+                              <th>GP</th>
+                              <th>W-L-T</th>
+                              <th>Win %</th>
+                              <th>GF</th>
+                              <th>GA</th>
+                              <th>Diff</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ts.season_breakdown.map((row) => (
+                              <tr key={row.season}>
+                                <td>{row.season}</td>
+                                <td>{row.gp}</td>
+                                <td>{`${row.wins}-${row.losses}-${row.ties}`}</td>
+                                <td>{Number(row.win_pct || 0).toFixed(3).replace(/^0/, "")}</td>
+                                <td>{row.goals_for}</td>
+                                <td>{row.goals_against}</td>
+                                <td>{row.goal_diff > 0 ? `+${row.goal_diff}` : row.goal_diff}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+
+                  {selectedSeason !== "all" && ts.games?.length > 0 && (
+                    <>
+                      <h3 style={{ marginTop: 20 }}>Season Games</h3>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Date</th>
+                              <th>Opponent</th>
+                              <th>Result</th>
+                              <th>Score</th>
+                              <th>OT/SO</th>
+                              <th>Box Score</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ts.games.map((g) => (
+                              <tr key={`${g.date}-${g.opponent}`}>
+                                <td>{g.date}</td>
+                                <td>
+                                  <span className="opp-with-logo">
+                                    <OpponentLogo name={g.opponent} />
+                                    <span>{g.opponent}</span>
+                                  </span>
+                                </td>
+                                <td><OutcomeBadge outcome={g.outcome} /></td>
+                                <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
+                                <td>{g.overtime_status}</td>
+                                <td>
+                                  {g.boxscore_url ? (
+                                    <a href={g.boxscore_url} target="_blank" rel="noreferrer">
+                                      View
+                                    </a>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
+          </section>
+        )}
+
+        {tab === "leaders" && statsView === "players" && (
+          <section className="card">
+            <div className="card-header">
+              <h2 className="opp-with-logo">
+                {leaderOpponent && <OpponentLogo name={leaderOpponent} large />}
+                <span>
+                  {selectedSeason === "all" ? "All-Time" : selectedSeason}{" "}
+                  {leaderOpponent
+                    ? `Player Stats vs. ${leaderOpponent}`
+                    : leaderScope === "conference"
+                      ? "Hockey East Player Stats"
+                      : "Skater Stats"}
+                </span>
+              </h2>
+              <span className="muted">
+                {leaderOpponent
+                  ? "Includes all games vs. school • Tap headers to sort"
+                  : "Tap column headers to sort"}
+              </span>
+            </div>
+            {leadersLoading && <p className="muted">Loading stats...</p>}
+            {!leadersLoading && sortedSkaters.length === 0 && (
+              <p className="muted">No skater stats found for this filter combination.</p>
+            )}
+            {!leadersLoading && sortedSkaters.length > 0 && (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Player</th>
+                      <th>Pos</th>
+                      <th className="sortable" onClick={() => toggleSort("gp")}>
+                        GP {leaderSort.key === "gp" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
+                      </th>
+                      <th className="sortable" onClick={() => toggleSort("goals")}>
+                        G {leaderSort.key === "goals" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
+                      </th>
+                      <th className="sortable" onClick={() => toggleSort("assists")}>
+                        A {leaderSort.key === "assists" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
+                      </th>
+                      <th className="sortable" onClick={() => toggleSort("points")}>
+                        PTS {leaderSort.key === "points" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
+                      </th>
+                      <th className="sortable" onClick={() => toggleSort("shots")}>
+                        SOG {leaderSort.key === "shots" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
+                      </th>
+                      <th className="sortable" onClick={() => toggleSort("shot_pct")}>
+                        SH% {leaderSort.key === "shot_pct" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
+                      </th>
+                      <th className="sortable" onClick={() => toggleSort("plus_minus")}>
+                        +/- {leaderSort.key === "plus_minus" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
+                      </th>
+                      <th className="sortable" onClick={() => toggleSort("blocked_shots")}>
+                        BLK {leaderSort.key === "blocked_shots" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
+                      </th>
+                      <th className="sortable" onClick={() => toggleSort("pim")}>
+                        PIM {leaderSort.key === "pim" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedSkaters.map((p) => (
+                      <tr key={p.player_name}>
+                        <td>{p.jersey_number}</td>
+                        <td>
+                          <span className="roster-player-cell">
+                            {p.image_url && (
+                              <img
+                                src={p.image_url}
+                                alt=""
+                                className="player-avatar-sm"
+                                loading="lazy"
+                              />
+                            )}
+                            <button
+                              type="button"
+                              className="player-link"
+                              onClick={() => openPlayer(p.player_name)}
+                            >
+                              {p.player_name}
+                            </button>
+                            <CaptainBadge role={p.captain_role} />
+                          </span>
+                        </td>
+                        <td>{p.position}</td>
+                        <td>{p.gp}</td>
+                        <td>{p.goals}</td>
+                        <td>{p.assists}</td>
+                        <td><strong>{p.points}</strong></td>
+                        <td>{p.shots ?? <span className="muted">N/A</span>}</td>
+                        <td>
+                          {p.shots !== undefined
+                            ? (formatRatio3(p.goals, p.shots) ?? ".000")
+                            : p.shot_pct !== undefined
+                              ? (Number(p.shot_pct) / 100).toFixed(3).replace(/^0/, "")
+                              : <span className="muted">N/A</span>}
+                        </td>
+                        <td>{p.plus_minus > 0 ? `+${p.plus_minus}` : p.plus_minus}</td>
+                        <td>{hasModernTracking(selectedSeason) ? p.blocked_shots : <span className="muted">N/A</span>}</td>
+                        <td>{p.pim}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {!leadersLoading && leaders?.goalies?.length > 0 && (
+              <>
+                <h3 style={{ marginTop: 20 }}>Goalies</h3>
+                <div className="table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Goalie</th>
+                        <th>GP</th>
+                        <th>W-L-T</th>
+                        <th>GAA</th>
+                        <th>SV%</th>
+                        <th>SO</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaders.goalies.map((g) => (
+                        <tr key={g.player_name}>
+                          <td>{g.jersey_number}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="player-link"
+                              onClick={() => openPlayer(g.player_name)}
+                            >
+                              {g.player_name}
+                            </button>
+                          </td>
+                          <td>{g.goalie_gp}</td>
+                          <td>{`${g.wins}-${g.losses}-${g.ties}`}</td>
+                          <td>{Number(g.gaa).toFixed(2)}</td>
+                          <td>{Number(g.save_pct).toFixed(3)}</td>
+                          <td>{g.shutouts}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
+        {tab === "roster" && (
+          <section className="card">
+            <div className="card-header">
+              <h2>
+                {selectedSeason} Roster
+                {roster?.head_coach ? ` — Coach ${roster.head_coach}` : ""}
+              </h2>
+              {roster?.roster_url && (
+                <a
+                  href={roster.roster_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-ghost"
+                  style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
+                >
+                  Official Roster
+                </a>
+              )}
+            </div>
+            {rosterLoading && <p className="muted">Loading roster...</p>}
+            {!rosterLoading && (() => {
+              const forwards = filteredRoster.filter((p) => p.position === "F");
+              const defensemen = filteredRoster.filter((p) => p.position === "D");
+              const goalies = filteredRoster.filter((p) => p.position === "G");
+              const other = filteredRoster.filter((p) => !["F", "D", "G"].includes(p.position));
+
+              const renderRows = (list) =>
+                list.map((p) => (
+                  <tr key={`${p.jersey_number}-${p.player_name}`}>
+                    <td><strong>{p.jersey_number}</strong></td>
+                    <td>
+                      <span className="roster-player-cell">
+                        {p.image_url && (
+                          <img
+                            src={p.image_url}
+                            alt=""
+                            className="player-avatar-sm"
+                            loading="lazy"
+                          />
+                        )}
+                        <button
+                          type="button"
+                          className="player-link"
+                          onClick={() => openPlayer(p.player_name)}
+                        >
+                          {p.player_name}
+                        </button>
+                        <CaptainBadge role={p.captain_role} />
+                      </span>
+                    </td>
+                    <td>{p.position}</td>
+                    <td>{p.class_year}</td>
+                    <td>{p.height ? `${p.height} / ${p.weight || "-"}` : "-"}</td>
+                    <td>{p.hometown}</td>
+                  </tr>
+                ));
+
+              const renderSection = (title, list, label = "Player", marginTop = 0) => (
+                <div style={marginTop ? { marginTop } : undefined}>
+                  <h3>{title} ({list.length})</h3>
+                  {list.length === 0 ? (
+                    <p className="muted">No matching {title.toLowerCase()}.</p>
+                  ) : (
+                    <div className="table-wrap">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>#</th>
+                            <th>{label}</th>
+                            <th>Pos</th>
+                            <th>Yr</th>
+                            <th>Ht / Wt</th>
+                            <th>Hometown</th>
+                          </tr>
+                        </thead>
+                        <tbody>{renderRows(list)}</tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+
+              if (rosterView === "all") {
+                return renderSection("Full Roster", filteredRoster, "Player", 0);
+              }
+
+              return (
+                <>
+                  {renderSection("Forwards", forwards, "Forward", 0)}
+                  {renderSection("Defensemen", defensemen, "Defenseman", 20)}
+                  {renderSection("Goalies", goalies, "Goalie", 20)}
+                  {other.length > 0 && renderSection("Other", other, "Player", 20)}
+                </>
+              );
+            })()}
+          </section>
+        )}
+
+        {tab === "rivalry" && (
+          <section className="card">
+            <div className="card-header">
+              <h2>
+                Head-to-Head ({rivalryScope === "season" && seasons[0] ? seasons[0] : "1999\u2013Present"})
+              </h2>
+              <div className="controls-row">
+                <div className="segmented" role="group" aria-label="Matchup timeframe">
+                  <button
+                    type="button"
+                    className={`segmented-btn ${rivalryScope === "season" ? "active" : ""}`}
+                    onClick={() => setRivalryScope("season")}
+                  >
+                    {seasons[0] ? `This Season (${seasons[0]})` : "This Season"}
+                  </button>
+                  <button
+                    type="button"
+                    className={`segmented-btn ${rivalryScope === "all" ? "active" : ""}`}
+                    onClick={() => setRivalryScope("all")}
+                  >
+                    All-Time
+                  </button>
+                </div>
+                <select
+                  aria-label="Select opponent"
+                  className="select-input"
+                  value={selectedRival}
+                  onChange={(e) => setSelectedRival(e.target.value)}
+                >
+                <optgroup label="Hockey East">
+                  {hockeyEastOpponents.map((opp) => (
+                    <option key={opp} value={opp}>
+                      {opp}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Other Opponents">
+                  {otherOpponents.map((opp) => (
+                    <option key={opp} value={opp}>
+                      {opp}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+              </div>
+            </div>
+
+            {rivalryLoading && <p className="muted">Loading matchup history...</p>}
+            {!rivalryLoading && rivalry && (
+              <>
+                <div className="stat-grid">
+                  <div className="stat-box">
+                    <div className="val">{`${rivalry.wins}-${rivalry.losses}-${rivalry.ties}`}</div>
+                    <div className="lbl">NU Record</div>
+                  </div>
+                  <div className="stat-box">
+                    <div className="val">{rivalry.games_played}</div>
+                    <div className="lbl">Games</div>
+                  </div>
+                  <div className="stat-box">
+                    <div className="val">{rivalry.ot_games}</div>
+                    <div className="lbl">OT / SO</div>
+                  </div>
+                  <div className="stat-box">
+                    <div className="val">{`${rivalry.nu_goals}-${rivalry.opp_goals}`}</div>
+                    <div className="lbl">Goals (NU-Opp)</div>
+                  </div>
+                </div>
+
+                <h3 className="opp-with-logo">
+                  <OpponentLogo name={rivalry.opponent} large />
+                  <span>
+                    {rivalryScope === "season" && seasons[0]
+                      ? `${seasons[0]} Meetings vs. ${rivalry.opponent}`
+                      : `Recent Meetings vs. ${rivalry.opponent}`}
+                  </span>
+                </h3>
+                {rivalry.recent_games.length === 0 ? (
+                  <p className="muted">
+                    No recorded games against {rivalry.opponent}
+                    {rivalryScope === "season" && seasons[0] ? ` in ${seasons[0]}` : ""}.
+                  </p>
+                ) : (
+                <div className="table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Season</th>
+                        <th>Result</th>
+                        <th>Score</th>
+                        <th>OT/SO</th>
+                        <th>Box Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rivalry.recent_games.map((g) => (
+                        <tr key={`${g.date}-${g.opponent}`}>
+                          <td>{g.date}</td>
+                          <td>{g.season}</td>
+                          <td><OutcomeBadge outcome={g.outcome} /></td>
+                          <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
+                          <td>{g.overtime_status}</td>
+                          <td>
+                            {g.boxscore_url ? (
+                              <a href={g.boxscore_url} target="_blank" rel="noreferrer">
+                                View
+                              </a>
+                            ) : (
+                              "-"
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                )}
+              </>
+            )}
+          </section>
+        )}
+        </>
+        )}
+      </main>
+
+      <footer className="app-footer">
+        <span>
+          Unofficial fan-built Northeastern Men&apos;s Hockey explorer &bull; Not affiliated
+          with Northeastern University
+        </span>
+        <div className="footer-links">
+          <button
+            type="button"
+            className="footer-link"
+            onClick={() => setLegalModal("disclaimer")}
+          >
+            Disclaimer
+          </button>
+          <button
+            type="button"
+            className="footer-link"
+            onClick={() => setLegalModal("privacy")}
+          >
+            Privacy Policy
+          </button>
+          <button
+            type="button"
+            className="footer-link"
+            onClick={() => setLegalModal("terms")}
+          >
+            Terms of Use
+          </button>
+          <button
+            type="button"
+            className="footer-link"
+            onClick={() => setBugModalOpen(true)}
+          >
+            Report a Bug
+          </button>
+        </div>
+      </footer>
+
+      <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
+      <BugReportModal
+        open={bugModalOpen}
+        onClose={() => setBugModalOpen(false)}
+        apiBase={API_BASE}
+        pageContext={
+          selectedPlayer
+            ? `Player: ${selectedPlayer} (${playerScope})`
+            : tab === "leaders"
+              ? `Stats (${statsView}) • Season: ${selectedSeason || "latest"} • Scope: ${leaderScope}${leaderOpponent ? ` • vs ${leaderOpponent}` : ""}`
+              : tab === "roster"
+                ? `Roster • Season: ${selectedSeason || "latest"} • View: ${rosterView}`
+                : tab === "rivalry"
+                  ? `Opponents • ${selectedRival} • ${rivalryScope === "season" ? seasons[0] || "This Season" : "All-Time"}`
+                  : "Ask Paws Chat"
+        }
+      />
+
+      {(selectedPlayer || tab !== "chat") && (
+        !chatDrawerOpen ? (
+          <button
+            type="button"
+            className="chat-fab"
+            onClick={() => setChatDrawerOpen(true)}
+          >
+            <PawsIcon large />
+            <span>{selectedPlayer ? `Ask Paws about ${selectedPlayer}` : "Ask Paws"}</span>
+          </button>
+        ) : (
+          <aside className="chat-drawer" aria-label="Ask Paws Stats Assistant">
+            <div className="chat-drawer-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <PawsIcon large />
+                <div className="chat-drawer-title">Ask Paws</div>
+              </div>
+              <div className="chat-drawer-actions">
+                {messages.length > 0 && (
+                  <button
+                    type="button"
+                    className="chat-drawer-btn"
+                    onClick={() => setMessages([])}
+                  >
+                    Clear
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="chat-drawer-btn"
+                  onClick={() => setChatDrawerOpen(false)}
+                  aria-label="Close AI chat"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            <div className="chat-drawer-context-bar">
+              <span className="muted" style={{ fontSize: 12 }}>
+                {drawerUseContext
+                  ? (selectedPlayer ? `Focused on ${selectedPlayer}` : `Focused on current ${tab} view`)
+                  : "Searching all NU archives (1999–present)"}
+              </span>
+              <div className="chat-context-toggle" role="group" aria-label="Chat context scope">
+                <button
+                  type="button"
+                  className={`chat-context-opt ${drawerUseContext ? "active" : ""}`}
+                  onClick={() => setDrawerUseContext(true)}
+                >
+                  This Page
+                </button>
+                <button
+                  type="button"
+                  className={`chat-context-opt ${!drawerUseContext ? "active" : ""}`}
+                  onClick={() => setDrawerUseContext(false)}
+                >
+                  All Data
+                </button>
+              </div>
+            </div>
+
+            <div className="chat-drawer-body">
+              {messages.length === 0 && (
+                <p className="muted" style={{ margin: 0 }}>
+                  {drawerUseContext && selectedPlayer
+                    ? `Ask anything about ${selectedPlayer} — e.g. "How many overtime goals did he score?" or "Best game vs. BU?"`
+                    : "Ask any question about Northeastern hockey stats, games, or players."}
+                </p>
+              )}
+              {messages.map((m, idx) => (
+                <div key={idx} className={`msg-row ${m.role}`}>
+                  <div className={`msg ${m.role}`}>
+                    {m.role === "assistant" ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {m.content}
+                      </ReactMarkdown>
+                    ) : (
+                      m.content
+                    )}
+                  </div>
+                </div>
+              ))}
+              {chatLoading && (
+                <div className="msg-row assistant">
+                  <div className="msg assistant">
+                    <span className="typing-dots">Querying NU archives...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={drawerEndRef} />
+            </div>
+
+            <form
+              className="chat-drawer-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                sendQuestion(input);
+              }}
+            >
+              <input
+                className="text-input"
+                type="text"
+                aria-label="Ask a follow-up question"
+                placeholder={
+                  drawerUseContext && selectedPlayer
+                    ? `Ask Paws about ${selectedPlayer}...`
+                    : "Ask Paws anything..."
+                }
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={chatLoading}
+              />
+              <button
+                className="btn-primary"
+                type="submit"
+                disabled={chatLoading || !input.trim()}
+              >
+                Ask
+              </button>
+            </form>
+          </aside>
+        )
+      )}
+    </div>
+  );
+}
