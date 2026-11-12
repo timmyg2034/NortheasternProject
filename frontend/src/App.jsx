@@ -390,9 +390,18 @@ export default function App() {
           context: activeContext,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.detail || "Failed to fetch answer.");
+        const errorDetail =
+          data?.detail ||
+          (res.status === 429
+            ? "⏳ **High Traffic Alert — Per-Minute Rate Limit Reached**\n\nPlease wait 30–60 seconds before asking your next question."
+            : "Sorry, I encountered an issue fetching that answer. Please try again in a moment.");
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: errorDetail },
+        ]);
+        return;
       }
       setMessages((prev) => [
         ...prev,
@@ -406,6 +415,7 @@ export default function App() {
     } finally {
       setChatLoading(false);
     }
+
   }
 
   const hockeyEastOpponents = useMemo(

@@ -485,10 +485,77 @@ def format_chat_history(messages: list[dict[str, str]], max_turns: int = 8) -> s
     return "\n".join(lines)
 
 
+def classify_api_error(err: Exception) -> tuple[str, str]:
+    """
+    Classify an API exception into ('per_minute', msg), ('daily', msg), or ('generic', msg).
+    Provides actionable, clear user messages for chat banners.
+    """
+    msg = str(err)
+    msg_lower = msg.lower()
+
+    is_exhausted = any(k in msg_lower for k in [
+        "429",
+        "resourceexhausted",
+        "resource_exhausted",
+        "quota",
+        "rate limit",
+        "ratelimit",
+        "too many requests",
+        "exhausted",
+    ])
+
+    if not is_exhausted:
+        return "generic", f"Sorry, I encountered an error running that calculation: {err}"
+
+    # Explicit daily quota indicators
+    is_daily = any(k in msg_lower for k in [
+        "per day",
+        "per_day",
+        "requests per day",
+        "requestsperday",
+        "daily",
+        "day limit",
+        "rpd",
+        "free tier limit",
+    ])
+
+    # Per-minute rate limit indicators
+    is_per_minute = any(k in msg_lower for k in [
+        "per minute",
+        "per_minute",
+        "requests per minute",
+        "requestsperminute",
+        "tokens per minute",
+        "tokensperminute",
+        "rpm",
+        "tpm",
+        "rate limit",
+        "ratelimit",
+        "retry after",
+        "retry_after",
+    ])
+
+    if is_per_minute and not is_daily:
+        friendly = (
+            "⏳ **High Traffic Alert — Per-Minute Rate Limit Reached**\n\n"
+            "The assistant has temporarily reached Google Gemini's per-minute request rate limit across our AI models.\n\n"
+            "⏱️ **What to do:** Please wait **30 to 60 seconds** and ask your question again — it will resume automatically!"
+        )
+        return "per_minute", friendly
+
+    # Daily / general quota limit
+    friendly = (
+        "🏒 **Daily API Quota Limit Reached**\n\n"
+        "The Northeastern Men's Hockey assistant has reached its free daily Google Gemini API quota across all fallback models.\n\n"
+        "🌅 **What to do:** The shared daily quota resets automatically every day at midnight Pacific Time (3:00 AM Eastern Time). Please check back then!"
+    )
+    return "daily", friendly
+
+
 class ResponseCache:
     """Thread-safe TTL cache for standalone (no-history) chat questions."""
 
-    def __init__(self, ttl_seconds: int = 3600, max_entries: int = 256) -> None:
+    def __init__(self, ttl_seconds: int = 86400, max_entries: int = 1000) -> None:
         self._ttl = ttl_seconds
         self._max_entries = max_entries
         self._store: dict[str, tuple[float, str]] = {}
@@ -496,7 +563,9 @@ class ResponseCache:
 
     @staticmethod
     def _normalize(question: str) -> str:
-        return re.sub(r"\s+", " ", question.strip().lower())
+        p = question.strip().lower()
+        p = re.sub(r"[?!.,;:]+$", "", p).strip()
+        return re.sub(r"\s+", " ", p)
 
     def get(self, question: str) -> str | None:
         key = self._normalize(question)
@@ -517,6 +586,7 @@ class ResponseCache:
                 oldest_key = min(self._store, key=lambda k: self._store[k][0])
                 self._store.pop(oldest_key, None)
             self._store[key] = (time.time() + self._ttl, answer)
+
 
 
 def answer_question(
@@ -623,7 +693,12 @@ def answer_question(
         f"Current User Question: {question}"
     )
 
-    msg = llm.invoke(code_prompt)
+    try:
+        msg = llm.invoke(code_prompt)
+    except Exception as llm_err:
+        _, friendly_msg = classify_api_error(llm_err)
+        return friendly_msg, False
+
     code = extract_python_code(message_to_text(msg))
 
     try:
@@ -634,12 +709,18 @@ def answer_question(
             f"raised this error: {err}\n"
             "Please output ONLY the corrected ```python ... ``` code block with valid Python syntax."
         )
-        msg_retry = llm.invoke(retry_prompt)
-        code = extract_python_code(message_to_text(msg_retry))
         try:
-            execution_output = run_python_code(code, datasets)
-        except Exception as retry_err:
-            execution_output = f"Execution error: {retry_err}"
+            msg_retry = llm.invoke(retry_prompt)
+            code = extract_python_code(message_to_text(msg_retry))
+            try:
+                execution_output = run_python_code(code, datasets)
+            except Exception as retry_err:
+                execution_output = f"Execution error: {retry_err}"
+        except Exception as retry_llm_err:
+            err_type, friendly_msg = classify_api_error(retry_llm_err)
+            if err_type in ("per_minute", "daily"):
+                return friendly_msg, False
+            execution_output = f"Execution error: {err}"
 
     final_prompt = (
         "You are a friendly, knowledgeable Northeastern Men's Hockey statistics assistant speaking to hockey fans.\n"
@@ -659,11 +740,21 @@ def answer_question(
         "- NEVER mention internal variable names like `df1`–`df8`, `player_exists`, `opponent_exists`, pandas DataFrames, CSV files, or Python code.\n"
         "- If the user is just saying hello or asking what you can do, greet them warmly and suggest a few example questions."
     )
-    final_msg = llm.invoke(final_prompt)
-    answer = message_to_text(final_msg)
+    try:
+        final_msg = llm.invoke(final_prompt)
+        answer = message_to_text(final_msg)
+    except Exception as final_err:
+        _, friendly_msg = classify_api_error(final_err)
+        return friendly_msg, False
 
-    if use_cache and answer and "Execution error" not in execution_output:
+    is_quota_exhausted = (
+        "Daily API Quota" in answer
+        or "High Traffic Alert" in answer
+        or "Execution error" in execution_output
+    )
+    if use_cache and answer and not is_quota_exhausted:
         cache.set(question, answer)
 
     return answer, False
+
 

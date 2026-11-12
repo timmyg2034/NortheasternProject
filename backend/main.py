@@ -24,7 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
-from .engine import HockeyDatasets, ResponseCache, answer_question, build_llm, load_datasets
+from .engine import HockeyDatasets, ResponseCache, answer_question, build_llm, classify_api_error, load_datasets
 
 DATA_DIR = Path(os.getenv("NU_DATA_DIR", Path(__file__).resolve().parent.parent))
 load_dotenv(DATA_DIR / ".env")
@@ -87,8 +87,9 @@ class ChatResponse(BaseModel):
 class _AppState:
     datasets: HockeyDatasets | None = None
     llm: Any = None
-    cache: ResponseCache = ResponseCache(ttl_seconds=3600, max_entries=256)
+    cache: ResponseCache = ResponseCache(ttl_seconds=86400, max_entries=1000)
     limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_MAX, window_seconds=60)
+
 
 
 state = _AppState()
@@ -747,20 +748,29 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
     if not state.limiter.allow(client_ip):
         raise HTTPException(
             status_code=429,
-            detail="Too many requests. Please wait a minute before asking another question.",
+            detail=(
+                "⏳ **High Traffic Alert — Per-Minute Rate Limit Reached**\n\n"
+                "You have asked several questions in a short period. Please wait **30 to 60 seconds** before asking your next question."
+            ),
         )
 
     history = [{"role": m.role, "content": m.content} for m in req.history]
-    answer, from_cache = await run_in_threadpool(
-        answer_question,
-        req.question,
-        ds,
-        state.llm,
-        history,
-        state.cache,
-        req.context,
-    )
+    try:
+        answer, from_cache = await run_in_threadpool(
+            answer_question,
+            req.question,
+            ds,
+            state.llm,
+            history,
+            state.cache,
+            req.context,
+        )
+    except Exception as exc:
+        _, friendly = classify_api_error(exc)
+        return ChatResponse(answer=friendly, cached=False)
+
     return ChatResponse(answer=answer, cached=from_cache)
+
 
 
 class BugReportRequest(BaseModel):
