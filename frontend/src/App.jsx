@@ -257,22 +257,60 @@ export default function App() {
   const [penaltyInfractionFilter, setPenaltyInfractionFilter] = useState("all");
   const hasInAppHistory = useRef(false);
 
+  async function loadPenaltyBreakdown(pv) {
+    setPenaltyView(pv);
+    setPenaltyLoading(true);
+    setPenaltyError("");
+    setPenaltyPage(1);
+    setPenaltySeasonFilter("all");
+    setPenaltyInfractionFilter("all");
+    try {
+      const params = new URLSearchParams({
+        season: pv.season || "all",
+        scope: pv.scope || "all",
+      });
+      if (pv.opponent) params.set("opponent", pv.opponent);
+      if (pv.player) params.set("player", pv.player);
+      const res = await fetch(`${API_BASE}/api/penalties?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Unable to load penalty breakdown");
+      setPenaltyData(data);
+    } catch (err) {
+      setPenaltyError(err.message || "Unable to load penalty breakdown");
+    } finally {
+      setPenaltyLoading(false);
+    }
+  }
+
   useEffect(() => {
     // Seed initial history state so Mouse Button 4 / Back returns cleanly
-    window.history.replaceState({ tab, player: selectedPlayer }, "", window.location.href);
+    window.history.replaceState(
+      { tab, player: selectedPlayer, penaltyView: null },
+      "",
+      window.location.href
+    );
 
     function handlePopState(e) {
       const state = e.state;
       if (state) {
         setTab(state.tab || "chat");
         setSelectedPlayer(state.player || null);
+        if (state.penaltyView) {
+          loadPenaltyBreakdown(state.penaltyView);
+        } else {
+          setPenaltyView(null);
+          setPenaltyData(null);
+          setPenaltyError("");
+        }
       } else {
         const params = new URLSearchParams(window.location.search);
         const t = params.get("tab");
         setTab(["chat", "leaders", "roster", "rivalry"].includes(t) ? t : "chat");
         setSelectedPlayer(params.get("player") || null);
+        setPenaltyView(null);
+        setPenaltyData(null);
+        setPenaltyError("");
       }
-      setPenaltyView(null);
       setPlayerError("");
     }
 
@@ -292,7 +330,8 @@ export default function App() {
     const url = new URL(window.location.href);
     url.searchParams.set("tab", nextTab);
     url.searchParams.delete("player");
-    window.history.pushState({ tab: nextTab, player: null }, "", url.toString());
+    url.searchParams.delete("penalties");
+    window.history.pushState({ tab: nextTab, player: null, penaltyView: null }, "", url.toString());
   }
 
   function openPlayer(name) {
@@ -304,7 +343,8 @@ export default function App() {
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tab);
     url.searchParams.set("player", name);
-    window.history.pushState({ tab, player: name }, "", url.toString());
+    url.searchParams.delete("penalties");
+    window.history.pushState({ tab, player: name, penaltyView: null }, "", url.toString());
   }
 
   function closePlayer() {
@@ -317,38 +357,32 @@ export default function App() {
     setPlayerError("");
     const url = new URL(window.location.href);
     url.searchParams.delete("player");
-    window.history.replaceState({ tab, player: null }, "", url.toString());
+    url.searchParams.delete("penalties");
+    window.history.replaceState({ tab, player: null, penaltyView: null }, "", url.toString());
   }
 
-  async function openPenaltyBreakdown({ mode, player = "", season = "all", scope = "all", opponent = "" }) {
-    setPenaltyView({ mode, player, season, scope, opponent });
-    setPenaltyLoading(true);
-    setPenaltyError("");
-    setPenaltyPage(1);
-    setPenaltySeasonFilter("all");
-    setPenaltyInfractionFilter("all");
-    try {
-      const params = new URLSearchParams({
-        season: season || "all",
-        scope: scope || "all",
-      });
-      if (opponent) params.set("opponent", opponent);
-      if (player) params.set("player", player);
-      const res = await fetch(`${API_BASE}/api/penalties?${params.toString()}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Unable to load penalty breakdown");
-      setPenaltyData(data);
-    } catch (err) {
-      setPenaltyError(err.message || "Unable to load penalty breakdown");
-    } finally {
-      setPenaltyLoading(false);
-    }
+  function openPenaltyBreakdown({ mode, player = "", season = "all", scope = "all", opponent = "" }) {
+    const pv = { mode, player, season, scope, opponent };
+    hasInAppHistory.current = true;
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    if (selectedPlayer) url.searchParams.set("player", selectedPlayer);
+    url.searchParams.set("penalties", mode);
+    window.history.pushState({ tab, player: selectedPlayer, penaltyView: pv }, "", url.toString());
+    loadPenaltyBreakdown(pv);
   }
 
   function closePenaltyBreakdown() {
+    if (hasInAppHistory.current) {
+      window.history.back();
+      return;
+    }
     setPenaltyView(null);
     setPenaltyData(null);
     setPenaltyError("");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("penalties");
+    window.history.replaceState({ tab, player: selectedPlayer, penaltyView: null }, "", url.toString());
   }
 
   useEffect(() => {

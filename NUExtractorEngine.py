@@ -484,10 +484,16 @@ def parse_modern_boxscore(soup, url, html):
         cap_text = cap.get_text().lower() if cap else ""
         if "penalty summary" in cap_text:
             tbody = t.find("tbody") or t
+            nu_player_names = nu_skater_names | {g["goalie_name"].lower() for g in goalies}
             for r in tbody.find_all("tr"):
-                cells = [c.get_text(strip=True) for c in r.find_all(["td", "th"])]
+                raw_cells = r.find_all(["td", "th"])
+                cells = [c.get_text(strip=True) for c in raw_cells]
                 if len(cells) >= 6:
                     team_raw = cells[0]
+                    if not team_raw and raw_cells:
+                        img = raw_cells[0].find("img")
+                        if img:
+                            team_raw = (img.get("alt") or img.get("title") or "").strip()
                     prd = cells[1]
                     p_name = clean_person_name(cells[2])
                     min_str = cells[3]
@@ -498,7 +504,14 @@ def parse_modern_boxscore(soup, url, html):
                     except ValueError:
                         p_mins = 2
 
-                    team = "Northeastern" if ("nu" in team_raw.lower() or "neu" in team_raw.lower() or not team_raw) else opponent
+                    tr_low = team_raw.lower()
+                    is_nu = (
+                        "northeastern" in tr_low
+                        or "nu" in tr_low
+                        or "neu" in tr_low
+                        or (not tr_low and p_name.lower() in nu_player_names)
+                    )
+                    team = "Northeastern" if is_nu else opponent
 
                     penalty_events.append({
                         "date": date,

@@ -1252,6 +1252,21 @@ def get_penalties(
         }
 
     df = df[df["team"] == "Northeastern"].copy()
+    nu_players: set[str] = set()
+    for src_df, col in (
+        (ds.rosters, "player_name"),
+        (ds.season_stats, "player_name"),
+        (ds.skaters, "player_name"),
+        (ds.goalies, "goalie_name"),
+    ):
+        if not src_df.empty and col in src_df.columns:
+            nu_players.update(
+                str(n).strip().lower()
+                for n in src_df[col].dropna()
+                if str(n).strip()
+            )
+    if nu_players:
+        df = df[df["player_name"].astype(str).str.strip().str.lower().isin(nu_players)]
     target_season = season.strip() if season and season.strip() and season.strip().lower() != "all" else "all"
     if target_season != "all":
         df = df[df["season"] == target_season]
