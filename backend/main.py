@@ -455,13 +455,13 @@ def _parse_minutes_to_float(val: Any) -> float:
         return 0.0
 
 
-def _multi_goal_stats(
+def _skater_log_extras(
     ds: HockeyDatasets,
     target_season: str,
     scope: str,
     target_opponent: str | None,
-) -> tuple[dict[str, int], dict[str, int], int, int]:
-    """Return (player_mgg_map, player_htg_map, total_mgg, total_htg) from skater game logs."""
+) -> dict[str, Any]:
+    """Return per-player maps and team totals for MGG, HTG, MPG, and Faceoffs from skater logs."""
     sk_df = ds.skaters if target_season == "all" else ds.skaters[ds.skaters["season"] == target_season]
     sk_df = sk_df[sk_df["position"] != "G"]
     if scope == "conference":
@@ -469,17 +469,31 @@ def _multi_goal_stats(
     if target_opponent:
         sk_df = sk_df[sk_df["opponent"].str.lower() == target_opponent.lower()]
     if sk_df.empty:
-        return {}, {}, 0, 0
+        return {
+            "mgg_map": {}, "htg_map": {}, "mpg_map": {}, "fow_map": {}, "fol_map": {},
+            "total_mgg": 0, "total_htg": 0, "total_mpg": 0, "total_fow": 0, "total_fol": 0,
+        }
     mgg_df = sk_df[sk_df["goals"] >= 2]
     htg_df = sk_df[sk_df["goals"] >= 3]
+    mpg_df = sk_df[sk_df["points"] >= 2]
     mgg_map = mgg_df.groupby("player_name").size().to_dict() if not mgg_df.empty else {}
     htg_map = htg_df.groupby("player_name").size().to_dict() if not htg_df.empty else {}
-    return (
-        {str(k): int(v) for k, v in mgg_map.items()},
-        {str(k): int(v) for k, v in htg_map.items()},
-        int(len(mgg_df)),
-        int(len(htg_df)),
-    )
+    mpg_map = mpg_df.groupby("player_name").size().to_dict() if not mpg_df.empty else {}
+    fo_grp = sk_df.groupby("player_name")[["faceoffs_won", "faceoffs_lost"]].sum()
+    fow_map = fo_grp["faceoffs_won"].to_dict() if not fo_grp.empty else {}
+    fol_map = fo_grp["faceoffs_lost"].to_dict() if not fo_grp.empty else {}
+    return {
+        "mgg_map": {str(k): int(v) for k, v in mgg_map.items()},
+        "htg_map": {str(k): int(v) for k, v in htg_map.items()},
+        "mpg_map": {str(k): int(v) for k, v in mpg_map.items()},
+        "fow_map": {str(k): int(v) for k, v in fow_map.items()},
+        "fol_map": {str(k): int(v) for k, v in fol_map.items()},
+        "total_mgg": int(len(mgg_df)),
+        "total_htg": int(len(htg_df)),
+        "total_mpg": int(len(mpg_df)),
+        "total_fow": int(sk_df["faceoffs_won"].sum()),
+        "total_fol": int(sk_df["faceoffs_lost"].sum()),
+    }
 
 
 def _build_team_stats(
@@ -567,7 +581,70 @@ def _build_team_stats(
         else []
     )
 
-    _, _, multi_goal_games, hat_tricks = _multi_goal_stats(ds, target_season, scope, target_opponent)
+    extras = _skater_log_extras(ds, target_season, scope, target_opponent)
+    fow = extras["total_fow"]
+    fol = extras["total_fol"]
+    faceoff_pct = round((fow / (fow + fol)) * 100.0, 1) if (fow + fol) > 0 else None
+
+    def _wlt(sub_df) -> str:
+        if sub_df.empty:
+            return "0-0-0"
+        w = int((sub_df["outcome"] == "W").sum())
+        l = int((sub_df["outcome"] == "L").sum())
+        t = int((sub_df["outcome"] == "T").sum())
+        return f"{w}-{l}-{t}"
+
+    one_goal_df = games_df[(games_df["nu_goals"] - games_df["opp_goals"]).abs() == 1] if gp else games_df
+    ot_df = games_df[games_df["is_overtime"] == 1] if gp else games_df
+    so_df = games_df[games_df["is_shootout"] == 1] if gp else games_df
+    so_losses = int((so_df["shootout_winner"] != "Northeastern").sum()) if not so_df.empty else 0
+
+    goals_ev = ds.goals if target_season == "all" else ds.goals[ds.goals["season"] == target_season]
+    if scope == "conference":
+        goals_ev = goals_ev[goals_ev["opponent"].isin(HOCKEY_EAST_TEAMS)]
+    if target_opponent:
+        goals_ev = goals_ev[goals_ev["opponent"].str.lower() == target_opponent.lower()]
+
+    scoring_first_record = "0-0-0"
+    goals_by_period: list[dict[str, Any]] = []
+    if not goals_ev.empty:
+        period_order = {"1st": 1, "2nd": 2, "3rd": 3, "OT": 4, "1OT": 4, "2OT": 5, "3OT": 6}
+        g_sorted = goals_ev.assign(_pord=goals_ev["period"].map(lambda x: period_order.get(str(x).strip(), 99)))
+        first_goals = (
+            g_sorted.sort_values(["date", "opponent", "_pord", "time_seconds"])
+            .drop_duplicates(subset=["date", "opponent"], keep="first")
+        )
+        nu_first_keys = set(
+            zip(
+                first_goals[first_goals["team"] == "Northeastern"]["date"].astype(str),
+                first_goals[first_goals["team"] == "Northeastern"]["opponent"].astype(str),
+            )
+        )
+        if gp and nu_first_keys:
+            mask_sf = [
+                (str(d), str(o)) in nu_first_keys
+                for d, o in zip(games_df["date"], games_df["opponent"])
+            ]
+            scoring_first_record = _wlt(games_df[mask_sf])
+
+        for per_name in ["1st", "2nd", "3rd", "OT"]:
+            per_sub = goals_ev[goals_ev["period"] == per_name]
+            if not per_sub.empty or per_name in ("1st", "2nd", "3rd"):
+                goals_by_period.append({
+                    "period": per_name,
+                    "nu_goals": int((per_sub["team"] == "Northeastern").sum()),
+                    "opp_goals": int((per_sub["team"] != "Northeastern").sum()),
+                })
+
+    so_ev = ds.shootouts if target_season == "all" else ds.shootouts[ds.shootouts["season"] == target_season]
+    if scope == "conference":
+        so_ev = so_ev[so_ev["opponent"].isin(HOCKEY_EAST_TEAMS)]
+    if target_opponent:
+        so_ev = so_ev[so_ev["opponent"].str.lower() == target_opponent.lower()]
+    nu_so_ev = so_ev[so_ev["shooter_team"] == "Northeastern"] if not so_ev.empty else so_ev
+    shootout_attempts = int(len(nu_so_ev))
+    shootout_made = int((nu_so_ev["result"] == "MADE").sum()) if shootout_attempts > 0 else 0
+    shootout_pct = round((shootout_made / shootout_attempts) * 100.0, 1) if shootout_attempts > 0 else 0.0
 
     return {
         "games_played": gp,
@@ -577,6 +654,15 @@ def _build_team_stats(
         "win_pct": win_pct,
         "ot_games": ot_games,
         "shootout_wins": shootout_wins,
+        "shootout_losses": so_losses,
+        "shootout_record": f"{shootout_wins}-{so_losses}",
+        "one_goal_record": _wlt(one_goal_df),
+        "ot_record": _wlt(ot_df),
+        "scoring_first_record": scoring_first_record,
+        "shootout_attempts": shootout_attempts,
+        "shootout_made": shootout_made,
+        "shootout_pct": shootout_pct,
+        "goals_by_period": goals_by_period,
         "goals_for": goals_for,
         "goals_against": goals_against,
         "goal_diff": goal_diff,
@@ -590,8 +676,12 @@ def _build_team_stats(
         "shg": shg,
         "pim": pim,
         "blocked_shots": blocked_shots,
-        "multi_goal_games": multi_goal_games,
-        "hat_tricks": hat_tricks,
+        "faceoffs_won": fow,
+        "faceoffs_lost": fol,
+        "faceoff_pct": faceoff_pct,
+        "multi_goal_games": extras["total_mgg"],
+        "hat_tricks": extras["total_htg"],
+        "multi_point_games": extras["total_mpg"],
         "saves": saves,
         "save_pct": save_pct,
         "season_breakdown": season_breakdown,
@@ -640,6 +730,7 @@ def get_leaders(
             sk_df = sk_df.copy()
             sk_df["_mgg"] = (sk_df["goals"] >= 2).astype(int)
             sk_df["_htg"] = (sk_df["goals"] >= 3).astype(int)
+            sk_df["_mpg"] = (sk_df["points"] >= 2).astype(int)
             grouped = (
                 sk_df.groupby("player_name", as_index=False)
                 .agg(
@@ -658,12 +749,19 @@ def get_leaders(
                     faceoffs_lost=("faceoffs_lost", "sum"),
                     multi_goal_games=("_mgg", "sum"),
                     hat_tricks=("_htg", "sum"),
+                    multi_point_games=("_mpg", "sum"),
                 )
                 .sort_values(["points", "goals", "gp"], ascending=[False, False, True])
                 .head(limit)
             )
             grouped["shot_pct"] = grouped.apply(
                 lambda r: round((r["goals"] / r["shots"]) * 100.0, 1) if r["shots"] > 0 else 0.0, axis=1
+            )
+            grouped["faceoff_pct"] = grouped.apply(
+                lambda r: round((r["faceoffs_won"] / (r["faceoffs_won"] + r["faceoffs_lost"])) * 100.0, 1)
+                if (r["faceoffs_won"] + r["faceoffs_lost"]) > 0
+                else 0.0,
+                axis=1,
             )
             grouped["jersey_number"] = grouped["player_name"].map(lambda n: jersey_map.get(n, ""))
             skaters_list = _records(grouped)
@@ -693,6 +791,7 @@ def get_leaders(
             )
             g_grouped["player_name"] = g_grouped["goalie_name"]
             g_grouped["jersey_number"] = g_grouped["player_name"].map(lambda n: jersey_map.get(n, ""))
+            g_grouped["goalie_minutes"] = g_grouped["_mins"].apply(lambda m: f"{int(m)}:{int(round((m % 1) * 60)):02d}")
             g_grouped["gaa"] = g_grouped.apply(
                 lambda r: round((r["ga"] * 60.0) / r["_mins"], 2) if r["_mins"] > 0 else 0.0, axis=1
             )
@@ -715,7 +814,12 @@ def get_leaders(
         }
 
     # Case 2: All opponents -> use cumulative season stats (All or Hockey East Conference)
-    mgg_map, htg_map, _, _ = _multi_goal_stats(ds, target_season, scope, None)
+    extras = _skater_log_extras(ds, target_season, scope, None)
+    mgg_map = extras["mgg_map"]
+    htg_map = extras["htg_map"]
+    mpg_map = extras["mpg_map"]
+    fow_map = extras["fow_map"]
+    fol_map = extras["fol_map"]
     df = season_rows.copy()
     if target_season == "all" and not df.empty:
         # Aggregate career/all-time stats across seasons
@@ -735,6 +839,7 @@ def get_leaders(
                 ppg=("conf_ppg" if scope == "conference" else "ppg", "sum"),
                 shg=("conf_shg" if scope == "conference" else "shg", "sum"),
                 gwg=("conf_gwg" if scope == "conference" else "gwg", "sum"),
+                otg=("conf_otg" if scope == "conference" else "otg", "sum"),
                 pim=("conf_pim" if scope == "conference" else "pim", "sum"),
                 blocked_shots=("conf_blocked_shots" if scope == "conference" else "blocked_shots", "sum"),
             )
@@ -744,6 +849,15 @@ def get_leaders(
         )
         sk_agg["multi_goal_games"] = sk_agg["player_name"].map(lambda n: mgg_map.get(str(n), 0))
         sk_agg["hat_tricks"] = sk_agg["player_name"].map(lambda n: htg_map.get(str(n), 0))
+        sk_agg["multi_point_games"] = sk_agg["player_name"].map(lambda n: mpg_map.get(str(n), 0))
+        sk_agg["faceoffs_won"] = sk_agg["player_name"].map(lambda n: fow_map.get(str(n), 0))
+        sk_agg["faceoffs_lost"] = sk_agg["player_name"].map(lambda n: fol_map.get(str(n), 0))
+        sk_agg["faceoff_pct"] = sk_agg.apply(
+            lambda r: round((r["faceoffs_won"] / (r["faceoffs_won"] + r["faceoffs_lost"])) * 100.0, 1)
+            if (r["faceoffs_won"] + r["faceoffs_lost"]) > 0
+            else 0.0,
+            axis=1,
+        )
         skaters = sk_agg[sk_agg["gp"] > 0].sort_values(
             ["points", "goals", "gp"], ascending=[False, False, True]
         ).head(limit)
@@ -754,6 +868,7 @@ def get_leaders(
             .agg(
                 jersey_number=("jersey_number", "last"),
                 goalie_gp=("conf_goalie_gp" if scope == "conference" else "goalie_gp", "sum"),
+                goalie_gs=("conf_goalie_gs" if scope == "conference" else "goalie_gs", "sum"),
                 wins=("conf_wins" if scope == "conference" else "wins", "sum"),
                 losses=("conf_losses" if scope == "conference" else "losses", "sum"),
                 ties=("conf_ties" if scope == "conference" else "ties", "sum"),
@@ -784,6 +899,13 @@ def get_leaders(
         [f"{prefix}points", f"{prefix}goals", sk_gp_col], ascending=[False, False, True]
     ).head(limit)
 
+    sk_fow = skaters_src["player_name"].map(lambda n: fow_map.get(str(n), 0))
+    sk_fol = skaters_src["player_name"].map(lambda n: fol_map.get(str(n), 0))
+    sk_fo_tot = sk_fow + sk_fol
+    sk_fo_pct = [
+        round((w / t) * 100.0, 1) if t > 0 else 0.0
+        for w, t in zip(sk_fow, sk_fo_tot)
+    ]
     skaters_norm = pd.DataFrame({
         "jersey_number": skaters_src["jersey_number"],
         "player_name": skaters_src["player_name"],
@@ -800,10 +922,15 @@ def get_leaders(
         "ppg": skaters_src[f"{prefix}ppg"],
         "shg": skaters_src[f"{prefix}shg"],
         "gwg": skaters_src[f"{prefix}gwg"],
+        "otg": skaters_src[f"{prefix}otg"],
         "pim": skaters_src[f"{prefix}pim"],
         "blocked_shots": skaters_src[f"{prefix}blocked_shots"],
         "multi_goal_games": skaters_src["player_name"].map(lambda n: mgg_map.get(str(n), 0)),
         "hat_tricks": skaters_src["player_name"].map(lambda n: htg_map.get(str(n), 0)),
+        "multi_point_games": skaters_src["player_name"].map(lambda n: mpg_map.get(str(n), 0)),
+        "faceoffs_won": sk_fow,
+        "faceoffs_lost": sk_fol,
+        "faceoff_pct": sk_fo_pct,
     })
 
     gl_gp_col = f"{prefix}goalie_gp"
@@ -816,6 +943,8 @@ def get_leaders(
         "player_name": goalies_src["player_name"],
         "captain_role": goalies_src["captain_role"],
         "goalie_gp": goalies_src[f"{prefix}goalie_gp"],
+        "goalie_gs": goalies_src[f"{prefix}goalie_gs"],
+        "goalie_minutes": goalies_src[f"{prefix}goalie_minutes"],
         "wins": goalies_src[f"{prefix}wins"],
         "losses": goalies_src[f"{prefix}losses"],
         "ties": goalies_src[f"{prefix}ties"],
@@ -965,6 +1094,8 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
 
     career_skater = None
     if not stats_df.empty and int(stats_df["gp"].sum()) > 0:
+        fow = int(sk_logs["faceoffs_won"].sum()) if not sk_logs.empty and "faceoffs_won" in sk_logs.columns else 0
+        fol = int(sk_logs["faceoffs_lost"].sum()) if not sk_logs.empty and "faceoffs_lost" in sk_logs.columns else 0
         career_skater = {
             "gp": int(stats_df["gp"].sum()),
             "goals": int(stats_df["goals"].sum()),
@@ -975,9 +1106,14 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
             "ppg": int(stats_df["ppg"].sum()),
             "shg": int(stats_df["shg"].sum()),
             "gwg": int(stats_df["gwg"].sum()),
+            "otg": int(stats_df["otg"].sum()) if "otg" in stats_df.columns else 0,
             "blocked_shots": int(stats_df["blocked_shots"].sum()),
             "multi_goal_games": int((sk_logs["goals"] >= 2).sum()) if not sk_logs.empty else 0,
             "hat_tricks": int((sk_logs["goals"] >= 3).sum()) if not sk_logs.empty else 0,
+            "multi_point_games": int((sk_logs["points"] >= 2).sum()) if not sk_logs.empty else 0,
+            "faceoffs_won": fow,
+            "faceoffs_lost": fol,
+            "faceoff_pct": round((fow / (fow + fol)) * 100, 1) if (fow + fol) > 0 else None,
         }
 
     career_goalie = None
@@ -985,12 +1121,16 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
         total_ga = int(stats_df["ga"].sum())
         total_saves = int(stats_df["saves"].sum())
         total_mins = sum(_parse_minutes_to_float(m) for m in stats_df["goalie_minutes"])
+        tot_secs = int(round(total_mins * 60))
         career_goalie = {
             "goalie_gp": int(stats_df["goalie_gp"].sum()),
+            "goalie_gs": int(stats_df["goalie_gs"].sum()) if "goalie_gs" in stats_df.columns else 0,
+            "goalie_minutes": f"{tot_secs // 60}:{tot_secs % 60:02d}",
             "wins": int(stats_df["wins"].sum()),
             "losses": int(stats_df["losses"].sum()),
             "ties": int(stats_df["ties"].sum()),
             "saves": total_saves,
+            "shots_against": total_saves + total_ga,
             "ga": total_ga,
             "shutouts": int(stats_df["shutouts"].sum()),
             "gaa": round((total_ga * 60.0) / total_mins, 2) if total_mins > 0 else round(float(stats_df["gaa"].mean()), 2),
@@ -999,21 +1139,22 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
 
     season_rows = _records(stats_df) if not stats_df.empty else []
 
-    # Enrich season rows with faceoff and multi-goal totals aggregated from game-by-game skater logs
+    # Enrich season rows with faceoff, multi-goal, and multi-point totals aggregated from game-by-game skater logs
     if season_rows and not sk_logs.empty:
         sk_enriched = sk_logs.assign(
             _mgg=(sk_logs["goals"] >= 2).astype(int),
             _htg=(sk_logs["goals"] >= 3).astype(int),
+            _mpg=(sk_logs["points"] >= 2).astype(int),
         )
         fo_all = (
-            sk_enriched.groupby("season", as_index=False)[["faceoffs_won", "faceoffs_lost", "_mgg", "_htg"]]
+            sk_enriched.groupby("season", as_index=False)[["faceoffs_won", "faceoffs_lost", "_mgg", "_htg", "_mpg"]]
             .sum()
             .set_index("season")
             .to_dict(orient="index")
         )
         sk_conf = sk_enriched[sk_enriched["opponent"].isin(HOCKEY_EAST_TEAMS)]
         fo_conf = (
-            sk_conf.groupby("season", as_index=False)[["faceoffs_won", "faceoffs_lost", "_mgg", "_htg"]]
+            sk_conf.groupby("season", as_index=False)[["faceoffs_won", "faceoffs_lost", "_mgg", "_htg", "_mpg"]]
             .sum()
             .set_index("season")
             .to_dict(orient="index")
@@ -1028,10 +1169,48 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
             row["faceoffs_lost"] = int(all_vals.get("faceoffs_lost", 0))
             row["multi_goal_games"] = int(all_vals.get("_mgg", 0))
             row["hat_tricks"] = int(all_vals.get("_htg", 0))
+            row["multi_point_games"] = int(all_vals.get("_mpg", 0))
             row["conf_faceoffs_won"] = int(conf_vals.get("faceoffs_won", 0))
             row["conf_faceoffs_lost"] = int(conf_vals.get("faceoffs_lost", 0))
             row["conf_multi_goal_games"] = int(conf_vals.get("_mgg", 0))
             row["conf_hat_tricks"] = int(conf_vals.get("_htg", 0))
+            row["conf_multi_point_games"] = int(conf_vals.get("_mpg", 0))
+
+    shootout_stats = {
+        "attempts": 0,
+        "made": 0,
+        "pct": 0.0,
+        "winners": 0,
+        "faced": 0,
+        "saves": 0,
+        "allowed": 0,
+        "save_pct": 0.0,
+    }
+    if not ds.shootouts.empty:
+        so_sk = ds.shootouts[
+            (ds.shootouts["shooter_team"] == "Northeastern")
+            & (ds.shootouts["shooter_name"].str.lower() == canonical_name.lower())
+        ]
+        if not so_sk.empty:
+            attempts = int(len(so_sk))
+            made = int((so_sk["result"] == "MADE").sum())
+            winners = int((so_sk["is_shootout_winner"] == 1).sum()) if "is_shootout_winner" in so_sk.columns else 0
+            shootout_stats["attempts"] = attempts
+            shootout_stats["made"] = made
+            shootout_stats["pct"] = round((made / attempts) * 100, 1) if attempts > 0 else 0.0
+            shootout_stats["winners"] = winners
+        so_gl = ds.shootouts[
+            (ds.shootouts["goalie_team"] == "Northeastern")
+            & (ds.shootouts["goalie_name"].str.lower() == canonical_name.lower())
+        ]
+        if not so_gl.empty:
+            faced = int(len(so_gl))
+            allowed = int((so_gl["result"] == "MADE").sum())
+            saves = faced - allowed
+            shootout_stats["faced"] = faced
+            shootout_stats["allowed"] = allowed
+            shootout_stats["saves"] = saves
+            shootout_stats["save_pct"] = round(saves / faced, 3) if faced > 0 else 0.0
 
     if is_goalie and not gl_logs.empty:
         game_logs = _records(gl_logs.sort_values("date", ascending=False))
@@ -1043,6 +1222,7 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
         "is_goalie": is_goalie,
         "career_skater": career_skater,
         "career_goalie": career_goalie,
+        "shootout_stats": shootout_stats,
         "seasons": season_rows,
         "game_logs": game_logs,
     }

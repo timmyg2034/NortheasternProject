@@ -1199,6 +1199,26 @@ export default function App() {
                         <div className="stat-box-hint">Breakdown &rarr;</div>
                       </button>
                       <div className="stat-box">
+                        <div className="val">{playerData.career_skater.ppg ?? 0}</div>
+                        <div className="lbl">PPG</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_skater.shg ?? 0}</div>
+                        <div className="lbl">SHG</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_skater.gwg ?? 0}</div>
+                        <div className="lbl">GWG</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_skater.otg ?? 0}</div>
+                        <div className="lbl">OTG</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_skater.multi_point_games ?? 0}</div>
+                        <div className="lbl">Multi-Point Games</div>
+                      </div>
+                      <div className="stat-box">
                         <div className="val">{playerData.career_skater.multi_goal_games ?? 0}</div>
                         <div className="lbl">Multi-Goal Games</div>
                       </div>
@@ -1206,6 +1226,32 @@ export default function App() {
                         <div className="val">{playerData.career_skater.hat_tricks ?? 0}</div>
                         <div className="lbl">Hat Tricks</div>
                       </div>
+                      <div className="stat-box">
+                        <div className="val">
+                          {playerData.career_skater.faceoff_pct !== null &&
+                          playerData.career_skater.faceoff_pct !== undefined
+                            ? `${playerData.career_skater.faceoff_pct}%`
+                            : "N/A"}
+                        </div>
+                        <div className="lbl">
+                          {playerData.career_skater.faceoff_pct !== null &&
+                          playerData.career_skater.faceoff_pct !== undefined
+                            ? `FO% (${playerData.career_skater.faceoffs_won}-${playerData.career_skater.faceoffs_lost})`
+                            : "FO%"}
+                        </div>
+                      </div>
+                      {playerData.shootout_stats?.attempts > 0 && (
+                        <div className="stat-box">
+                          <div className="val">
+                            {`${playerData.shootout_stats.made}/${playerData.shootout_stats.attempts} (${playerData.shootout_stats.pct}%)`}
+                          </div>
+                          <div className="lbl">
+                            {playerData.shootout_stats.winners > 0
+                              ? `Shootout (${playerData.shootout_stats.winners} W)`
+                              : "Shootout"}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1217,6 +1263,10 @@ export default function App() {
                       <div className="stat-box">
                         <div className="val">{playerData.career_goalie.goalie_gp}</div>
                         <div className="lbl">GP</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_goalie.goalie_gs ?? 0}</div>
+                        <div className="lbl">GS</div>
                       </div>
                       <div className="stat-box">
                         <div className="val">{`${playerData.career_goalie.wins}-${playerData.career_goalie.losses}-${playerData.career_goalie.ties}`}</div>
@@ -1231,9 +1281,25 @@ export default function App() {
                         <div className="lbl">SV%</div>
                       </div>
                       <div className="stat-box">
+                        <div className="val">{playerData.career_goalie.saves ?? 0}</div>
+                        <div className="lbl">Saves</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_goalie.goalie_minutes || "0:00"}</div>
+                        <div className="lbl">Minutes</div>
+                      </div>
+                      <div className="stat-box">
                         <div className="val">{playerData.career_goalie.shutouts}</div>
                         <div className="lbl">Shutouts</div>
                       </div>
+                      {playerData.shootout_stats?.faced > 0 && (
+                        <div className="stat-box">
+                          <div className="val">{Number(playerData.shootout_stats.save_pct).toFixed(3)}</div>
+                          <div className="lbl">
+                            {`SO SV% (${playerData.shootout_stats.saves}/${playerData.shootout_stats.faced})`}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1308,6 +1374,7 @@ export default function App() {
                               <th>PPG</th>
                               <th>SHG</th>
                               <th>GWG</th>
+                              <th>MPG</th>
                               <th>MGG</th>
                               <th>HTG</th>
                               <th>BLK</th>
@@ -1337,6 +1404,7 @@ export default function App() {
                                   <td>{s[`${p}ppg`]}</td>
                                   <td>{s[`${p}shg`]}</td>
                                   <td>{s[`${p}gwg`]}</td>
+                                  <td>{s[`${p}multi_point_games`] ?? 0}</td>
                                   <td>{s[`${p}multi_goal_games`] ?? 0}</td>
                                   <td>{s[`${p}hat_tricks`] ?? 0}</td>
                                   <td>{tracked ? s[`${p}blocked_shots`] : <span className="muted">N/A</span>}</td>
@@ -1499,6 +1567,7 @@ export default function App() {
                         shots: 0,
                         plus_minus: 0,
                         blocked_shots: 0,
+                        multi_point_games: 0,
                         multi_goal_games: 0,
                         hat_tricks: 0,
                         has_tracked_blk_fo: false,
@@ -1529,11 +1598,13 @@ export default function App() {
                       entry.minutes += parseMinutes(g.minutes);
                     } else {
                       const gGoals = Number(g.goals || 0);
+                      const gPoints = Number(g.points || 0);
                       entry.goals += gGoals;
+                      if (gPoints >= 2) entry.multi_point_games += 1;
                       if (gGoals >= 2) entry.multi_goal_games += 1;
                       if (gGoals >= 3) entry.hat_tricks += 1;
                       entry.assists += Number(g.assists || 0);
-                      entry.points += Number(g.points || 0);
+                      entry.points += gPoints;
                       entry.shots += Number(g.shots || 0);
                       entry.plus_minus += Number(g.plus_minus || 0);
                       entry.pim += Number(g.penalty_minutes || 0);
@@ -1684,6 +1755,10 @@ export default function App() {
                                 <div className="lbl">PIM</div>
                                 <div className="stat-box-hint">Breakdown &rarr;</div>
                               </button>
+                                <div className="stat-box">
+                                <div className="val">{selectedOppStats.multi_point_games}</div>
+                                <div className="lbl">Multi-Point Games</div>
+                              </div>
                               <div className="stat-box">
                                 <div className="val">{selectedOppStats.multi_goal_games}</div>
                                 <div className="lbl">Multi-Goal Games</div>
@@ -1691,6 +1766,25 @@ export default function App() {
                               <div className="stat-box">
                                 <div className="val">{selectedOppStats.hat_tricks}</div>
                                 <div className="lbl">Hat Tricks</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">
+                                  {selectedOppStats.has_tracked_blk_fo &&
+                                  selectedOppStats.faceoffs_won + selectedOppStats.faceoffs_lost > 0
+                                    ? `${(
+                                        (selectedOppStats.faceoffs_won /
+                                          (selectedOppStats.faceoffs_won +
+                                            selectedOppStats.faceoffs_lost)) *
+                                        100
+                                      ).toFixed(1)}%`
+                                    : "N/A"}
+                                </div>
+                                <div className="lbl">
+                                  {selectedOppStats.has_tracked_blk_fo &&
+                                  selectedOppStats.faceoffs_won + selectedOppStats.faceoffs_lost > 0
+                                    ? `FO% (${selectedOppStats.faceoffs_won}-${selectedOppStats.faceoffs_lost})`
+                                    : "FO%"}
+                                </div>
                               </div>
                             </div>
                           )}
@@ -1835,6 +1929,7 @@ export default function App() {
                                   <th>FO</th>
                                   <th>FO%</th>
                                   <th>PIM</th>
+                                  <th>MPG</th>
                                   <th>MGG</th>
                                   <th>HTG</th>
                                 </tr>
@@ -1871,6 +1966,7 @@ export default function App() {
                                         : <span className="muted">N/A</span>}
                                     </td>
                                     <td>{row.pim}</td>
+                                    <td>{row.multi_point_games}</td>
                                     <td>{row.multi_goal_games}</td>
                                     <td>{row.hat_tricks}</td>
                                   </tr>
@@ -2199,7 +2295,86 @@ export default function App() {
                         {`Multi-Goal Games (${ts.hat_tricks ?? 0} Hat Tricks)`}
                       </div>
                     </div>
+                    <div className="stat-box">
+                      <div className="val">{ts.multi_point_games ?? 0}</div>
+                      <div className="lbl">Multi-Point Games</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">
+                        {hasModernTracking(selectedSeason) && ts.faceoff_pct !== null && ts.faceoff_pct !== undefined
+                          ? `${ts.faceoff_pct}%`
+                          : "N/A"}
+                      </div>
+                      <div className="lbl">
+                        {hasModernTracking(selectedSeason) && ts.faceoff_pct !== null && ts.faceoff_pct !== undefined
+                          ? `Faceoff % (${ts.faceoffs_won}-${ts.faceoffs_lost})`
+                          : "Faceoff %"}
+                      </div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">{ts.one_goal_record || "0-0-0"}</div>
+                      <div className="lbl">1-Goal Games</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">{ts.ot_record || "0-0-0"}</div>
+                      <div className="lbl">{`OT Record (${ts.ot_games ?? 0} OT)`}</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">{ts.shootout_record || "0-0"}</div>
+                      <div className="lbl">
+                        {ts.shootout_attempts > 0
+                          ? `Shootout (${ts.shootout_made}/${ts.shootout_attempts}, ${ts.shootout_pct}%)`
+                          : "Shootout Record"}
+                      </div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">{ts.scoring_first_record || "0-0-0"}</div>
+                      <div className="lbl">When Scoring First</div>
+                    </div>
                   </div>
+
+                  {ts.goals_by_period?.length > 0 && (
+                    <>
+                      <h3 style={{ marginTop: 20 }}>Goals by Period</h3>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Team</th>
+                              {ts.goals_by_period.map((p) => (
+                                <th key={p.period}>{p.period}</th>
+                              ))}
+                              <th>Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td><strong>Northeastern</strong></td>
+                              {ts.goals_by_period.map((p) => (
+                                <td key={p.period}>{p.nu_goals}</td>
+                              ))}
+                              <td>
+                                <strong>
+                                  {ts.goals_by_period.reduce((acc, p) => acc + (p.nu_goals || 0), 0)}
+                                </strong>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td>Opponents</td>
+                              {ts.goals_by_period.map((p) => (
+                                <td key={p.period}>{p.opp_goals}</td>
+                              ))}
+                              <td>
+                                <strong>
+                                  {ts.goals_by_period.reduce((acc, p) => acc + (p.opp_goals || 0), 0)}
+                                </strong>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
 
                   {selectedSeason === "all" && ts.season_breakdown?.length > 0 && (
                     <>
@@ -2325,8 +2500,13 @@ export default function App() {
                         ["shots", "SOG", "Shots on Goal"],
                         ["shot_pct", "SH%", "Shooting Percentage"],
                         ["plus_minus", "+/-", "Plus/Minus"],
+                        ["ppg", "PPG", "Power Play Goals"],
+                        ["shg", "SHG", "Short-Handed Goals"],
+                        ["gwg", "GWG", "Game-Winning Goals"],
                         ["blocked_shots", "BLK", "Blocked Shots"],
+                        ["faceoff_pct", "FO%", "Faceoff Percentage"],
                         ["pim", "PIM", "Penalty Minutes"],
+                        ["multi_point_games", "MPG", "Multi-Point Games"],
                         ["multi_goal_games", "MGG", "Multi-Goal Games"],
                         ["hat_tricks", "HTG", "Hat Tricks"],
                       ].map(([colKey, label, fullLabel]) => {
@@ -2396,8 +2576,17 @@ export default function App() {
                               : <span className="muted">N/A</span>}
                         </td>
                         <td>{p.plus_minus > 0 ? `+${p.plus_minus}` : p.plus_minus}</td>
+                        <td>{p.ppg !== undefined && p.ppg !== null ? p.ppg : <span className="muted">N/A</span>}</td>
+                        <td>{p.shg !== undefined && p.shg !== null ? p.shg : <span className="muted">N/A</span>}</td>
+                        <td>{p.gwg !== undefined && p.gwg !== null ? p.gwg : <span className="muted">N/A</span>}</td>
                         <td>{hasModernTracking(selectedSeason) ? p.blocked_shots : <span className="muted">N/A</span>}</td>
+                        <td>
+                          {hasModernTracking(selectedSeason) && p.faceoff_pct !== null && p.faceoff_pct !== undefined
+                            ? `${p.faceoff_pct}%`
+                            : <span className="muted">N/A</span>}
+                        </td>
                         <td>{p.pim}</td>
+                        <td>{p.multi_point_games ?? 0}</td>
                         <td>{p.multi_goal_games ?? 0}</td>
                         <td>{p.hat_tricks ?? 0}</td>
                       </tr>
@@ -2417,6 +2606,8 @@ export default function App() {
                         <th>#</th>
                         <th>Goalie</th>
                         <th>GP</th>
+                        <th>GS</th>
+                        <th>MIN</th>
                         <th>W-L-T</th>
                         <th>GAA</th>
                         <th>SV%</th>
@@ -2437,6 +2628,8 @@ export default function App() {
                             </button>
                           </td>
                           <td>{g.goalie_gp}</td>
+                          <td>{g.goalie_gs ?? 0}</td>
+                          <td>{g.goalie_minutes || "0:00"}</td>
                           <td>{`${g.wins}-${g.losses}-${g.ties}`}</td>
                           <td>{Number(g.gaa).toFixed(2)}</td>
                           <td>{Number(g.save_pct).toFixed(3)}</td>
