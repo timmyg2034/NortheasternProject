@@ -2235,10 +2235,16 @@ async def scrape_rosters_and_cumulative_stats(
                     srec["uag"] = sp.get("uag", 0)
                     srec["htg"] = sp.get("htg", 0)
 
-        # Fallback: if cumulative stats page wasn't available or didn't match (e.g., 1999-00 to 2011-12),
-        # aggregate complete Overall & Hockey East Conference cumulative stats from the parsed game logs!
-        if not sk_map and yr <= 2025:
-            sk_map, go_map = build_season_stats_from_game_logs(sea, all_skaters, all_goalies, all_goals, all_games)
+        # Fallback: if cumulative stats page wasn't available, didn't match, or was incomplete (e.g. 2020-21 COVID page),
+        # aggregate complete Overall & Hockey East Conference cumulative stats from the parsed non-exhibition game logs!
+        non_exh_sk = [s for s in all_skaters if date_to_season(s.get("date", "")) == sea and "exh" not in str(s.get("opponent", "")).lower()]
+        non_exh_gl = [g for g in all_goalies if date_to_season(g.get("date", "")) == sea and "exh" not in str(g.get("opponent", "")).lower()]
+        non_exh_goals = [g for g in all_goals if date_to_season(g.get("date", "")) == sea and "exh" not in str(g.get("opponent", "")).lower()]
+        non_exh_games = [g for g in all_games if date_to_season(g.get("date", "")) == sea and "exh" not in str(g.get("opponent", "")).lower()]
+        log_pts = sum(safe_int(s.get("points", 0)) for s in non_exh_sk)
+        ss_pts = sum(safe_int(v.get("points", 0)) for v in sk_map.values())
+        if (not sk_map and yr <= 2025) or (non_exh_sk and ss_pts + 5 < log_pts):
+            sk_map, go_map = build_season_stats_from_game_logs(sea, non_exh_sk, non_exh_gl, non_exh_goals, non_exh_games)
 
         roster_pkeys_for_sea = {pk for (s, pk) in rosters_by_season_key.keys() if s == sea}
         all_pkeys = sorted(set(sk_map.keys()) | set(go_map.keys()) | roster_pkeys_for_sea)
