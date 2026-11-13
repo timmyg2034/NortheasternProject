@@ -719,6 +719,47 @@ table.data-table tbody tr:hover {
   letter-spacing: 0.4px;
 }
 
+.stat-box-btn {
+  width: 100%;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background-color 0.14s ease;
+}
+
+.stat-box-btn:hover {
+  background: #ffffff;
+  border-color: var(--nu-red);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.stat-box-btn:focus-visible {
+  outline: 2px solid var(--nu-red);
+  outline-offset: 2px;
+}
+
+.stat-box-hint {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--nu-red);
+}
+
+.penalty-bar-wrap {
+  width: 100%;
+  max-width: 160px;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.penalty-bar-fill {
+  height: 100%;
+  background: var(--nu-red);
+  border-radius: 999px;
+}
+
 .rival-pills {
   display: flex;
   flex-wrap: wrap;

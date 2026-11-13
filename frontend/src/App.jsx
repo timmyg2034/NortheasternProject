@@ -227,6 +227,13 @@ export default function App() {
   const [playerLogSeason, setPlayerLogSeason] = useState("all");
   const [playerOpponent, setPlayerOpponent] = useState("all");
   const [rivalryPage, setRivalryPage] = useState(1);
+  const [penaltyView, setPenaltyView] = useState(null);
+  const [penaltyData, setPenaltyData] = useState(null);
+  const [penaltyLoading, setPenaltyLoading] = useState(false);
+  const [penaltyError, setPenaltyError] = useState("");
+  const [penaltyPage, setPenaltyPage] = useState(1);
+  const [penaltySeasonFilter, setPenaltySeasonFilter] = useState("all");
+  const [penaltyInfractionFilter, setPenaltyInfractionFilter] = useState("all");
   const hasInAppHistory = useRef(false);
 
   useEffect(() => {
@@ -244,6 +251,7 @@ export default function App() {
         setTab(["chat", "leaders", "roster", "rivalry"].includes(t) ? t : "chat");
         setSelectedPlayer(params.get("player") || null);
       }
+      setPenaltyView(null);
       setPlayerError("");
     }
 
@@ -252,9 +260,11 @@ export default function App() {
   }, []);
 
   function navigateTab(nextTab) {
-    if (nextTab === tab && !selectedPlayer) return;
+    if (nextTab === tab && !selectedPlayer && !penaltyView) return;
     hasInAppHistory.current = true;
     setTab(nextTab);
+    setPenaltyView(null);
+    setPenaltyData(null);
     setSelectedPlayer(null);
     setPlayerData(null);
     setPlayerError("");
@@ -266,6 +276,8 @@ export default function App() {
 
   function openPlayer(name) {
     hasInAppHistory.current = true;
+    setPenaltyView(null);
+    setPenaltyData(null);
     setSelectedPlayer(name);
     setPlayerScope("all");
     const url = new URL(window.location.href);
@@ -285,6 +297,37 @@ export default function App() {
     const url = new URL(window.location.href);
     url.searchParams.delete("player");
     window.history.replaceState({ tab, player: null }, "", url.toString());
+  }
+
+  async function openPenaltyBreakdown({ mode, player = "", season = "all", scope = "all", opponent = "" }) {
+    setPenaltyView({ mode, player, season, scope, opponent });
+    setPenaltyLoading(true);
+    setPenaltyError("");
+    setPenaltyPage(1);
+    setPenaltySeasonFilter("all");
+    setPenaltyInfractionFilter("all");
+    try {
+      const params = new URLSearchParams({
+        season: season || "all",
+        scope: scope || "all",
+      });
+      if (opponent) params.set("opponent", opponent);
+      if (player) params.set("player", player);
+      const res = await fetch(`${API_BASE}/api/penalties?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Unable to load penalty breakdown");
+      setPenaltyData(data);
+    } catch (err) {
+      setPenaltyError(err.message || "Unable to load penalty breakdown");
+    } finally {
+      setPenaltyLoading(false);
+    }
+  }
+
+  function closePenaltyBreakdown() {
+    setPenaltyView(null);
+    setPenaltyData(null);
+    setPenaltyError("");
   }
 
   useEffect(() => {
@@ -664,7 +707,340 @@ export default function App() {
             </button>
           </div>
         )}
-        {selectedPlayer ? (
+        {penaltyView ? (
+          <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className="controls-row">
+              <button type="button" className="btn-ghost" onClick={closePenaltyBreakdown}>
+                &larr; Back to {penaltyView.mode === "player" ? penaltyView.player : "Team Stats"}
+              </button>
+            </div>
+
+            <div className="card">
+              <div className="card-header">
+                <div>
+                  <h2>
+                    {penaltyView.mode === "player"
+                      ? `${penaltyView.player} — Penalty Breakdown`
+                      : "Northeastern Penalty Breakdown"}
+                  </h2>
+                  <p className="muted" style={{ marginTop: 4 }}>
+                    {penaltyView.season === "all" ? "All-Time (1999–present)" : penaltyView.season}
+                    {penaltyView.scope === "conference" ? " • Hockey East" : " • All Games"}
+                    {penaltyView.opponent ? ` • vs. ${penaltyView.opponent}` : ""}
+                  </p>
+                </div>
+              </div>
+
+              {penaltyLoading && (
+                <p className="muted" role="status" aria-live="polite">
+                  Loading penalty breakdown...
+                </p>
+              )}
+              {penaltyError && (
+                <p className="muted" role="alert">
+                  {penaltyError}
+                </p>
+              )}
+
+              {!penaltyLoading && !penaltyError && penaltyData && (() => {
+                const s = penaltyData.summary || {};
+                const maxInfCount = Math.max(1, ...(penaltyData.by_infraction || []).map((x) => x.count));
+                const filteredEvents = (penaltyData.events || []).filter((ev) => {
+                  if (penaltySeasonFilter !== "all" && ev.season !== penaltySeasonFilter) return false;
+                  const inf = (ev.infraction || "").trim() || "UNSPECIFIED";
+                  if (penaltyInfractionFilter !== "all" && inf !== penaltyInfractionFilter) return false;
+                  return true;
+                });
+                const pageSize = 20;
+                const totalEvents = filteredEvents.length;
+                const totalPages = Math.max(1, Math.ceil(totalEvents / pageSize));
+                const safePage = Math.min(penaltyPage, totalPages);
+                const startIdx = (safePage - 1) * pageSize;
+                const visibleEvents = filteredEvents.slice(startIdx, startIdx + pageSize);
+
+                return (
+                  <>
+                    <div className="stat-grid">
+                      <div className="stat-box">
+                        <div className="val">{s.total_penalties ?? 0}</div>
+                        <div className="lbl">Total Penalties</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{s.total_pim ?? 0}</div>
+                        <div className="lbl">Penalty Min</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{s.minors ?? 0}</div>
+                        <div className="lbl">Minors (2m)</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{s.majors ?? 0}</div>
+                        <div className="lbl">Majors (5m)</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{s.other ?? 0}</div>
+                        <div className="lbl">Misconduct / Other</div>
+                      </div>
+                    </div>
+
+                    {penaltyData.by_period?.length > 0 && (
+                      <>
+                        <h3 style={{ marginTop: 18 }}>By Period</h3>
+                        <div className="stat-grid" style={{ marginTop: 8 }}>
+                          {penaltyData.by_period.map((p) => (
+                            <div key={p.period} className="stat-box">
+                              <div className="val">{p.count}</div>
+                              <div className="lbl">{`${p.period} (${p.pim} PIM)`}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {penaltyData.by_infraction?.length > 0 && (
+                      <>
+                        <h3 style={{ marginTop: 18 }}>By Infraction</h3>
+                        <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
+                          Click an infraction to filter the penalty log below.
+                        </p>
+                        <div className="table-wrap">
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>Infraction</th>
+                                <th>Penalties</th>
+                                <th>PIM</th>
+                                <th>Share</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {penaltyData.by_infraction.map((row) => {
+                                const pct = s.total_penalties
+                                  ? Math.round((row.count / s.total_penalties) * 100)
+                                  : 0;
+                                const isSelected = penaltyInfractionFilter === row.infraction;
+                                return (
+                                  <tr key={row.infraction}>
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="link-btn"
+                                        style={{ fontWeight: isSelected ? 800 : 600 }}
+                                        onClick={() => {
+                                          setPenaltyInfractionFilter(isSelected ? "all" : row.infraction);
+                                          setPenaltyPage(1);
+                                        }}
+                                      >
+                                        {row.infraction}
+                                      </button>
+                                    </td>
+                                    <td>{row.count}</td>
+                                    <td><strong>{row.pim}</strong></td>
+                                    <td>
+                                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                        <div className="penalty-bar-wrap" aria-hidden="true">
+                                          <div
+                                            className="penalty-bar-fill"
+                                            style={{ width: `${Math.round((row.count / maxInfCount) * 100)}%` }}
+                                          />
+                                        </div>
+                                        <span className="muted">{pct}%</span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
+
+                    {penaltyView.mode === "team" && penaltyData.by_player?.length > 0 && (
+                      <>
+                        <h3 style={{ marginTop: 20 }}>By Player ({penaltyData.by_player.length})</h3>
+                        <div className="table-wrap" style={{ marginTop: 8 }}>
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>Player</th>
+                                <th>Penalties</th>
+                                <th>2m</th>
+                                <th>5m</th>
+                                <th>Other</th>
+                                <th>Total PIM</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {penaltyData.by_player.slice(0, 35).map((pl) => (
+                                <tr key={pl.player_name}>
+                                  <td>
+                                    <button
+                                      type="button"
+                                      className="link-btn"
+                                      onClick={() =>
+                                        openPenaltyBreakdown({
+                                          mode: "player",
+                                          player: pl.player_name,
+                                          season: penaltyView.season,
+                                          scope: penaltyView.scope,
+                                          opponent: penaltyView.opponent,
+                                        })
+                                      }
+                                    >
+                                      {pl.player_name}
+                                    </button>
+                                  </td>
+                                  <td>{pl.count}</td>
+                                  <td>{pl.minors}</td>
+                                  <td>{pl.majors}</td>
+                                  <td>{pl.other}</td>
+                                  <td><strong>{pl.pim}</strong></td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="card-header" style={{ marginTop: 22 }}>
+                      <h3>Penalty Log ({totalEvents})</h3>
+                      <div className="controls-row">
+                        {penaltyData.by_season?.length > 1 && (
+                          <select
+                            aria-label="Filter penalty log by season"
+                            className="select-input"
+                            value={penaltySeasonFilter}
+                            onChange={(e) => {
+                              setPenaltySeasonFilter(e.target.value);
+                              setPenaltyPage(1);
+                            }}
+                          >
+                            <option value="all">All Seasons</option>
+                            {penaltyData.by_season.map((sb) => (
+                              <option key={sb.season} value={sb.season}>
+                                {sb.season} ({sb.count})
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        {penaltyData.by_infraction?.length > 1 && (
+                          <select
+                            aria-label="Filter penalty log by infraction"
+                            className="select-input"
+                            value={penaltyInfractionFilter}
+                            onChange={(e) => {
+                              setPenaltyInfractionFilter(e.target.value);
+                              setPenaltyPage(1);
+                            }}
+                          >
+                            <option value="all">All Infractions</option>
+                            {penaltyData.by_infraction.map((inf) => (
+                              <option key={inf.infraction} value={inf.infraction}>
+                                {inf.infraction} ({inf.count})
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    </div>
+
+                    {totalEvents === 0 ? (
+                      <p className="muted">No penalty events match the selected filters.</p>
+                    ) : (
+                      <>
+                        <div className="table-wrap">
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>Date</th>
+                                <th>Season</th>
+                                {penaltyView.mode === "team" && <th>Player</th>}
+                                <th>Opponent</th>
+                                <th>Period</th>
+                                <th>Time</th>
+                                <th>Infraction</th>
+                                <th>PIM</th>
+                                <th>Box</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {visibleEvents.map((ev, idx) => (
+                                <tr key={`${ev.date}-${ev.period}-${ev.time}-${ev.player_name}-${idx}`}>
+                                  <td>{ev.date}</td>
+                                  <td>{ev.season}</td>
+                                  {penaltyView.mode === "team" && (
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="link-btn"
+                                        onClick={() => openPlayer(ev.player_name)}
+                                      >
+                                        {ev.player_name}
+                                      </button>
+                                    </td>
+                                  )}
+                                  <td>
+                                    <span className="opp-with-logo">
+                                      <OpponentLogo name={ev.opponent} />
+                                      <span>{ev.opponent}</span>
+                                    </span>
+                                  </td>
+                                  <td>{ev.period}</td>
+                                  <td>{ev.time}</td>
+                                  <td>{ev.infraction || "UNSPECIFIED"}</td>
+                                  <td><strong>{ev.penalty_minutes}</strong></td>
+                                  <td>
+                                    {ev.boxscore_url ? (
+                                      <a href={ev.boxscore_url} target="_blank" rel="noreferrer">
+                                        View
+                                      </a>
+                                    ) : (
+                                      "-"
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        {totalPages > 1 && (
+                          <nav className="pagination-bar" aria-label="Penalty log pagination">
+                            <span className="muted">
+                              Showing {startIdx + 1}–{Math.min(startIdx + pageSize, totalEvents)} of {totalEvents} penalties
+                            </span>
+                            <div className="pagination-controls">
+                              <button
+                                type="button"
+                                className="btn-ghost"
+                                onClick={() => setPenaltyPage((p) => Math.max(1, p - 1))}
+                                disabled={safePage <= 1}
+                              >
+                                Previous
+                              </button>
+                              <span className="muted" aria-live="polite">
+                                Page {safePage} of {totalPages}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn-ghost"
+                                onClick={() => setPenaltyPage((p) => Math.min(totalPages, p + 1))}
+                                disabled={safePage >= totalPages}
+                              >
+                                Next
+                              </button>
+                            </div>
+                          </nav>
+                        )}
+                      </>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </section>
+        ) : selectedPlayer ? (
           <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="controls-row">
               <button type="button" className="btn-ghost" onClick={closePlayer}>
@@ -791,10 +1167,22 @@ export default function App() {
                         </div>
                         <div className="lbl">+/-</div>
                       </div>
-                      <div className="stat-box">
+                      <button
+                        type="button"
+                        className="stat-box stat-box-btn"
+                        onClick={() =>
+                          openPenaltyBreakdown({
+                            mode: "player",
+                            player: playerData.bio.player_name,
+                            season: "all",
+                          })
+                        }
+                        aria-label={`View penalty breakdown for ${playerData.bio.player_name}`}
+                      >
                         <div className="val">{playerData.career_skater.pim}</div>
                         <div className="lbl">PIM</div>
-                      </div>
+                        <div className="stat-box-hint">Breakdown &rarr;</div>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1247,10 +1635,23 @@ export default function App() {
                                 </div>
                                 <div className="lbl">Blocks</div>
                               </div>
-                              <div className="stat-box">
+                              <button
+                                type="button"
+                                className="stat-box stat-box-btn"
+                                onClick={() =>
+                                  openPenaltyBreakdown({
+                                    mode: "player",
+                                    player: playerData.bio.player_name,
+                                    season: "all",
+                                    opponent: selectedOppStats.opponent,
+                                  })
+                                }
+                                aria-label={`View ${playerData.bio.player_name} penalty breakdown vs ${selectedOppStats.opponent}`}
+                              >
                                 <div className="val">{selectedOppStats.pim}</div>
                                 <div className="lbl">PIM</div>
-                              </div>
+                                <div className="stat-box-hint">Breakdown &rarr;</div>
+                              </button>
                             </div>
                           )}
 
@@ -1725,10 +2126,23 @@ export default function App() {
                         <div className="lbl">PPG / SHG</div>
                       </div>
                     )}
-                    <div className="stat-box">
+                    <button
+                      type="button"
+                      className="stat-box stat-box-btn"
+                      onClick={() =>
+                        openPenaltyBreakdown({
+                          mode: "team",
+                          season: selectedSeason,
+                          scope: leaderScope,
+                          opponent: leaderOpponent,
+                        })
+                      }
+                      aria-label="View team penalty breakdown"
+                    >
                       <div className="val">{ts.pim}</div>
                       <div className="lbl">Penalty Min</div>
-                    </div>
+                      <div className="stat-box-hint">Breakdown &rarr;</div>
+                    </button>
                     <div className="stat-box">
                       <div className="val">
                         {hasModernTracking(selectedSeason) ? ts.blocked_shots : "N/A"}

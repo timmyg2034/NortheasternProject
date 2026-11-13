@@ -997,6 +997,148 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
     }
 
 
+@app.get("/api/penalties")
+def get_penalties(
+    season: str | None = Query(default=None),
+    scope: str = Query(default="all", pattern="^(all|conference)$"),
+    opponent: str | None = Query(default=None),
+    player: str | None = Query(default=None),
+) -> dict[str, Any]:
+    ds = _require_datasets()
+    df = ds.penalties
+    if df.empty:
+        return {
+            "season": season or "all",
+            "scope": scope,
+            "opponent": opponent,
+            "player": player,
+            "summary": {"total_penalties": 0, "total_pim": 0, "minors": 0, "majors": 0, "other": 0},
+            "by_infraction": [],
+            "by_period": [],
+            "by_player": [],
+            "by_season": [],
+            "events": [],
+        }
+
+    df = df[df["team"] == "Northeastern"].copy()
+    target_season = season.strip() if season and season.strip() and season.strip().lower() != "all" else "all"
+    if target_season != "all":
+        df = df[df["season"] == target_season]
+    if scope == "conference":
+        df = df[df["opponent"].isin(HOCKEY_EAST_TEAMS)]
+    target_opponent = opponent.strip() if opponent and opponent.strip() else None
+    if target_opponent:
+        df = df[df["opponent"].str.lower() == target_opponent.lower()]
+    target_player = player.strip() if player and player.strip() else None
+    if target_player:
+        exact = df[df["player_name"].str.lower() == target_player.lower()]
+        df = exact if not exact.empty else df[df["player_name"].str.contains(target_player, case=False, na=False)]
+
+    if df.empty:
+        return {
+            "season": target_season,
+            "scope": scope,
+            "opponent": target_opponent,
+            "player": target_player,
+            "summary": {"total_penalties": 0, "total_pim": 0, "minors": 0, "majors": 0, "other": 0},
+            "by_infraction": [],
+            "by_period": [],
+            "by_player": [],
+            "by_season": [],
+            "events": [],
+        }
+
+    pim_series = pd.to_numeric(df["penalty_minutes"], errors="coerce").fillna(0).astype(int)
+    df = df.assign(_pim=pim_series)
+    total_penalties = int(len(df))
+    total_pim = int(df["_pim"].sum())
+    minors = int((df["_pim"] == 2).sum())
+    majors = int((df["_pim"] == 5).sum())
+    other = int((~df["_pim"].isin([2, 5])).sum())
+
+    infraction_series = df["infraction"].fillna("").astype(str).str.strip()
+    df = df.assign(_infraction=infraction_series.replace("", "UNSPECIFIED"))
+    inf_grp = (
+        df.groupby("_infraction", as_index=False)
+        .agg(count=("_pim", "size"), pim=("_pim", "sum"))
+        .sort_values(["count", "pim", "_infraction"], ascending=[False, False, True])
+    )
+    by_infraction = [
+        {"infraction": str(r["_infraction"]), "count": int(r["count"]), "pim": int(r["pim"])}
+        for _, r in inf_grp.iterrows()
+    ]
+
+    period_order = {"1st": 1, "2nd": 2, "3rd": 3, "OT": 4, "1OT": 4, "2OT": 5, "3OT": 6}
+    per_grp = df.groupby("period", as_index=False).agg(count=("_pim", "size"), pim=("_pim", "sum"))
+    per_grp["_ord"] = per_grp["period"].map(lambda x: period_order.get(str(x).strip(), 99))
+    per_grp = per_grp.sort_values(["_ord", "period"])
+    by_period = [
+        {"period": str(r["period"] or "Other"), "count": int(r["count"]), "pim": int(r["pim"])}
+        for _, r in per_grp.iterrows()
+    ]
+
+    by_player: list[dict[str, Any]] = []
+    if not target_player:
+        pl_grp = (
+            df.assign(
+                _minor=(df["_pim"] == 2).astype(int),
+                _major=(df["_pim"] == 5).astype(int),
+                _other=(~df["_pim"].isin([2, 5])).astype(int),
+            )
+            .groupby("player_name", as_index=False)
+            .agg(
+                count=("_pim", "size"),
+                pim=("_pim", "sum"),
+                minors=("_minor", "sum"),
+                majors=("_major", "sum"),
+                other=("_other", "sum"),
+            )
+            .sort_values(["pim", "count", "player_name"], ascending=[False, False, True])
+        )
+        by_player = [
+            {
+                "player_name": str(r["player_name"]),
+                "count": int(r["count"]),
+                "pim": int(r["pim"]),
+                "minors": int(r["minors"]),
+                "majors": int(r["majors"]),
+                "other": int(r["other"]),
+            }
+            for _, r in pl_grp.iterrows()
+            if str(r["player_name"]).strip()
+        ]
+
+    sea_grp = (
+        df.groupby("season", as_index=False)
+        .agg(count=("_pim", "size"), pim=("_pim", "sum"))
+        .sort_values("season", ascending=False)
+    )
+    by_season = [
+        {"season": str(r["season"]), "count": int(r["count"]), "pim": int(r["pim"])}
+        for _, r in sea_grp.iterrows()
+    ]
+
+    events_df = df.drop(columns=["_pim", "_infraction"]).sort_values(["date", "period", "time"], ascending=[False, True, True])
+    return {
+        "season": target_season,
+        "scope": scope,
+        "opponent": target_opponent,
+        "player": target_player,
+        "summary": {
+            "total_penalties": total_penalties,
+            "total_pim": total_pim,
+            "minors": minors,
+            "majors": majors,
+            "other": other,
+        },
+        "by_infraction": by_infraction,
+        "by_period": by_period,
+        "by_player": by_player,
+        "by_season": by_season,
+        "events": _records(events_df),
+    }
+
+
 @app.get("/api/chat-token")
 def get_chat_token(request: Request) -> dict[str, str]:
     _verify_browser_request(request)
