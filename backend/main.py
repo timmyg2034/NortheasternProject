@@ -321,12 +321,13 @@ async def add_security_headers(request: Request, call_next):
     response.headers.setdefault(
         "Content-Security-Policy",
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-eval' https://challenges.cloudflare.com; "
+        "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com; "
+        "worker-src 'self' blob: https://challenges.cloudflare.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com data:; "
         "img-src 'self' https: data: blob:; "
         "frame-src https://challenges.cloudflare.com; "
-        "connect-src 'self' https://challenges.cloudflare.com; "
+        "connect-src 'self' https://challenges.cloudflare.com https://cloudflareinsights.com; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
         "form-action 'self'",
