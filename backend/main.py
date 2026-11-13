@@ -292,8 +292,12 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 
+DEFAULT_TURNSTILE_SITE_KEY = "0x4AAAAAAF_2EIKQvwCX1Yx1"
+TURNSTILE_EXPECTED_ACTION = "ask_paws"
+
+
 def _turnstile_config() -> tuple[str, str]:
-    site_key = os.getenv("TURNSTILE_SITE_KEY", "").strip()
+    site_key = (os.getenv("TURNSTILE_SITE_KEY", DEFAULT_TURNSTILE_SITE_KEY) or DEFAULT_TURNSTILE_SITE_KEY).strip()
     secret_key = os.getenv("TURNSTILE_SECRET_KEY", "").strip()
     return site_key, secret_key
 
@@ -302,11 +306,12 @@ def _verify_turnstile_token(token: str | None, client_ip: str) -> bool:
     _, secret_key = _turnstile_config()
     if not secret_key:
         return True
-    if not token or not token.strip():
+    cleaned = (token or "").strip()
+    if not cleaned or len(cleaned) > 2048:
         return False
     body = urllib.parse.urlencode({
         "secret": secret_key,
-        "response": token.strip(),
+        "response": cleaned,
         "remoteip": client_ip,
     }).encode("utf-8")
     req = urllib.request.Request(
@@ -316,11 +321,22 @@ def _verify_turnstile_token(token: str | None, client_ip: str) -> bool:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
-            return bool(data.get("success"))
     except (urllib.error.URLError, TimeoutError, OSError, ValueError):
         return False
+
+    if not data.get("success"):
+        return False
+    action = data.get("action")
+    if action and action != TURNSTILE_EXPECTED_ACTION:
+        return False
+    raw_hostnames = os.getenv("TURNSTILE_HOSTNAMES", "").strip()
+    if raw_hostnames:
+        expected_hostnames = {h.strip().lower() for h in raw_hostnames.split(",") if h.strip()}
+        if (data.get("hostname") or "").strip().lower() not in expected_hostnames:
+            return False
+    return True
 
 
 def _require_datasets() -> HockeyDatasets:

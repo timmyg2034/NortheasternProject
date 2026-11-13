@@ -168,6 +168,7 @@ export default function App() {
       if (turnstileWidgetRef.current !== null) return;
       turnstileWidgetRef.current = window.turnstile.render(turnstileContainerRef.current, {
         sitekey: turnstileSiteKey,
+        action: "ask_paws",
         appearance: "interaction-only",
         callback: (token) => {
           turnstileTokenRef.current = token || "";
@@ -1971,7 +1972,7 @@ export default function App() {
           </aside>
         )
       )}
-      <div ref={turnstileContainerRef} aria-hidden="true" />
+      <div ref={turnstileContainerRef} className="turnstile-slot" />
     </div>
   );
 }
