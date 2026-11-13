@@ -1234,14 +1234,10 @@ export default function App() {
                       </div>
                       <div className="stat-box">
                         <div className="val">
-                          {playerData.career_skater.faceoff_pct !== null &&
-                          playerData.career_skater.faceoff_pct !== undefined
-                            ? `${playerData.career_skater.faceoff_pct}%`
-                            : "N/A"}
+                          {formatPct3(playerData.career_skater.faceoffs_won, playerData.career_skater.faceoffs_lost) ?? "N/A"}
                         </div>
                         <div className="lbl">
-                          {playerData.career_skater.faceoff_pct !== null &&
-                          playerData.career_skater.faceoff_pct !== undefined
+                          {playerData.career_skater.faceoffs_won + playerData.career_skater.faceoffs_lost > 0
                             ? `FO% (${formatFaceoffs(playerData.career_skater.faceoffs_won, playerData.career_skater.faceoffs_lost)})`
                             : "FO%"}
                         </div>
@@ -1775,14 +1771,8 @@ export default function App() {
                               </div>
                               <div className="stat-box">
                                 <div className="val">
-                                  {selectedOppStats.has_tracked_blk_fo &&
-                                  selectedOppStats.faceoffs_won + selectedOppStats.faceoffs_lost > 0
-                                    ? `${(
-                                        (selectedOppStats.faceoffs_won /
-                                          (selectedOppStats.faceoffs_won +
-                                            selectedOppStats.faceoffs_lost)) *
-                                        100
-                                      ).toFixed(1)}%`
+                                  {selectedOppStats.has_tracked_blk_fo
+                                    ? (formatPct3(selectedOppStats.faceoffs_won, selectedOppStats.faceoffs_lost) ?? "N/A")
                                     : "N/A"}
                                 </div>
                                 <div className="lbl">
@@ -2307,12 +2297,12 @@ export default function App() {
                     </div>
                     <div className="stat-box">
                       <div className="val">
-                        {hasModernTracking(selectedSeason) && ts.faceoff_pct !== null && ts.faceoff_pct !== undefined
-                          ? `${ts.faceoff_pct}%`
+                        {hasModernTracking(selectedSeason)
+                          ? (formatPct3(ts.faceoffs_won, ts.faceoffs_lost) ?? "N/A")
                           : "N/A"}
                       </div>
                       <div className="lbl">
-                        {hasModernTracking(selectedSeason) && ts.faceoff_pct !== null && ts.faceoff_pct !== undefined
+                        {hasModernTracking(selectedSeason) && ts.faceoffs_won + ts.faceoffs_lost > 0
                           ? `Faceoff % (${formatFaceoffs(ts.faceoffs_won, ts.faceoffs_lost)})`
                           : "Faceoff %"}
                       </div>
@@ -2593,8 +2583,8 @@ export default function App() {
                             : <span className="muted">N/A</span>}
                         </td>
                         <td>
-                          {hasModernTracking(selectedSeason) && p.faceoff_pct !== null && p.faceoff_pct !== undefined
-                            ? `${p.faceoff_pct}%`
+                          {hasModernTracking(selectedSeason)
+                            ? (formatPct3(p.faceoffs_won, p.faceoffs_lost) ?? <span className="muted">N/A</span>)
                             : <span className="muted">N/A</span>}
                         </td>
                         <td>{p.pim}</td>
