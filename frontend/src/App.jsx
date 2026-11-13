@@ -547,23 +547,26 @@ export default function App() {
           ? (drawerUseContext ? pageContext : null)
           : null;
 
+      async function waitForTurnstileToken(maxAttempts = 40) {
+        if (!turnstileSiteKey) return "";
+        for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+          let tok = turnstileTokenRef.current;
+          if (!tok && window.turnstile && turnstileWidgetRef.current !== null) {
+            try {
+              tok = window.turnstile.getResponse(turnstileWidgetRef.current) || "";
+            } catch {}
+          }
+          if (tok) return tok;
+          await new Promise((r) => window.setTimeout(r, 100));
+        }
+        return "";
+      }
+
       let token = await fetchChatToken();
       let activePass = turnstilePass;
       let tsToken = "";
       if (!activePass && turnstileSiteKey) {
-        tsToken = turnstileTokenRef.current;
-        if (!tsToken && window.turnstile && turnstileWidgetRef.current !== null) {
-          tsToken = window.turnstile.getResponse(turnstileWidgetRef.current) || "";
-          if (!tsToken) {
-            for (let attempt = 0; attempt < 15 && !turnstileTokenRef.current; attempt += 1) {
-              await new Promise((r) => window.setTimeout(r, 100));
-            }
-            tsToken =
-              turnstileTokenRef.current ||
-              window.turnstile.getResponse(turnstileWidgetRef.current) ||
-              "";
-          }
-        }
+        tsToken = await waitForTurnstileToken();
       }
       let res = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
@@ -587,9 +590,14 @@ export default function App() {
           try {
             window.sessionStorage.removeItem("nu_turnstile_pass");
           } catch {}
+        } else if (window.turnstile && turnstileWidgetRef.current !== null) {
+          turnstileTokenRef.current = "";
+          try {
+            window.turnstile.reset(turnstileWidgetRef.current);
+          } catch {}
         }
         token = await fetchChatToken();
-        const retryTsToken = turnstileTokenRef.current;
+        const retryTsToken = turnstileSiteKey ? await waitForTurnstileToken() : "";
         if (token) {
           res = await fetch(`${API_BASE}/api/chat`, {
             method: "POST",
