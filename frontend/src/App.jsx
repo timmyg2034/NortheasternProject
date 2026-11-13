@@ -225,6 +225,7 @@ export default function App() {
   const [playerError, setPlayerError] = useState("");
   const [playerScope, setPlayerScope] = useState("all");
   const [playerLogSeason, setPlayerLogSeason] = useState("all");
+  const [playerOpponent, setPlayerOpponent] = useState("all");
   const [rivalryPage, setRivalryPage] = useState(1);
   const hasInAppHistory = useRef(false);
 
@@ -366,6 +367,7 @@ export default function App() {
           new Set((data.game_logs || []).map((g) => g.season).filter(Boolean))
         ).sort((a, b) => b.localeCompare(a));
         setPlayerLogSeason(logSeasons[0] || "all");
+        setPlayerOpponent("all");
       })
       .catch((err) => setPlayerError(err.message))
       .finally(() => setPlayerLoading(false));
@@ -935,6 +937,388 @@ export default function App() {
                     </div>
                   </div>
                 )}
+
+                {playerData.game_logs?.length > 0 && (() => {
+                  const parseMinutes = (val) => {
+                    const text = String(val || "").trim();
+                    if (text.includes(":")) {
+                      const [m, s] = text.split(":");
+                      const mins = Number(m) || 0;
+                      const secs = Number(s) || 0;
+                      return mins + secs / 60;
+                    }
+                    return Number(text) || 0;
+                  };
+
+                  const byOppMap = new Map();
+                  for (const g of playerData.game_logs) {
+                    const opp = String(g.opponent || "").trim();
+                    if (!opp) continue;
+                    let entry = byOppMap.get(opp);
+                    if (!entry) {
+                      entry = {
+                        opponent: opp,
+                        gp: 0,
+                        goals: 0,
+                        assists: 0,
+                        points: 0,
+                        shots: 0,
+                        plus_minus: 0,
+                        blocked_shots: 0,
+                        has_tracked_blk_fo: false,
+                        faceoffs_won: 0,
+                        faceoffs_lost: 0,
+                        pim: 0,
+                        wins: 0,
+                        losses: 0,
+                        ties: 0,
+                        saves: 0,
+                        ga: 0,
+                        shutouts: 0,
+                        minutes: 0,
+                        games: [],
+                      };
+                      byOppMap.set(opp, entry);
+                    }
+                    entry.gp += 1;
+                    entry.games.push(g);
+                    if (playerData.is_goalie) {
+                      const dec = String(g.decision || "").trim().toUpperCase();
+                      if (dec === "W") entry.wins += 1;
+                      else if (dec === "L") entry.losses += 1;
+                      else if (dec === "T") entry.ties += 1;
+                      entry.saves += Number(g.saves || 0);
+                      entry.ga += Number(g.goals_against || 0);
+                      entry.shutouts += Number(g.shutouts || 0);
+                      entry.minutes += parseMinutes(g.minutes);
+                    } else {
+                      entry.goals += Number(g.goals || 0);
+                      entry.assists += Number(g.assists || 0);
+                      entry.points += Number(g.points || 0);
+                      entry.shots += Number(g.shots || 0);
+                      entry.plus_minus += Number(g.plus_minus || 0);
+                      entry.pim += Number(g.penalty_minutes || 0);
+                      if (hasModernTracking(g.season)) {
+                        entry.has_tracked_blk_fo = true;
+                        entry.blocked_shots += Number(g.blocked_shots || 0);
+                        entry.faceoffs_won += Number(g.faceoffs_won || 0);
+                        entry.faceoffs_lost += Number(g.faceoffs_lost || 0);
+                      }
+                    }
+                  }
+
+                  const oppRows = Array.from(byOppMap.values()).sort((a, b) => {
+                    if (b.gp !== a.gp) return b.gp - a.gp;
+                    return playerData.is_goalie ? b.saves - a.saves : b.points - a.points;
+                  });
+                  const oppNamesAlpha = oppRows
+                    .map((r) => r.opponent)
+                    .sort((a, b) => a.localeCompare(b));
+                  const selectedOppStats =
+                    playerOpponent !== "all" ? byOppMap.get(playerOpponent) || null : null;
+
+                  return (
+                    <div className="card">
+                      <div className="card-header">
+                        <h2>
+                          {selectedOppStats
+                            ? `Career vs. ${selectedOppStats.opponent}`
+                            : `Career Stats by Opponent (${oppRows.length})`}
+                        </h2>
+                        <select
+                          aria-label="Filter career stats by opponent"
+                          className="select-input"
+                          value={playerOpponent}
+                          onChange={(e) => setPlayerOpponent(e.target.value)}
+                        >
+                          <option value="all">All Opponents ({oppRows.length})</option>
+                          {oppNamesAlpha.map((opp) => (
+                            <option key={opp} value={opp}>
+                              {opp}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {selectedOppStats ? (
+                        <>
+                          {playerData.is_goalie ? (
+                            <div className="stat-grid" style={{ marginBottom: 16 }}>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.gp}</div>
+                                <div className="lbl">GP</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">{`${selectedOppStats.wins}-${selectedOppStats.losses}-${selectedOppStats.ties}`}</div>
+                                <div className="lbl">W-L-T</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">
+                                  {selectedOppStats.minutes > 0
+                                    ? ((selectedOppStats.ga * 60) / selectedOppStats.minutes).toFixed(2)
+                                    : "0.00"}
+                                </div>
+                                <div className="lbl">GAA</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">
+                                  {selectedOppStats.saves + selectedOppStats.ga > 0
+                                    ? (
+                                        selectedOppStats.saves /
+                                        (selectedOppStats.saves + selectedOppStats.ga)
+                                      ).toFixed(3)
+                                    : ".000"}
+                                </div>
+                                <div className="lbl">SV%</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.saves}</div>
+                                <div className="lbl">Saves</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.ga}</div>
+                                <div className="lbl">GA</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.shutouts}</div>
+                                <div className="lbl">Shutouts</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="stat-grid" style={{ marginBottom: 16 }}>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.gp}</div>
+                                <div className="lbl">GP</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.goals}</div>
+                                <div className="lbl">Goals</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.assists}</div>
+                                <div className="lbl">Assists</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.points}</div>
+                                <div className="lbl">Points</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.shots}</div>
+                                <div className="lbl">SOG</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">
+                                  {formatRatio3(selectedOppStats.goals, selectedOppStats.shots) ?? ".000"}
+                                </div>
+                                <div className="lbl">SH%</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">
+                                  {selectedOppStats.plus_minus > 0
+                                    ? `+${selectedOppStats.plus_minus}`
+                                    : selectedOppStats.plus_minus}
+                                </div>
+                                <div className="lbl">+/-</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">
+                                  {selectedOppStats.has_tracked_blk_fo
+                                    ? selectedOppStats.blocked_shots
+                                    : "N/A"}
+                                </div>
+                                <div className="lbl">Blocks</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.pim}</div>
+                                <div className="lbl">PIM</div>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="table-wrap">
+                            {playerData.is_goalie ? (
+                              <table className="data-table">
+                                <thead>
+                                  <tr>
+                                    <th>Date</th>
+                                    <th>Season</th>
+                                    <th>Score</th>
+                                    <th>Dec</th>
+                                    <th>SV</th>
+                                    <th>GA</th>
+                                    <th>SV%</th>
+                                    <th>Box</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {selectedOppStats.games.map((g, i) => (
+                                    <tr key={`${g.date}-${i}`}>
+                                      <td>{g.date}</td>
+                                      <td>{g.season}</td>
+                                      <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
+                                      <td>{g.decision}</td>
+                                      <td>{g.saves}</td>
+                                      <td>{g.goals_against}</td>
+                                      <td>{Number(g.save_pct || 0).toFixed(3)}</td>
+                                      <td>
+                                        {g.boxscore_url ? (
+                                          <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
+                                        ) : "-"}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <table className="data-table">
+                                <thead>
+                                  <tr>
+                                    <th>Date</th>
+                                    <th>Season</th>
+                                    <th>Score</th>
+                                    <th>G</th>
+                                    <th>A</th>
+                                    <th>PTS</th>
+                                    <th>SOG</th>
+                                    <th>+/-</th>
+                                    <th>BLK</th>
+                                    <th>PIM</th>
+                                    <th>Box</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {selectedOppStats.games.map((g, i) => (
+                                    <tr key={`${g.date}-${i}`}>
+                                      <td>{g.date}</td>
+                                      <td>{g.season}</td>
+                                      <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
+                                      <td>{g.goals}</td>
+                                      <td>{g.assists}</td>
+                                      <td><strong>{g.points}</strong></td>
+                                      <td>{g.shots}</td>
+                                      <td>{g.plus_minus > 0 ? `+${g.plus_minus}` : g.plus_minus}</td>
+                                      <td>{hasModernTracking(g.season) ? g.blocked_shots : <span className="muted">N/A</span>}</td>
+                                      <td>{g.penalty_minutes}</td>
+                                      <td>
+                                        {g.boxscore_url ? (
+                                          <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
+                                        ) : "-"}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="table-wrap">
+                          {playerData.is_goalie ? (
+                            <table className="data-table">
+                              <thead>
+                                <tr>
+                                  <th>Opponent</th>
+                                  <th>GP</th>
+                                  <th>W-L-T</th>
+                                  <th>GAA</th>
+                                  <th>SV%</th>
+                                  <th>SV</th>
+                                  <th>GA</th>
+                                  <th>SO</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {oppRows.map((row) => (
+                                  <tr key={row.opponent}>
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="link-btn opp-with-logo"
+                                        onClick={() => setPlayerOpponent(row.opponent)}
+                                      >
+                                        <OpponentLogo name={row.opponent} />
+                                        <span>{row.opponent}</span>
+                                      </button>
+                                    </td>
+                                    <td>{row.gp}</td>
+                                    <td>{`${row.wins}-${row.losses}-${row.ties}`}</td>
+                                    <td>
+                                      {row.minutes > 0
+                                        ? ((row.ga * 60) / row.minutes).toFixed(2)
+                                        : "0.00"}
+                                    </td>
+                                    <td>
+                                      {row.saves + row.ga > 0
+                                        ? (row.saves / (row.saves + row.ga)).toFixed(3)
+                                        : ".000"}
+                                    </td>
+                                    <td>{row.saves}</td>
+                                    <td>{row.ga}</td>
+                                    <td>{row.shutouts}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          ) : (
+                            <table className="data-table">
+                              <thead>
+                                <tr>
+                                  <th>Opponent</th>
+                                  <th>GP</th>
+                                  <th>G</th>
+                                  <th>A</th>
+                                  <th>PTS</th>
+                                  <th>SOG</th>
+                                  <th>SH%</th>
+                                  <th>+/-</th>
+                                  <th>BLK</th>
+                                  <th>FO</th>
+                                  <th>FO%</th>
+                                  <th>PIM</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {oppRows.map((row) => (
+                                  <tr key={row.opponent}>
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="link-btn opp-with-logo"
+                                        onClick={() => setPlayerOpponent(row.opponent)}
+                                      >
+                                        <OpponentLogo name={row.opponent} />
+                                        <span>{row.opponent}</span>
+                                      </button>
+                                    </td>
+                                    <td>{row.gp}</td>
+                                    <td>{row.goals}</td>
+                                    <td>{row.assists}</td>
+                                    <td><strong>{row.points}</strong></td>
+                                    <td>{row.shots}</td>
+                                    <td>{formatRatio3(row.goals, row.shots) ?? ".000"}</td>
+                                    <td>{row.plus_minus > 0 ? `+${row.plus_minus}` : row.plus_minus}</td>
+                                    <td>{row.has_tracked_blk_fo ? row.blocked_shots : <span className="muted">N/A</span>}</td>
+                                    <td>
+                                      {row.has_tracked_blk_fo
+                                        ? `${row.faceoffs_won}-${row.faceoffs_lost}`
+                                        : <span className="muted">N/A</span>}
+                                    </td>
+                                    <td>
+                                      {row.has_tracked_blk_fo
+                                        ? formatPct3(row.faceoffs_won, row.faceoffs_lost) ?? ".000"
+                                        : <span className="muted">N/A</span>}
+                                    </td>
+                                    <td>{row.pim}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {playerData.game_logs?.length > 0 && (() => {
                   const logSeasons = Array.from(
