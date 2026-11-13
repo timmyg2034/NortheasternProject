@@ -73,8 +73,20 @@ function SearchIcon() {
 }
 
 function CaptainBadge({ role }) {
-  if (role === "C") return <span className="pill pill-c" title="Captain">C</span>;
-  if (role === "A") return <span className="pill pill-a" title="Alternate Captain">A</span>;
+  if (role === "C") {
+    return (
+      <span className="pill pill-c" title="Captain" aria-label="Team Captain">
+        C
+      </span>
+    );
+  }
+  if (role === "A") {
+    return (
+      <span className="pill pill-a" title="Alternate Captain" aria-label="Alternate Captain">
+        A
+      </span>
+    );
+  }
   return null;
 }
 
@@ -93,9 +105,9 @@ function OpponentLogo({ name, large = false }) {
 }
 
 function OutcomeBadge({ outcome }) {
-  if (outcome === "W") return <span className="pill pill-w">W</span>;
-  if (outcome === "L") return <span className="pill pill-l">L</span>;
-  return <span className="pill pill-t">{outcome || "T"}</span>;
+  if (outcome === "W") return <span className="pill pill-w" aria-label="Win">W</span>;
+  if (outcome === "L") return <span className="pill pill-l" aria-label="Loss">L</span>;
+  return <span className="pill pill-t" aria-label="Tie">{outcome || "T"}</span>;
 }
 
 function hasModernTracking(season) {
@@ -427,8 +439,22 @@ export default function App() {
     [opponents]
   );
 
+  useEffect(() => {
+    if (!chatDrawerOpen) return;
+    function onDrawerKey(e) {
+      if (e.key === "Escape" && !legalModal && !bugModalOpen) {
+        setChatDrawerOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onDrawerKey);
+    return () => window.removeEventListener("keydown", onDrawerKey);
+  }, [chatDrawerOpen, legalModal, bugModalOpen]);
+
   return (
     <div className="app-shell">
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <div className="sticky-top">
         <header className="app-header">
           <div className="brand">
@@ -458,28 +484,36 @@ export default function App() {
 
         <nav className="tab-bar" aria-label="Main navigation">
           <button
+            type="button"
             className={`tab-btn ${!selectedPlayer && tab === "chat" ? "active" : ""}`}
+            aria-current={!selectedPlayer && tab === "chat" ? "page" : undefined}
             onClick={() => navigateTab("chat")}
           >
             <PawsIcon />
             <span>Ask Paws</span>
           </button>
           <button
+            type="button"
             className={`tab-btn ${!selectedPlayer && tab === "leaders" ? "active" : ""}`}
+            aria-current={!selectedPlayer && tab === "leaders" ? "page" : undefined}
             onClick={() => navigateTab("leaders")}
           >
             <TrophyIcon />
             <span>Stats</span>
           </button>
           <button
+            type="button"
             className={`tab-btn ${!selectedPlayer && tab === "roster" ? "active" : ""}`}
+            aria-current={!selectedPlayer && tab === "roster" ? "page" : undefined}
             onClick={() => navigateTab("roster")}
           >
             <UsersIcon />
             <span>Roster</span>
           </button>
           <button
+            type="button"
             className={`tab-btn ${!selectedPlayer && tab === "rivalry" ? "active" : ""}`}
+            aria-current={!selectedPlayer && tab === "rivalry" ? "page" : undefined}
             onClick={() => navigateTab("rivalry")}
           >
             <SwordsIcon />
@@ -488,7 +522,7 @@ export default function App() {
         </nav>
       </div>
 
-      <main className="main-content">
+      <main id="main-content" className="main-content" tabIndex={-1}>
         {!noticeDismissed && (
           <div className="notice-banner" role="note">
             <span>
@@ -530,13 +564,13 @@ export default function App() {
             </div>
 
             {playerLoading && (
-              <div className="card">
+              <div className="card" role="status" aria-live="polite">
                 <p className="muted">Loading player statistics...</p>
               </div>
             )}
 
             {playerError && (
-              <div className="card">
+              <div className="card" role="alert">
                 <p className="muted">{playerError}</p>
               </div>
             )}
@@ -941,7 +975,7 @@ export default function App() {
               </div>
             )}
 
-            <div className="messages">
+            <div className="messages" role="log" aria-live="polite" aria-relevant="additions">
               {messages.map((m, idx) => (
                 <div key={idx} className={`msg-row ${m.role}`}>
                   <div className={`msg ${m.role}`}>
@@ -959,7 +993,7 @@ export default function App() {
                 </div>
               ))}
               {chatLoading && (
-                <div className="msg-row assistant">
+                <div className="msg-row assistant" role="status" aria-live="polite">
                   <div className="msg assistant">
                     <span className="typing-dots">Querying NU archives...</span>
                   </div>
@@ -1023,6 +1057,7 @@ export default function App() {
                     <button
                       type="button"
                       className={`segmented-btn ${leaderScope === "all" ? "active" : ""}`}
+                      aria-pressed={leaderScope === "all"}
                       onClick={() => setLeaderScope("all")}
                     >
                       All Games
@@ -1030,6 +1065,7 @@ export default function App() {
                     <button
                       type="button"
                       className={`segmented-btn ${leaderScope === "conference" ? "active" : ""}`}
+                      aria-pressed={leaderScope === "conference"}
                       onClick={() => setLeaderScope("conference")}
                     >
                       Hockey East
@@ -1061,6 +1097,7 @@ export default function App() {
                   <button
                     type="button"
                     className={`segmented-btn ${statsView === "players" ? "active" : ""}`}
+                    aria-pressed={statsView === "players"}
                     onClick={() => setStatsView("players")}
                   >
                     Individual Players
@@ -1068,6 +1105,7 @@ export default function App() {
                   <button
                     type="button"
                     className={`segmented-btn ${statsView === "team" ? "active" : ""}`}
+                    aria-pressed={statsView === "team"}
                     onClick={() => setStatsView("team")}
                   >
                     Team Stats
@@ -1082,6 +1120,7 @@ export default function App() {
                   <button
                     type="button"
                     className={`segmented-btn ${rosterView === "position" ? "active" : ""}`}
+                    aria-pressed={rosterView === "position"}
                     onClick={() => setRosterView("position")}
                   >
                     By Position
@@ -1089,6 +1128,7 @@ export default function App() {
                   <button
                     type="button"
                     className={`segmented-btn ${rosterView === "all" ? "active" : ""}`}
+                    aria-pressed={rosterView === "all"}
                     onClick={() => setRosterView("all")}
                   >
                     All Roster
@@ -1306,36 +1346,46 @@ export default function App() {
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>#</th>
-                      <th>Player</th>
-                      <th>Pos</th>
-                      <th className="sortable" onClick={() => toggleSort("gp")}>
-                        GP {leaderSort.key === "gp" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
-                      </th>
-                      <th className="sortable" onClick={() => toggleSort("goals")}>
-                        G {leaderSort.key === "goals" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
-                      </th>
-                      <th className="sortable" onClick={() => toggleSort("assists")}>
-                        A {leaderSort.key === "assists" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
-                      </th>
-                      <th className="sortable" onClick={() => toggleSort("points")}>
-                        PTS {leaderSort.key === "points" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
-                      </th>
-                      <th className="sortable" onClick={() => toggleSort("shots")}>
-                        SOG {leaderSort.key === "shots" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
-                      </th>
-                      <th className="sortable" onClick={() => toggleSort("shot_pct")}>
-                        SH% {leaderSort.key === "shot_pct" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
-                      </th>
-                      <th className="sortable" onClick={() => toggleSort("plus_minus")}>
-                        +/- {leaderSort.key === "plus_minus" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
-                      </th>
-                      <th className="sortable" onClick={() => toggleSort("blocked_shots")}>
-                        BLK {leaderSort.key === "blocked_shots" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
-                      </th>
-                      <th className="sortable" onClick={() => toggleSort("pim")}>
-                        PIM {leaderSort.key === "pim" ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
-                      </th>
+                      <th scope="col">#</th>
+                      <th scope="col">Player</th>
+                      <th scope="col">Pos</th>
+                      {[
+                        ["gp", "GP", "Games Played"],
+                        ["goals", "G", "Goals"],
+                        ["assists", "A", "Assists"],
+                        ["points", "PTS", "Points"],
+                        ["shots", "SOG", "Shots on Goal"],
+                        ["shot_pct", "SH%", "Shooting Percentage"],
+                        ["plus_minus", "+/-", "Plus/Minus"],
+                        ["blocked_shots", "BLK", "Blocked Shots"],
+                        ["pim", "PIM", "Penalty Minutes"],
+                      ].map(([colKey, label, fullLabel]) => {
+                        const isSorted = leaderSort.key === colKey;
+                        const ariaSort = isSorted
+                          ? leaderSort.dir === "desc"
+                            ? "descending"
+                            : "ascending"
+                          : "none";
+                        return (
+                          <th
+                            key={colKey}
+                            scope="col"
+                            className="sortable"
+                            aria-sort={ariaSort}
+                            tabIndex={0}
+                            aria-label={`Sort by ${fullLabel}`}
+                            onClick={() => toggleSort(colKey)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                toggleSort(colKey);
+                              }
+                            }}
+                          >
+                            {label} {isSorted ? (leaderSort.dir === "desc" ? "↓" : "↑") : ""}
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
@@ -1538,6 +1588,7 @@ export default function App() {
                   <button
                     type="button"
                     className={`segmented-btn ${rivalryScope === "season" ? "active" : ""}`}
+                    aria-pressed={rivalryScope === "season"}
                     onClick={() => setRivalryScope("season")}
                   >
                     {seasons[0] ? `This Season (${seasons[0]})` : "This Season"}
@@ -1545,6 +1596,7 @@ export default function App() {
                   <button
                     type="button"
                     className={`segmented-btn ${rivalryScope === "all" ? "active" : ""}`}
+                    aria-pressed={rivalryScope === "all"}
                     onClick={() => setRivalryScope("all")}
                   >
                     All-Time
@@ -1574,7 +1626,7 @@ export default function App() {
               </div>
             </div>
 
-            {rivalryLoading && <p className="muted">Loading matchup history...</p>}
+            {rivalryLoading && <p className="muted" role="status" aria-live="polite">Loading matchup history...</p>}
             {!rivalryLoading && rivalry && (
               <>
                 <div className="stat-grid">
@@ -1756,6 +1808,7 @@ export default function App() {
                 <button
                   type="button"
                   className={`chat-context-opt ${drawerUseContext ? "active" : ""}`}
+                  aria-pressed={drawerUseContext}
                   onClick={() => setDrawerUseContext(true)}
                 >
                   This Page
@@ -1763,6 +1816,7 @@ export default function App() {
                 <button
                   type="button"
                   className={`chat-context-opt ${!drawerUseContext ? "active" : ""}`}
+                  aria-pressed={!drawerUseContext}
                   onClick={() => setDrawerUseContext(false)}
                 >
                   All Data
@@ -1770,7 +1824,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="chat-drawer-body">
+            <div className="chat-drawer-body" role="log" aria-live="polite" aria-relevant="additions">
               {messages.length === 0 && (
                 <p className="muted" style={{ margin: 0 }}>
                   {drawerUseContext && selectedPlayer
@@ -1792,7 +1846,7 @@ export default function App() {
                 </div>
               ))}
               {chatLoading && (
-                <div className="msg-row assistant">
+                <div className="msg-row assistant" role="status" aria-live="polite">
                   <div className="msg assistant">
                     <span className="typing-dots">Querying NU archives...</span>
                   </div>

@@ -47,11 +47,12 @@ HOCKEY_EAST_TEAMS = {
 
 
 class RateLimiter:
-    """Simple in-memory sliding-window rate limiter keyed by client IP."""
+    """Bounded in-memory sliding-window rate limiter keyed by client IP."""
 
-    def __init__(self, max_requests: int = 20, window_seconds: int = 60) -> None:
+    def __init__(self, max_requests: int = 20, window_seconds: int = 60, max_keys: int = 4096) -> None:
         self._max = max_requests
         self._window = window_seconds
+        self._max_keys = max_keys
         self._hits: dict[str, deque[float]] = defaultdict(deque)
         self._lock = threading.Lock()
 
@@ -59,6 +60,14 @@ class RateLimiter:
         now = time.time()
         cutoff = now - self._window
         with self._lock:
+            if len(self._hits) > self._max_keys and key not in self._hits:
+                stale_keys = [k for k, dq in self._hits.items() if not dq or dq[-1] < cutoff]
+                for k in stale_keys:
+                    self._hits.pop(k, None)
+                if len(self._hits) > self._max_keys:
+                    oldest_key = next(iter(self._hits))
+                    self._hits.pop(oldest_key, None)
+
             q = self._hits[key]
             while q and q[0] < cutoff:
                 q.popleft()
@@ -68,14 +77,25 @@ class RateLimiter:
             return True
 
 
+def _get_client_ip(request: Request) -> str:
+    """Extract client IP safely behind Cloudflare / Render reverse proxies."""
+    for header in ("cf-connecting-ip", "true-client-ip", "x-forwarded-for"):
+        val = request.headers.get(header)
+        if val:
+            first_ip = val.split(",")[0].strip()
+            if first_ip:
+                return first_ip[:64]
+    return (request.client.host if request.client else "unknown")[:64]
+
+
 class ChatMessage(BaseModel):
     role: str = Field(..., pattern="^(user|assistant)$")
-    content: str
+    content: str = Field(..., min_length=1, max_length=4000)
 
 
 class ChatRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=1000)
-    history: list[ChatMessage] = Field(default_factory=list)
+    history: list[ChatMessage] = Field(default_factory=list, max_length=16)
     context: str | None = Field(default=None, max_length=300)
 
 
@@ -89,7 +109,6 @@ class _AppState:
     llm: Any = None
     cache: ResponseCache = ResponseCache(ttl_seconds=86400, max_entries=1000)
     limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_MAX, window_seconds=60)
-
 
 
 state = _AppState()
@@ -120,6 +139,32 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    )
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com data:; "
+        "img-src 'self' https: data: blob:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'",
+    )
+    return response
+
 
 
 def _require_datasets() -> HockeyDatasets:
@@ -744,7 +789,7 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
             detail="GEMINI_API_KEY is not configured on the server.",
         )
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _get_client_ip(request)
     if not state.limiter.allow(client_ip):
         raise HTTPException(
             status_code=429,
@@ -772,7 +817,6 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
     return ChatResponse(answer=answer, cached=from_cache)
 
 
-
 class BugReportRequest(BaseModel):
     category: str = Field(..., min_length=2, max_length=60)
     description: str = Field(..., min_length=5, max_length=2000)
@@ -798,7 +842,10 @@ def _forward_bug_webhook(entry: dict[str, Any]) -> None:
         lines.append(f"**View:** `{entry['page_context']}`")
     if entry.get("contact"):
         lines.append(f"**Contact:** {entry['contact']}")
-    payload = json.dumps({"content": "\n".join(lines)}).encode("utf-8")
+    payload = json.dumps({
+        "content": "\n".join(lines)[:1950],
+        "allowed_mentions": {"parse": []},
+    }).encode("utf-8")
     req = urllib.request.Request(
         webhook_url,
         data=payload,
@@ -814,7 +861,7 @@ def _forward_bug_webhook(entry: dict[str, Any]) -> None:
 
 @app.post("/api/bug-report", response_model=BugReportResponse)
 def submit_bug_report(req: BugReportRequest, request: Request) -> BugReportResponse:
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _get_client_ip(request)
     if not state.limiter.allow(f"bug:{client_ip}"):
         raise HTTPException(
             status_code=429,

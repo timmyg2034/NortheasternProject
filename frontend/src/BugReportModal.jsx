@@ -5,10 +5,12 @@ const CATEGORIES = [
   "Ask Paws AI",
   "UI / Layout",
   "Broken Link / Image",
+  "Content / Takedown Request",
   "Other",
 ];
 
 export default function BugReportModal({ open, onClose, apiBase, pageContext }) {
+  const modalRef = useRef(null);
   const closeBtnRef = useRef(null);
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [description, setDescription] = useState("");
@@ -21,12 +23,39 @@ export default function BugReportModal({ open, onClose, apiBase, pageContext }) 
     if (!open) return;
     setError("");
     setSubmittedId("");
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
+    const previouslyFocused = document.activeElement;
     closeBtnRef.current?.focus();
-    return () => window.removeEventListener("keydown", onKey);
+
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (e.key === "Tab" && modalRef.current) {
+        const focusables = modalRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      if (previouslyFocused && typeof previouslyFocused.focus === "function") {
+        previouslyFocused.focus();
+      }
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -74,6 +103,7 @@ export default function BugReportModal({ open, onClose, apiBase, pageContext }) 
       }}
     >
       <div
+        ref={modalRef}
         className="modal-card bug-modal-card"
         role="dialog"
         aria-modal="true"
@@ -94,7 +124,7 @@ export default function BugReportModal({ open, onClose, apiBase, pageContext }) 
 
         <div className="modal-body">
           {submittedId ? (
-            <div className="bug-success">
+            <div className="bug-success" role="status" aria-live="polite">
               <h3>Thanks for the report!</h3>
               <p>
                 Your feedback has been logged as reference{" "}
@@ -164,7 +194,11 @@ export default function BugReportModal({ open, onClose, apiBase, pageContext }) 
                 </div>
               )}
 
-              {error && <div className="bug-error">{error}</div>}
+              {error && (
+                <div className="bug-error" role="alert">
+                  {error}
+                </div>
+              )}
 
               <div className="bug-actions">
                 <button
@@ -190,4 +224,3 @@ export default function BugReportModal({ open, onClose, apiBase, pageContext }) 
     </div>
   );
 }
-

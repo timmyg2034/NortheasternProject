@@ -442,26 +442,121 @@ def extract_python_code(text: Any) -> str:
     return text.strip()
 
 
+_ALLOWED_IMPORTS = {"pandas": pd, "re": re}
+
+_FORBIDDEN_CALL_NAMES = {
+    "eval", "exec", "compile", "open", "input", "breakpoint", "help",
+    "globals", "locals", "vars", "dir", "getattr", "setattr", "delattr",
+    "__import__", "memoryview", "classmethod", "staticmethod", "property", "super",
+}
+
+_FORBIDDEN_ATTR_NAMES = {
+    "to_csv", "to_excel", "to_parquet", "to_pickle", "to_sql", "to_feather",
+    "to_hdf", "to_orc", "to_stata", "read_csv", "read_excel", "read_parquet",
+    "read_pickle", "read_sql", "read_sql_table", "read_sql_query", "read_table",
+    "read_fwf", "read_clipboard", "read_gbq", "read_hdf", "read_html",
+    "read_json", "read_orc", "read_sas", "read_spss", "read_stata", "read_xml",
+    "eval", "query", "system", "popen", "remove", "unlink", "rmdir",
+}
+
+
+def _safe_import(name: str, globals: Any = None, locals: Any = None, fromlist: Any = (), level: int = 0) -> Any:
+    root_mod = str(name).split(".")[0]
+    if root_mod in _ALLOWED_IMPORTS:
+        return _ALLOWED_IMPORTS[root_mod]
+    raise ImportError(f"Import of '{name}' is not permitted in the analytics sandbox.")
+
+
+_SAFE_BUILTINS = {
+    "__import__": _safe_import,
+    "abs": abs,
+    "all": all,
+    "any": any,
+    "bool": bool,
+    "dict": dict,
+    "enumerate": enumerate,
+    "filter": filter,
+    "float": float,
+    "format": format,
+    "frozenset": frozenset,
+    "int": int,
+    "isinstance": isinstance,
+    "len": len,
+    "list": list,
+    "map": map,
+    "max": max,
+    "min": min,
+    "next": next,
+    "print": print,
+    "range": range,
+    "reversed": reversed,
+    "round": round,
+    "set": set,
+    "slice": slice,
+    "sorted": sorted,
+    "str": str,
+    "sum": sum,
+    "tuple": tuple,
+    "zip": zip,
+    "True": True,
+    "False": False,
+    "None": None,
+    "Exception": Exception,
+    "ValueError": ValueError,
+    "KeyError": KeyError,
+    "IndexError": IndexError,
+    "TypeError": TypeError,
+    "ZeroDivisionError": ZeroDivisionError,
+}
+
+
+def _validate_safe_ast(tree: ast.AST) -> None:
+    """Validate that generated Python AST contains only safe data-query operations."""
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            if isinstance(node, ast.Import):
+                names = [alias.name.split(".")[0] for alias in node.names]
+            else:
+                names = [(node.module or "").split(".")[0]]
+            for mod_name in names:
+                if mod_name not in _ALLOWED_IMPORTS:
+                    raise ValueError(f"Disallowed module import: {mod_name}")
+        elif isinstance(node, ast.Attribute):
+            if node.attr.startswith("_") or node.attr in _FORBIDDEN_ATTR_NAMES:
+                raise ValueError(f"Disallowed attribute access: {node.attr}")
+        elif isinstance(node, ast.Name):
+            if node.id.startswith("__") or node.id in _FORBIDDEN_CALL_NAMES:
+                raise ValueError(f"Disallowed identifier: {node.id}")
+
+
 def run_python_code(code: str, datasets: HockeyDatasets) -> str:
-    """Execute generated pandas query code against the 8 in-memory DataFrames."""
+    """Execute generated pandas query code inside a restricted AST & builtins sandbox."""
+    if len(code) > 8000:
+        raise ValueError("Generated code exceeds maximum allowed length.")
+
     pd.set_option("display.max_colwidth", None)
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", 1000)
     pd.set_option("display.max_rows", 200)
+
+    tree = ast.parse(code, mode="exec")
+    _validate_safe_ast(tree)
+
     local_env = {
-        "df1": datasets.skaters,
-        "df2": datasets.goalies,
-        "df3": datasets.goals,
-        "df4": datasets.penalties,
-        "df5": datasets.games,
-        "df6": datasets.shootouts,
-        "df7": datasets.rosters,
-        "df8": datasets.season_stats,
+        "__builtins__": _SAFE_BUILTINS,
+        "df1": datasets.skaters.copy(deep=False),
+        "df2": datasets.goalies.copy(deep=False),
+        "df3": datasets.goals.copy(deep=False),
+        "df4": datasets.penalties.copy(deep=False),
+        "df5": datasets.games.copy(deep=False),
+        "df6": datasets.shootouts.copy(deep=False),
+        "df7": datasets.rosters.copy(deep=False),
+        "df8": datasets.season_stats.copy(deep=False),
         "pd": pd,
+        "re": re,
     }
     stdout_buf = io.StringIO()
     with contextlib.redirect_stdout(stdout_buf):
-        tree = ast.parse(code, mode="exec")
         if tree.body and isinstance(tree.body[-1], ast.Expr):
             last_expr = ast.Expression(tree.body.pop().value)
             if tree.body:
@@ -471,7 +566,11 @@ def run_python_code(code: str, datasets: HockeyDatasets) -> str:
                 print(val)
         else:
             exec(compile(tree, "<ast>", "exec"), local_env, local_env)
-    return stdout_buf.getvalue().strip()
+    output = stdout_buf.getvalue().strip()
+    if len(output) > 12000:
+        output = output[:12000] + "\n...[truncated]"
+    return output
+
 
 
 def format_chat_history(messages: list[dict[str, str]], max_turns: int = 8) -> str:
