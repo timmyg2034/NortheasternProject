@@ -194,9 +194,36 @@ def parse_modern_boxscore(soup, url, html):
 
     outcome = "W" if nu_goals > opp_goals else ("L" if nu_goals < opp_goals else "T")
 
+    # Determine game location (Home / Away / Neutral) from title & page header
+    location = ""
+    if re.search(r'\bneutral\b', html[:20000], re.IGNORECASE):
+        location = "Neutral"
+    elif re.search(r'\bat\s+', title, re.IGNORECASE):
+        location = "Away"
+    elif re.search(r'\bvs\.?\s+', title, re.IGNORECASE):
+        location = "Home"
+
+    # Extract team power play stats (goals-opportunities) if present in a Power Plays table
+    nu_pp_goals, nu_pp_opps = "", ""
+    opp_pp_goals, opp_pp_opps = "", ""
+    for t in soup.find_all("table"):
+        cap_txt = (t.find("caption").get_text(strip=True) if t.find("caption") else "").lower()
+        if "power play" in cap_txt:
+            for r in t.find_all("tr"):
+                row_txt = r.get_text(" ", strip=True)
+                row_low = row_txt.lower()
+                pm = re.search(r'(\d+)\s*(?:-|/|of)\s*(\d+)', row_txt, re.IGNORECASE)
+                if pm:
+                    g_val, opp_val = int(pm.group(1)), int(pm.group(2))
+                    if "northeastern" in row_low or re.search(r'\b(?:nu|neu)\b', row_low):
+                        nu_pp_goals, nu_pp_opps = g_val, opp_val
+                    elif opponent != "Unknown" and opponent.lower() in row_low:
+                        opp_pp_goals, opp_pp_opps = g_val, opp_val
+
     game_record = {
         "date": date,
         "opponent": opponent,
+        "location": location,
         "nu_goals": nu_goals,
         "opp_goals": opp_goals,
         "outcome": outcome,
@@ -206,6 +233,10 @@ def parse_modern_boxscore(soup, url, html):
         "shootout_winner": shootout_winner,
         "is_shutout": is_shutout,
         "shutout_team": shutout_team,
+        "nu_pp_goals": nu_pp_goals,
+        "nu_pp_opps": nu_pp_opps,
+        "opp_pp_goals": opp_pp_goals,
+        "opp_pp_opps": opp_pp_opps,
         "boxscore_url": url,
     }
 
@@ -543,9 +574,20 @@ def parse_legacy_boxscore(soup, url, html):
 
     outcome = "W" if nu_goals > opp_goals else ("L" if nu_goals < opp_goals else "T")
 
+    location = ""
+    if re.search(r'\bneutral\b', title, re.IGNORECASE):
+        location = "Neutral"
+    elif re.search(r'(?:Northeastern(?:\s+Univ\.?)?|NU|NEU)\s+at\s+', title, re.IGNORECASE):
+        location = "Away"
+    elif re.search(r'\bat\s+(?:Northeastern(?:\s+Univ\.?)?|NU|NEU)\b', title, re.IGNORECASE):
+        location = "Home"
+    elif re.search(r'\bvs\.?\s+', title, re.IGNORECASE):
+        location = "Home"
+
     game_record = {
         "date": date,
         "opponent": opponent,
+        "location": location,
         "nu_goals": nu_goals,
         "opp_goals": opp_goals,
         "outcome": outcome,
@@ -555,6 +597,10 @@ def parse_legacy_boxscore(soup, url, html):
         "shootout_winner": "None",
         "is_shutout": is_shutout,
         "shutout_team": shutout_team,
+        "nu_pp_goals": "",
+        "nu_pp_opps": "",
+        "opp_pp_goals": "",
+        "opp_pp_opps": "",
         "boxscore_url": url,
     }
 
@@ -2423,9 +2469,9 @@ async def run_pipeline():
         for r in valid_games:
             r["season"] = date_to_season(r.get("date", ""))
         valid_games.sort(key=lambda x: x.get("date", ""))
-        gm_keys = ["date", "season", "opponent", "nu_goals", "opp_goals", "outcome", "overtime_status", "is_overtime", "is_shootout", "shootout_winner", "is_shutout", "shutout_team", "boxscore_url"]
+        gm_keys = ["date", "season", "opponent", "location", "nu_goals", "opp_goals", "outcome", "overtime_status", "is_overtime", "is_shootout", "shootout_winner", "is_shutout", "shutout_team", "nu_pp_goals", "nu_pp_opps", "opp_pp_goals", "opp_pp_opps", "boxscore_url"]
         with open(games_csv, "w", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=gm_keys)
+            w = csv.DictWriter(f, fieldnames=gm_keys, extrasaction="ignore")
             w.writeheader()
             w.writerows(valid_games)
 
