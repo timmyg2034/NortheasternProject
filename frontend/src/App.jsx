@@ -225,6 +225,7 @@ export default function App() {
   const [playerError, setPlayerError] = useState("");
   const [playerScope, setPlayerScope] = useState("all");
   const [playerLogSeason, setPlayerLogSeason] = useState("all");
+  const [rivalryPage, setRivalryPage] = useState(1);
   const hasInAppHistory = useRef(false);
 
   useEffect(() => {
@@ -340,6 +341,7 @@ export default function App() {
   useEffect(() => {
     if (tab !== "rivalry" || !selectedRival) return;
     if (rivalryScope === "season" && !seasons[0]) return;
+    setRivalryPage(1);
     setRivalryLoading(true);
     const params = new URLSearchParams({ opponent: selectedRival });
     if (rivalryScope === "season" && seasons[0]) {
@@ -1769,7 +1771,7 @@ export default function App() {
                   <span>
                     {rivalryScope === "season" && seasons[0]
                       ? `${seasons[0]} Meetings vs. ${rivalry.opponent}`
-                      : `Recent Meetings vs. ${rivalry.opponent}`}
+                      : `All Meetings vs. ${rivalry.opponent}`}
                   </span>
                 </h3>
                 {rivalry.recent_games.length === 0 ? (
@@ -1777,42 +1779,82 @@ export default function App() {
                     No recorded games against {rivalry.opponent}
                     {rivalryScope === "season" && seasons[0] ? ` in ${seasons[0]}` : ""}.
                   </p>
-                ) : (
-                <div className="table-wrap">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Season</th>
-                        <th>Result</th>
-                        <th>Score</th>
-                        <th>OT/SO</th>
-                        <th>Box Score</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rivalry.recent_games.map((g) => (
-                        <tr key={`${g.date}-${g.opponent}`}>
-                          <td>{g.date}</td>
-                          <td>{g.season}</td>
-                          <td><OutcomeBadge outcome={g.outcome} /></td>
-                          <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
-                          <td>{g.overtime_status}</td>
-                          <td>
-                            {g.boxscore_url ? (
-                              <a href={g.boxscore_url} target="_blank" rel="noreferrer">
-                                View
-                              </a>
-                            ) : (
-                              "-"
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                )}
+                ) : (() => {
+                  const pageSize = 15;
+                  const totalGames = rivalry.recent_games.length;
+                  const totalPages = Math.max(1, Math.ceil(totalGames / pageSize));
+                  const safePage = Math.min(rivalryPage, totalPages);
+                  const startIdx = (safePage - 1) * pageSize;
+                  const visibleGames = rivalry.recent_games.slice(startIdx, startIdx + pageSize);
+                  return (
+                    <>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Date</th>
+                              <th>Season</th>
+                              <th>Result</th>
+                              <th>Score</th>
+                              <th>OT/SO</th>
+                              <th>Box Score</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {visibleGames.map((g) => (
+                              <tr key={`${g.date}-${g.opponent}`}>
+                                <td>{g.date}</td>
+                                <td>{g.season}</td>
+                                <td><OutcomeBadge outcome={g.outcome} /></td>
+                                <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
+                                <td>{g.overtime_status}</td>
+                                <td>
+                                  {g.boxscore_url ? (
+                                    <a href={g.boxscore_url} target="_blank" rel="noreferrer">
+                                      View
+                                    </a>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      {totalPages > 1 && (
+                        <nav className="pagination-bar" aria-label="Opponent games pagination">
+                          <span className="muted">
+                            Showing {startIdx + 1}–{Math.min(startIdx + pageSize, totalGames)} of {totalGames} games
+                          </span>
+                          <div className="pagination-controls">
+                            <button
+                              type="button"
+                              className="btn-ghost"
+                              onClick={() => setRivalryPage((p) => Math.max(1, p - 1))}
+                              disabled={safePage <= 1}
+                              aria-label="Previous page of opponent games"
+                            >
+                              Previous
+                            </button>
+                            <span className="muted" aria-live="polite">
+                              Page {safePage} of {totalPages}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn-ghost"
+                              onClick={() => setRivalryPage((p) => Math.min(totalPages, p + 1))}
+                              disabled={safePage >= totalPages}
+                              aria-label="Next page of opponent games"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </nav>
+                      )}
+                    </>
+                  );
+                })()}
               </>
             )}
           </section>

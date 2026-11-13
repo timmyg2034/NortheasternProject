@@ -839,7 +839,7 @@ def get_rivalry(
     nu_goals = int(df["nu_goals"].sum()) if not df.empty else 0
     opp_goals = int(df["opp_goals"].sum()) if not df.empty else 0
 
-    recent = df.sort_values("date", ascending=False).head(15)
+    recent = df.sort_values("date", ascending=False)
     return {
         "opponent": matched_opponent,
         "season": active_season or "all",
