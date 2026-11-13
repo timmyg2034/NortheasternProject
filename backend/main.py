@@ -175,6 +175,46 @@ class ChatTokenManager:
         return True
 
 
+class TurnstileSessionManager:
+    """Issues and verifies short-lived IP-bound HMAC passes after Turnstile succeeds once."""
+
+    def __init__(self, secret: str | None = None, ttl_seconds: int = 7200) -> None:
+        self._secret = (secret or os.getenv("CHAT_TOKEN_SECRET") or secrets.token_hex(32)).encode("utf-8")
+        self._ttl = ttl_seconds
+
+    @staticmethod
+    def _ip_hash(client_ip: str) -> str:
+        return hashlib.sha256(client_ip.encode("utf-8")).hexdigest()[:16]
+
+    def issue(self, client_ip: str) -> str:
+        exp = int(time.time()) + self._ttl
+        ip_hash = self._ip_hash(client_ip)
+        payload = f"{exp}.{ip_hash}"
+        sig = hmac.new(self._secret, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
+        return f"{payload}.{sig}"
+
+    def verify(self, pass_token: str | None, client_ip: str) -> bool:
+        if not pass_token or not isinstance(pass_token, str):
+            return False
+        parts = pass_token.strip().split(".")
+        if len(parts) != 3:
+            return False
+        exp_str, ip_hash, sig = parts
+        try:
+            exp = int(exp_str)
+        except ValueError:
+            return False
+        now = time.time()
+        if exp < now or exp > now + self._ttl + 60:
+            return False
+        expected_ip_hash = self._ip_hash(client_ip)
+        if not hmac.compare_digest(ip_hash, expected_ip_hash):
+            return False
+        payload = f"{exp_str}.{ip_hash}"
+        expected_sig = hmac.new(self._secret, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
+        return hmac.compare_digest(sig, expected_sig)
+
+
 def _get_client_ip(request: Request) -> str:
     """Extract client IP safely behind Cloudflare / Render reverse proxies."""
     for header in ("cf-connecting-ip", "true-client-ip", "x-forwarded-for"):
