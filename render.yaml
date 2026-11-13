@@ -10,7 +10,13 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: CHAT_RATE_LIMIT_PER_MIN
-        value: "20"
+        value: "6"
+      - key: CHAT_RATE_LIMIT_PER_HOUR
+        value: "40"
+      - key: CHAT_RATE_LIMIT_PER_DAY
+        value: "180"
+      - key: MAX_DAILY_LLM_CALLS
+        value: "1000"
       - key: BUG_WEBHOOK_URL
         sync: false
 

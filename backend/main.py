@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
+import secrets
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 from collections import defaultdict, deque
@@ -28,9 +32,32 @@ from .engine import HockeyDatasets, ResponseCache, answer_question, build_llm, c
 
 DATA_DIR = Path(os.getenv("NU_DATA_DIR", Path(__file__).resolve().parent.parent))
 load_dotenv(DATA_DIR / ".env")
-RATE_LIMIT_MAX = int(os.getenv("CHAT_RATE_LIMIT_PER_MIN", "20"))
+RATE_LIMIT_MAX = int(os.getenv("CHAT_RATE_LIMIT_PER_MIN", "6"))
+RATE_LIMIT_HOUR_MAX = int(os.getenv("CHAT_RATE_LIMIT_PER_HOUR", "40"))
+RATE_LIMIT_DAY_MAX = int(os.getenv("CHAT_RATE_LIMIT_PER_DAY", "180"))
+MAX_DAILY_LLM_CALLS = int(os.getenv("MAX_DAILY_LLM_CALLS", "1000"))
 BUG_REPORTS_PATH = DATA_DIR / "bug_reports.jsonl"
 _bug_report_lock = threading.Lock()
+
+_BOT_UA_PATTERNS = (
+    "curl/",
+    "wget/",
+    "python-requests",
+    "python-urllib",
+    "httpx",
+    "aiohttp",
+    "scrapy",
+    "go-http-client",
+    "java/",
+    "okhttp",
+    "postmanruntime",
+    "insomnia",
+    "headlesschrome",
+    "puppeteer",
+    "playwright",
+    "selenium",
+    "phantomjs",
+)
 
 HOCKEY_EAST_TEAMS = {
     "Boston College",
@@ -77,6 +104,77 @@ class RateLimiter:
             return True
 
 
+class DailyBudgetTracker:
+    """Global daily circuit breaker for non-cached LLM calls."""
+
+    def __init__(self, max_daily_calls: int = 1000) -> None:
+        self._max = max_daily_calls
+        self._day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        self._count = 0
+        self._lock = threading.Lock()
+
+    def allow_and_increment(self) -> bool:
+        if self._max <= 0:
+            return True
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        with self._lock:
+            if today != self._day:
+                self._day = today
+                self._count = 0
+            if self._count >= self._max:
+                return False
+            self._count += 1
+            return True
+
+
+class ChatTokenManager:
+    """Issues and verifies short-lived single-use HMAC-signed chat tokens."""
+
+    def __init__(self, secret: str | None = None, ttl_seconds: int = 900, max_used: int = 8192) -> None:
+        self._secret = (secret or os.getenv("CHAT_TOKEN_SECRET") or secrets.token_hex(32)).encode("utf-8")
+        self._ttl = ttl_seconds
+        self._max_used = max_used
+        self._used: dict[str, float] = {}
+        self._lock = threading.Lock()
+
+    def issue(self) -> str:
+        exp = int(time.time()) + self._ttl
+        nonce = secrets.token_urlsafe(12)
+        payload = f"{exp}.{nonce}"
+        sig = hmac.new(self._secret, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
+        return f"{payload}.{sig}"
+
+    def verify_and_consume(self, token: str | None) -> bool:
+        if not token or not isinstance(token, str):
+            return False
+        parts = token.strip().split(".")
+        if len(parts) != 3:
+            return False
+        exp_str, nonce, sig = parts
+        try:
+            exp = int(exp_str)
+        except ValueError:
+            return False
+        now = time.time()
+        if exp < now or exp > now + self._ttl + 60:
+            return False
+        payload = f"{exp_str}.{nonce}"
+        expected_sig = hmac.new(self._secret, payload.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
+        if not hmac.compare_digest(sig, expected_sig):
+            return False
+        with self._lock:
+            if len(self._used) > self._max_used:
+                stale = [k for k, expiry in self._used.items() if expiry < now]
+                for k in stale:
+                    self._used.pop(k, None)
+                if len(self._used) > self._max_used:
+                    self._used.clear()
+            if nonce in self._used:
+                return False
+            self._used[nonce] = float(exp)
+        return True
+
+
 def _get_client_ip(request: Request) -> str:
     """Extract client IP safely behind Cloudflare / Render reverse proxies."""
     for header in ("cf-connecting-ip", "true-client-ip", "x-forwarded-for"):
@@ -86,6 +184,28 @@ def _get_client_ip(request: Request) -> str:
             if first_ip:
                 return first_ip[:64]
     return (request.client.host if request.client else "unknown")[:64]
+
+
+def _verify_browser_request(request: Request) -> None:
+    """Reject obvious automated scripts/bots and mismatched cross-origin requests."""
+    ua = (request.headers.get("user-agent") or "").strip().lower()
+    if not ua or len(ua) < 10 or any(pat in ua for pat in _BOT_UA_PATTERNS):
+        raise HTTPException(
+            status_code=403,
+            detail="Automated requests are not permitted.",
+        )
+
+    origin = (request.headers.get("origin") or "").strip()
+    host = (request.headers.get("host") or "").strip().lower()
+    if origin and origin != "null":
+        parsed = urllib.parse.urlparse(origin)
+        origin_host = parsed.netloc.lower()
+        if host and origin_host != host and not origin_host.endswith("northeasternhockeystats.com"):
+            if allow_origins != ["*"] and origin not in allow_origins:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Cross-origin requests are not permitted.",
+                )
 
 
 class ChatMessage(BaseModel):
@@ -108,7 +228,12 @@ class _AppState:
     datasets: HockeyDatasets | None = None
     llm: Any = None
     cache: ResponseCache = ResponseCache(ttl_seconds=86400, max_entries=1000)
-    limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_MAX, window_seconds=60)
+    limiter: RateLimiter = RateLimiter(max_requests=20, window_seconds=60)
+    chat_min_limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_MAX, window_seconds=60)
+    chat_hour_limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_HOUR_MAX, window_seconds=3600)
+    chat_day_limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_DAY_MAX, window_seconds=86400)
+    daily_budget: DailyBudgetTracker = DailyBudgetTracker(max_daily_calls=MAX_DAILY_LLM_CALLS)
+    token_manager: ChatTokenManager = ChatTokenManager()
 
 
 state = _AppState()
@@ -780,6 +905,18 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
     }
 
 
+@app.get("/api/chat-token")
+def get_chat_token(request: Request) -> dict[str, str]:
+    _verify_browser_request(request)
+    client_ip = _get_client_ip(request)
+    if not state.limiter.allow(f"tok:{client_ip}"):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many token requests. Please wait a moment.",
+        )
+    return {"token": state.token_manager.issue()}
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest, request: Request) -> ChatResponse:
     ds = _require_datasets()
@@ -789,8 +926,17 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
             detail="GEMINI_API_KEY is not configured on the server.",
         )
 
+    _verify_browser_request(request)
+
+    chat_token = request.headers.get("x-chat-token")
+    if not state.token_manager.verify_and_consume(chat_token):
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid or expired chat session token. Please refresh and try again.",
+        )
+
     client_ip = _get_client_ip(request)
-    if not state.limiter.allow(client_ip):
+    if not state.chat_min_limiter.allow(client_ip):
         raise HTTPException(
             status_code=429,
             detail=(
@@ -798,8 +944,41 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
                 "You have asked several questions in a short period. Please wait **30 to 60 seconds** before asking your next question."
             ),
         )
+    if not state.chat_hour_limiter.allow(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "⏳ **Hourly Question Limit Reached**\n\n"
+                "You've reached the hourly limit for Ask Paws questions. Please wait a bit before asking more questions, "
+                "or explore the Stats, Roster, and Opponents tabs in the meantime!"
+            ),
+        )
+    if not state.chat_day_limiter.allow(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "🏒 **Daily Question Limit Reached (180/day)**\n\n"
+                "You have reached your personal daily limit of 180 Ask Paws questions. Please check back tomorrow!"
+            ),
+        )
 
     history = [{"role": m.role, "content": m.content} for m in req.history]
+    # Check standalone cache before consuming global daily LLM budget
+    if not history and not req.context:
+        cached_ans = state.cache.get(req.question)
+        if cached_ans is not None:
+            return ChatResponse(answer=cached_ans, cached=True)
+
+    if not state.daily_budget.allow_and_increment():
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "🏒 **Daily API Quota Limit Reached**\n\n"
+                "The Northeastern Men's Hockey assistant has reached today's shared AI usage budget. "
+                "The daily limit resets automatically at midnight UTC. Please check back then!"
+            ),
+        )
+
     try:
         answer, from_cache = await run_in_threadpool(
             answer_question,

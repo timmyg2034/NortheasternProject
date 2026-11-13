@@ -378,6 +378,13 @@ export default function App() {
     );
   }
 
+  async function fetchChatToken() {
+    const res = await fetch(`${API_BASE}/api/chat-token`);
+    if (!res.ok) return "";
+    const data = await res.json().catch(() => ({}));
+    return data?.token || "";
+  }
+
   async function sendQuestion(questionText) {
     const q = questionText.trim();
     if (!q || chatLoading) return;
@@ -393,15 +400,38 @@ export default function App() {
           ? (drawerUseContext ? pageContext : null)
           : null;
 
-      const res = await fetch(`${API_BASE}/api/chat`, {
+      let token = await fetchChatToken();
+      let res = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "X-Chat-Token": token } : {}),
+        },
         body: JSON.stringify({
           question: q,
           history,
           context: activeContext,
         }),
       });
+
+      if (res.status === 403) {
+        token = await fetchChatToken();
+        if (token) {
+          res = await fetch(`${API_BASE}/api/chat`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Chat-Token": token,
+            },
+            body: JSON.stringify({
+              question: q,
+              history,
+              context: activeContext,
+            }),
+          });
+        }
+      }
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const errorDetail =
