@@ -152,10 +152,25 @@ export default function App() {
   const turnstileContainerRef = useRef(null);
   const turnstileWidgetRef = useRef(null);
   const turnstileTokenRef = useRef("");
+  const [turnstilePass, setTurnstilePass] = useState(() => {
+    try {
+      return window.sessionStorage.getItem("nu_turnstile_pass") || "";
+    } catch {
+      return "";
+    }
+  });
   const turnstileSiteKey = health?.turnstile_site_key || "";
 
   useEffect(() => {
-    if (!turnstileSiteKey || !turnstileContainerRef.current) return;
+    if (!turnstileSiteKey || turnstilePass || !turnstileContainerRef.current) {
+      if (turnstileWidgetRef.current !== null && window.turnstile) {
+        try {
+          window.turnstile.remove(turnstileWidgetRef.current);
+        } catch {}
+        turnstileWidgetRef.current = null;
+      }
+      return;
+    }
     let cancelled = false;
     let timer = null;
 
@@ -193,7 +208,7 @@ export default function App() {
         turnstileWidgetRef.current = null;
       }
     };
-  }, [turnstileSiteKey]);
+  }, [turnstileSiteKey, turnstilePass]);
 
   // Leaders / Stats state
   const [leaders, setLeaders] = useState(null);
