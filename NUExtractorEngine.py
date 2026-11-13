@@ -293,7 +293,8 @@ def parse_modern_boxscore(soup, url, html):
                             parts = txt.split("-")
                             try:
                                 fo_won = int(parts[0])
-                                fo_lost = int(parts[1])
+                                fo_total = int(parts[1])
+                                fo_lost = max(0, fo_total - fo_won)
                             except ValueError: pass
 
                     skaters.append({
