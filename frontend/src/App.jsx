@@ -1343,11 +1343,13 @@ export default function App() {
                     )}
                     <div className="stat-box">
                       <div className="val">{ts.pim}</div>
-                      <div className="lbl">
-                        {hasModernTracking(selectedSeason)
-                          ? `PIM (${ts.blocked_shots} BLK)`
-                          : "Penalty Min"}
+                      <div className="lbl">Penalty Min</div>
+                    </div>
+                    <div className="stat-box">
+                      <div className="val">
+                        {hasModernTracking(selectedSeason) ? ts.blocked_shots : "N/A"}
                       </div>
+                      <div className="lbl">Blocks</div>
                     </div>
                   </div>
 
