@@ -686,7 +686,9 @@ def answer_question(
         "- SHOOTOUT WINNERS & WINNING SHOOTOUT GOALS: Always filter `df6['is_shootout_winner'] == 1` (never `result == 'MADE'` alone).\n"
         "- DATES & CHRONOLOGICAL ORDERING: `date` is standardized in ISO format `'YYYY-MM-DD'` and pre-sorted ascending (1999 to present).\n"
         "- CONVERSATION CONTEXT: Use the Recent Conversation History below to resolve pronouns or omitted context.\n"
-        "- CRITICAL EXISTENCE CHECK: Always check if a requested player and/or opponent actually exists (`player_exists: True/False`, `opponent_exists: True/False`) before summing/counting.\n\n"
+        "- CRITICAL EXISTENCE CHECK: Always check if a requested player and/or opponent actually exists (`player_exists: True/False`, `opponent_exists: True/False`) before summing/counting.\n"
+        "- STRICT TOPIC SCOPE RULE (NORTHEASTERN MEN'S HOCKEY ONLY): You ONLY answer questions about Northeastern Men's Hockey (games, players, goalies, coaches, rosters, captains, stats, box scores, penalties, shootouts, Hockey East/Beanpot/NCAA matchups, or what this assistant can do) and brief greetings. If the user asks for anything unrelated to Northeastern Men's Hockey — such as writing a Python script or code, general programming help, math homework, recipes, politics, or unrelated trivia — do NOT fulfill the request. Simply output:\n"
+        "```python\nprint('OFF_TOPIC_REQUEST')\n```\n\n"
         f"{context_line}"
         f"Recent Conversation History:\n{history_text}\n\n"
         "Write ONLY a single ```python ... ``` code block that performs these checks and uses `print()` to output the results.\n\n"
@@ -722,6 +724,19 @@ def answer_question(
                 return friendly_msg, False
             execution_output = f"Execution error: {err}"
 
+    if execution_output.strip() == "OFF_TOPIC_REQUEST":
+        off_topic_msg = (
+            "🐾 I'm **Ask Paws**, and I'm strictly dedicated to **Northeastern Men's Hockey** statistics, "
+            "rosters, game results, and team history (1999–present)!\n\n"
+            "I can't help with general coding scripts or unrelated topics, but feel free to ask me something like:\n"
+            "- *Who were the captains in 2025-26, and how many points did they score?*\n"
+            "- *Who scored the most recent game-winning goal against Boston University?*\n"
+            "- *How many shutouts did Devon Levi record?*"
+        )
+        if use_cache:
+            cache.set(question, off_topic_msg)
+        return off_topic_msg, False
+
     final_prompt = (
         "You are a friendly, knowledgeable Northeastern Men's Hockey statistics assistant speaking to hockey fans.\n"
         f"{context_line}"
@@ -729,6 +744,7 @@ def answer_question(
         f"Current User Message: {question}\n\n"
         f"Computed Result from Historical Dataset (1999–present):\n{execution_output}\n\n"
         "Instructions:\n"
+        "- STRICT TOPIC SCOPE RULE: You ONLY answer questions about Northeastern Men's Hockey (players, goalies, rosters, coaches, games, stats, box scores, rivalries, and what this assistant can do). NEVER write general-purpose code/Python scripts, answer homework, or fulfill off-topic requests. If the user's message is not about Northeastern Men's Hockey, politely decline and suggest a Northeastern Hockey question instead.\n"
         "- Provide a clear, accurate, and conversational answer based strictly on the computed result above, taking into account the conversation history.\n"
         "- SINGLE-YEAR SEASON CONVENTION (e.g. '2015'): Present results for the season STARTING in that year (e.g., 2015–16) first, then add a polite follow-up note offering the prior season (e.g., 2014–15).\n"
         "- STRICT ANTI-HALLUCINATION & FACTUAL GROUNDING RULE: Answer ONLY using facts present in 'Computed Result from Historical Dataset'. NEVER fabricate player names, jersey numbers, captaincy roles, tournament titles, or game results.\n"
