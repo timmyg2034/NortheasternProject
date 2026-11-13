@@ -149,6 +149,50 @@ export default function App() {
   const [bugModalOpen, setBugModalOpen] = useState(false);
   const messagesEndRef = useRef(null);
   const drawerEndRef = useRef(null);
+  const turnstileContainerRef = useRef(null);
+  const turnstileWidgetRef = useRef(null);
+  const turnstileTokenRef = useRef("");
+  const turnstileSiteKey = health?.turnstile_site_key || "";
+
+  useEffect(() => {
+    if (!turnstileSiteKey || !turnstileContainerRef.current) return;
+    let cancelled = false;
+    let timer = null;
+
+    function initTurnstile() {
+      if (cancelled || !turnstileContainerRef.current) return;
+      if (!window.turnstile) {
+        timer = window.setTimeout(initTurnstile, 250);
+        return;
+      }
+      if (turnstileWidgetRef.current !== null) return;
+      turnstileWidgetRef.current = window.turnstile.render(turnstileContainerRef.current, {
+        sitekey: turnstileSiteKey,
+        appearance: "interaction-only",
+        callback: (token) => {
+          turnstileTokenRef.current = token || "";
+        },
+        "expired-callback": () => {
+          turnstileTokenRef.current = "";
+        },
+        "error-callback": () => {
+          turnstileTokenRef.current = "";
+        },
+      });
+    }
+
+    initTurnstile();
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+      if (turnstileWidgetRef.current !== null && window.turnstile) {
+        try {
+          window.turnstile.remove(turnstileWidgetRef.current);
+        } catch {}
+        turnstileWidgetRef.current = null;
+      }
+    };
+  }, [turnstileSiteKey]);
 
   // Leaders / Stats state
   const [leaders, setLeaders] = useState(null);
@@ -401,11 +445,13 @@ export default function App() {
           : null;
 
       let token = await fetchChatToken();
+      const tsToken = turnstileTokenRef.current;
       let res = await fetch(`${API_BASE}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { "X-Chat-Token": token } : {}),
+          ...(tsToken ? { "X-Turnstile-Token": tsToken } : {}),
         },
         body: JSON.stringify({
           question: q,
@@ -416,12 +462,14 @@ export default function App() {
 
       if (res.status === 403) {
         token = await fetchChatToken();
+        const retryTsToken = turnstileTokenRef.current;
         if (token) {
           res = await fetch(`${API_BASE}/api/chat`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "X-Chat-Token": token,
+              ...(retryTsToken ? { "X-Turnstile-Token": retryTsToken } : {}),
             },
             body: JSON.stringify({
               question: q,
@@ -430,6 +478,13 @@ export default function App() {
             }),
           });
         }
+      }
+
+      if (turnstileWidgetRef.current !== null && window.turnstile) {
+        turnstileTokenRef.current = "";
+        try {
+          window.turnstile.reset(turnstileWidgetRef.current);
+        } catch {}
       }
 
       const data = await res.json().catch(() => ({}));
@@ -1916,6 +1971,7 @@ export default function App() {
           </aside>
         )
       )}
+      <div ref={turnstileContainerRef} aria-hidden="true" />
     </div>
   );
 }

@@ -96,6 +96,12 @@ const LEGAL_CONTENT = {
             issue.
           </li>
           <li>
+            <strong>Bot Protection (Cloudflare Turnstile):</strong> When enabled,
+            <strong>Ask Paws</strong> uses Cloudflare Turnstile to verify human
+            traffic without intrusive puzzles. Turnstile evaluates browser signals
+            under Cloudflare&apos;s privacy policy.
+          </li>
+          <li>
             <strong>External Static Assets:</strong> Player headshot images are
             loaded from <code>nuhuskies.com</code>, and typography is loaded from
             Google Fonts (<code>fonts.googleapis.com</code>). Standard web requests

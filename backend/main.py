@@ -279,17 +279,48 @@ async def add_security_headers(request: Request, call_next):
     response.headers.setdefault(
         "Content-Security-Policy",
         "default-src 'self'; "
-        "script-src 'self'; "
+        "script-src 'self' https://challenges.cloudflare.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com data:; "
         "img-src 'self' https: data: blob:; "
-        "connect-src 'self'; "
+        "frame-src https://challenges.cloudflare.com; "
+        "connect-src 'self' https://challenges.cloudflare.com; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
         "form-action 'self'",
     )
     return response
 
+
+def _turnstile_config() -> tuple[str, str]:
+    site_key = os.getenv("TURNSTILE_SITE_KEY", "").strip()
+    secret_key = os.getenv("TURNSTILE_SECRET_KEY", "").strip()
+    return site_key, secret_key
+
+
+def _verify_turnstile_token(token: str | None, client_ip: str) -> bool:
+    _, secret_key = _turnstile_config()
+    if not secret_key:
+        return True
+    if not token or not token.strip():
+        return False
+    body = urllib.parse.urlencode({
+        "secret": secret_key,
+        "response": token.strip(),
+        "remoteip": client_ip,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            return bool(data.get("success"))
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+        return False
 
 
 def _require_datasets() -> HockeyDatasets:
@@ -306,9 +337,11 @@ def _records(df) -> list[dict[str, Any]]:
 def health() -> dict[str, Any]:
     ds = _require_datasets()
     latest_game = str(ds.games["date"].iloc[-1]) if not ds.games.empty else None
+    site_key, secret_key = _turnstile_config()
     return {
         "status": "ok",
         "llm_configured": state.llm is not None,
+        "turnstile_site_key": site_key if (site_key and secret_key) else None,
         "games_count": int(len(ds.games)),
         "skater_logs_count": int(len(ds.skaters)),
         "seasons_count": len(ds.available_seasons),
@@ -936,6 +969,15 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
         )
 
     client_ip = _get_client_ip(request)
+    _, turnstile_secret = _turnstile_config()
+    if turnstile_secret:
+        turnstile_token = request.headers.get("x-turnstile-token")
+        verified = await run_in_threadpool(_verify_turnstile_token, turnstile_token, client_ip)
+        if not verified:
+            raise HTTPException(
+                status_code=403,
+                detail="Human verification (Turnstile) failed or expired. Please complete the check and try again.",
+            )
     if not state.chat_min_limiter.allow(client_ip):
         raise HTTPException(
             status_code=429,

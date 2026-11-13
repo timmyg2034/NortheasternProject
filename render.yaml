@@ -17,6 +17,10 @@ services:
         value: "180"
       - key: MAX_DAILY_LLM_CALLS
         value: "1000"
+      - key: TURNSTILE_SITE_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
       - key: BUG_WEBHOOK_URL
         sync: false
 
