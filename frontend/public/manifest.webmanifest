@@ -1,0 +1,25 @@
+{
+  "name": "NU Hockey Stats Explorer",
+  "short_name": "NU Hockey",
+  "description": "Northeastern Men's Hockey historical stats, rosters, rivalries, and Ask Paws AI explorer (1999–present).",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#111214",
+  "theme_color": "#c8102e",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
