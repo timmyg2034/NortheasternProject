@@ -127,6 +127,12 @@ function formatPct3(won, lost) {
   return formatRatio3(won, Number(won || 0) + Number(lost || 0));
 }
 
+function formatFaceoffs(won, lost) {
+  const w = Number(won || 0);
+  const l = Number(lost || 0);
+  return `${w}-${w + l}`;
+}
+
 export default function App() {
   const [tab, setTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1236,7 +1242,7 @@ export default function App() {
                         <div className="lbl">
                           {playerData.career_skater.faceoff_pct !== null &&
                           playerData.career_skater.faceoff_pct !== undefined
-                            ? `FO% (${playerData.career_skater.faceoffs_won}-${playerData.career_skater.faceoffs_lost})`
+                            ? `FO% (${formatFaceoffs(playerData.career_skater.faceoffs_won, playerData.career_skater.faceoffs_lost)})`
                             : "FO%"}
                         </div>
                       </div>
@@ -1408,7 +1414,7 @@ export default function App() {
                                   <td>{s[`${p}multi_goal_games`] ?? 0}</td>
                                   <td>{s[`${p}hat_tricks`] ?? 0}</td>
                                   <td>{tracked ? s[`${p}blocked_shots`] : <span className="muted">N/A</span>}</td>
-                                  <td>{tracked ? `${fow || 0}-${fol || 0}` : <span className="muted">N/A</span>}</td>
+                                  <td>{tracked ? formatFaceoffs(fow, fol) : <span className="muted">N/A</span>}</td>
                                   <td>{foPct ?? <span className="muted">N/A</span>}</td>
                                   <td>{s[`${p}pim`]}</td>
                                 </tr>
@@ -1521,7 +1527,7 @@ export default function App() {
                                     <td>{g.shots}</td>
                                     <td>{g.plus_minus > 0 ? `+${g.plus_minus}` : g.plus_minus}</td>
                                     <td>{tracked ? g.blocked_shots : <span className="muted">N/A</span>}</td>
-                                    <td>{tracked ? `${g.faceoffs_won}-${g.faceoffs_lost}` : <span className="muted">N/A</span>}</td>
+                                    <td>{tracked ? formatFaceoffs(g.faceoffs_won, g.faceoffs_lost) : <span className="muted">N/A</span>}</td>
                                     <td>{foPct ?? <span className="muted">N/A</span>}</td>
                                     <td>{g.penalty_minutes}</td>
                                     <td>
@@ -1782,7 +1788,7 @@ export default function App() {
                                 <div className="lbl">
                                   {selectedOppStats.has_tracked_blk_fo &&
                                   selectedOppStats.faceoffs_won + selectedOppStats.faceoffs_lost > 0
-                                    ? `FO% (${selectedOppStats.faceoffs_won}-${selectedOppStats.faceoffs_lost})`
+                                    ? `FO% (${formatFaceoffs(selectedOppStats.faceoffs_won, selectedOppStats.faceoffs_lost)})`
                                     : "FO%"}
                                 </div>
                               </div>
@@ -1957,7 +1963,7 @@ export default function App() {
                                     <td>{row.has_tracked_blk_fo ? row.blocked_shots : <span className="muted">N/A</span>}</td>
                                     <td>
                                       {row.has_tracked_blk_fo
-                                        ? `${row.faceoffs_won}-${row.faceoffs_lost}`
+                                        ? formatFaceoffs(row.faceoffs_won, row.faceoffs_lost)
                                         : <span className="muted">N/A</span>}
                                     </td>
                                     <td>
@@ -2307,7 +2313,7 @@ export default function App() {
                       </div>
                       <div className="lbl">
                         {hasModernTracking(selectedSeason) && ts.faceoff_pct !== null && ts.faceoff_pct !== undefined
-                          ? `Faceoff % (${ts.faceoffs_won}-${ts.faceoffs_lost})`
+                          ? `Faceoff % (${formatFaceoffs(ts.faceoffs_won, ts.faceoffs_lost)})`
                           : "Faceoff %"}
                       </div>
                     </div>
@@ -2504,6 +2510,7 @@ export default function App() {
                         ["shg", "SHG", "Short-Handed Goals"],
                         ["gwg", "GWG", "Game-Winning Goals"],
                         ["blocked_shots", "BLK", "Blocked Shots"],
+                        ["faceoffs_won", "FO", "Faceoffs (Won-Total)"],
                         ["faceoff_pct", "FO%", "Faceoff Percentage"],
                         ["pim", "PIM", "Penalty Minutes"],
                         ["multi_point_games", "MPG", "Multi-Point Games"],
@@ -2580,6 +2587,11 @@ export default function App() {
                         <td>{p.shg !== undefined && p.shg !== null ? p.shg : <span className="muted">N/A</span>}</td>
                         <td>{p.gwg !== undefined && p.gwg !== null ? p.gwg : <span className="muted">N/A</span>}</td>
                         <td>{hasModernTracking(selectedSeason) ? p.blocked_shots : <span className="muted">N/A</span>}</td>
+                        <td>
+                          {hasModernTracking(selectedSeason) && p.faceoffs_won !== undefined
+                            ? formatFaceoffs(p.faceoffs_won, p.faceoffs_lost)
+                            : <span className="muted">N/A</span>}
+                        </td>
                         <td>
                           {hasModernTracking(selectedSeason) && p.faceoff_pct !== null && p.faceoff_pct !== undefined
                             ? `${p.faceoff_pct}%`
