@@ -1198,6 +1198,14 @@ export default function App() {
                         <div className="lbl">PIM</div>
                         <div className="stat-box-hint">Breakdown &rarr;</div>
                       </button>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_skater.multi_goal_games ?? 0}</div>
+                        <div className="lbl">Multi-Goal Games</div>
+                      </div>
+                      <div className="stat-box">
+                        <div className="val">{playerData.career_skater.hat_tricks ?? 0}</div>
+                        <div className="lbl">Hat Tricks</div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1300,6 +1308,8 @@ export default function App() {
                               <th>PPG</th>
                               <th>SHG</th>
                               <th>GWG</th>
+                              <th>MGG</th>
+                              <th>HTG</th>
                               <th>BLK</th>
                               <th>FO</th>
                               <th>FO%</th>
@@ -1327,6 +1337,8 @@ export default function App() {
                                   <td>{s[`${p}ppg`]}</td>
                                   <td>{s[`${p}shg`]}</td>
                                   <td>{s[`${p}gwg`]}</td>
+                                  <td>{s[`${p}multi_goal_games`] ?? 0}</td>
+                                  <td>{s[`${p}hat_tricks`] ?? 0}</td>
                                   <td>{tracked ? s[`${p}blocked_shots`] : <span className="muted">N/A</span>}</td>
                                   <td>{tracked ? `${fow || 0}-${fol || 0}` : <span className="muted">N/A</span>}</td>
                                   <td>{foPct ?? <span className="muted">N/A</span>}</td>
@@ -1487,6 +1499,8 @@ export default function App() {
                         shots: 0,
                         plus_minus: 0,
                         blocked_shots: 0,
+                        multi_goal_games: 0,
+                        hat_tricks: 0,
                         has_tracked_blk_fo: false,
                         faceoffs_won: 0,
                         faceoffs_lost: 0,
@@ -1514,7 +1528,10 @@ export default function App() {
                       entry.shutouts += Number(g.shutouts || 0);
                       entry.minutes += parseMinutes(g.minutes);
                     } else {
-                      entry.goals += Number(g.goals || 0);
+                      const gGoals = Number(g.goals || 0);
+                      entry.goals += gGoals;
+                      if (gGoals >= 2) entry.multi_goal_games += 1;
+                      if (gGoals >= 3) entry.hat_tricks += 1;
                       entry.assists += Number(g.assists || 0);
                       entry.points += Number(g.points || 0);
                       entry.shots += Number(g.shots || 0);
@@ -1667,6 +1684,14 @@ export default function App() {
                                 <div className="lbl">PIM</div>
                                 <div className="stat-box-hint">Breakdown &rarr;</div>
                               </button>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.multi_goal_games}</div>
+                                <div className="lbl">Multi-Goal Games</div>
+                              </div>
+                              <div className="stat-box">
+                                <div className="val">{selectedOppStats.hat_tricks}</div>
+                                <div className="lbl">Hat Tricks</div>
+                              </div>
                             </div>
                           )}
 
@@ -1810,6 +1835,8 @@ export default function App() {
                                   <th>FO</th>
                                   <th>FO%</th>
                                   <th>PIM</th>
+                                  <th>MGG</th>
+                                  <th>HTG</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -1844,6 +1871,8 @@ export default function App() {
                                         : <span className="muted">N/A</span>}
                                     </td>
                                     <td>{row.pim}</td>
+                                    <td>{row.multi_goal_games}</td>
+                                    <td>{row.hat_tricks}</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -2164,6 +2193,12 @@ export default function App() {
                       </div>
                       <div className="lbl">Blocks</div>
                     </div>
+                    <div className="stat-box">
+                      <div className="val">{ts.multi_goal_games ?? 0}</div>
+                      <div className="lbl">
+                        {`Multi-Goal Games (${ts.hat_tricks ?? 0} Hat Tricks)`}
+                      </div>
+                    </div>
                   </div>
 
                   {selectedSeason === "all" && ts.season_breakdown?.length > 0 && (
@@ -2292,6 +2327,8 @@ export default function App() {
                         ["plus_minus", "+/-", "Plus/Minus"],
                         ["blocked_shots", "BLK", "Blocked Shots"],
                         ["pim", "PIM", "Penalty Minutes"],
+                        ["multi_goal_games", "MGG", "Multi-Goal Games"],
+                        ["hat_tricks", "HTG", "Hat Tricks"],
                       ].map(([colKey, label, fullLabel]) => {
                         const isSorted = leaderSort.key === colKey;
                         const ariaSort = isSorted
@@ -2361,6 +2398,8 @@ export default function App() {
                         <td>{p.plus_minus > 0 ? `+${p.plus_minus}` : p.plus_minus}</td>
                         <td>{hasModernTracking(selectedSeason) ? p.blocked_shots : <span className="muted">N/A</span>}</td>
                         <td>{p.pim}</td>
+                        <td>{p.multi_goal_games ?? 0}</td>
+                        <td>{p.hat_tricks ?? 0}</td>
                       </tr>
                     ))}
                   </tbody>
