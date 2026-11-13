@@ -939,6 +939,125 @@ export default function App() {
                 )}
 
                 {playerData.game_logs?.length > 0 && (() => {
+                  const logSeasons = Array.from(
+                    new Set(playerData.game_logs.map((g) => g.season).filter(Boolean))
+                  ).sort((a, b) => b.localeCompare(a));
+                  const visibleLogs =
+                    playerLogSeason === "all"
+                      ? playerData.game_logs
+                      : playerData.game_logs.filter((g) => g.season === playerLogSeason);
+
+                  return (
+                    <div className="card">
+                      <div className="card-header">
+                        <h2>Game Log ({visibleLogs.length} Games)</h2>
+                        <select
+                          aria-label="Filter game log by season"
+                          className="select-input"
+                          value={playerLogSeason}
+                          onChange={(e) => setPlayerLogSeason(e.target.value)}
+                        >
+                          <option value="all">All Seasons ({playerData.game_logs.length})</option>
+                          {logSeasons.map((s) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="table-wrap">
+                        {playerData.is_goalie ? (
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>Date</th>
+                                <th>Opponent</th>
+                                <th>Score</th>
+                                <th>Dec</th>
+                                <th>SV</th>
+                                <th>GA</th>
+                                <th>SV%</th>
+                                <th>Box</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {visibleLogs.map((g, i) => (
+                                <tr key={`${g.date}-${i}`}>
+                                  <td>{g.date}</td>
+                                  <td>{g.opponent}</td>
+                                  <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
+                                  <td>{g.decision}</td>
+                                  <td>{g.saves}</td>
+                                  <td>{g.goals_against}</td>
+                                  <td>{Number(g.save_pct || 0).toFixed(3)}</td>
+                                  <td>
+                                    {g.boxscore_url ? (
+                                      <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
+                                    ) : "-"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>Date</th>
+                                <th>Opponent</th>
+                                <th>Score</th>
+                                <th>G</th>
+                                <th>A</th>
+                                <th>PTS</th>
+                                <th>SOG</th>
+                                <th>+/-</th>
+                                <th>BLK</th>
+                                <th>FO</th>
+                                <th>FO%</th>
+                                <th>PIM</th>
+                                <th>Box</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {visibleLogs.map((g, i) => {
+                                const tracked = hasModernTracking(g.season);
+                                const foPct = tracked ? formatPct3(g.faceoffs_won, g.faceoffs_lost) : null;
+                                return (
+                                  <tr key={`${g.date}-${i}`}>
+                                    <td>{g.date}</td>
+                                    <td>
+                                      <span className="opp-with-logo">
+                                        <OpponentLogo name={g.opponent} />
+                                        <span>{g.opponent}</span>
+                                      </span>
+                                    </td>
+                                    <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
+                                    <td>{g.goals}</td>
+                                    <td>{g.assists}</td>
+                                    <td><strong>{g.points}</strong></td>
+                                    <td>{g.shots}</td>
+                                    <td>{g.plus_minus > 0 ? `+${g.plus_minus}` : g.plus_minus}</td>
+                                    <td>{tracked ? g.blocked_shots : <span className="muted">N/A</span>}</td>
+                                    <td>{tracked ? `${g.faceoffs_won}-${g.faceoffs_lost}` : <span className="muted">N/A</span>}</td>
+                                    <td>{foPct ?? <span className="muted">N/A</span>}</td>
+                                    <td>{g.penalty_minutes}</td>
+                                    <td>
+                                      {g.boxscore_url ? (
+                                        <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
+                                      ) : "-"}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {playerData.game_logs?.length > 0 && (() => {
                   const parseMinutes = (val) => {
                     const text = String(val || "").trim();
                     if (text.includes(":")) {
@@ -1316,125 +1435,6 @@ export default function App() {
                           )}
                         </div>
                       )}
-                    </div>
-                  );
-                })()}
-
-                {playerData.game_logs?.length > 0 && (() => {
-                  const logSeasons = Array.from(
-                    new Set(playerData.game_logs.map((g) => g.season).filter(Boolean))
-                  ).sort((a, b) => b.localeCompare(a));
-                  const visibleLogs =
-                    playerLogSeason === "all"
-                      ? playerData.game_logs
-                      : playerData.game_logs.filter((g) => g.season === playerLogSeason);
-
-                  return (
-                    <div className="card">
-                      <div className="card-header">
-                        <h2>Game Log ({visibleLogs.length} Games)</h2>
-                        <select
-                          aria-label="Filter game log by season"
-                          className="select-input"
-                          value={playerLogSeason}
-                          onChange={(e) => setPlayerLogSeason(e.target.value)}
-                        >
-                          <option value="all">All Seasons ({playerData.game_logs.length})</option>
-                          {logSeasons.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="table-wrap">
-                        {playerData.is_goalie ? (
-                          <table className="data-table">
-                            <thead>
-                              <tr>
-                                <th>Date</th>
-                                <th>Opponent</th>
-                                <th>Score</th>
-                                <th>Dec</th>
-                                <th>SV</th>
-                                <th>GA</th>
-                                <th>SV%</th>
-                                <th>Box</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {visibleLogs.map((g, i) => (
-                                <tr key={`${g.date}-${i}`}>
-                                  <td>{g.date}</td>
-                                  <td>{g.opponent}</td>
-                                  <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
-                                  <td>{g.decision}</td>
-                                  <td>{g.saves}</td>
-                                  <td>{g.goals_against}</td>
-                                  <td>{Number(g.save_pct || 0).toFixed(3)}</td>
-                                  <td>
-                                    {g.boxscore_url ? (
-                                      <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
-                                    ) : "-"}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        ) : (
-                          <table className="data-table">
-                            <thead>
-                              <tr>
-                                <th>Date</th>
-                                <th>Opponent</th>
-                                <th>Score</th>
-                                <th>G</th>
-                                <th>A</th>
-                                <th>PTS</th>
-                                <th>SOG</th>
-                                <th>+/-</th>
-                                <th>BLK</th>
-                                <th>FO</th>
-                                <th>FO%</th>
-                                <th>PIM</th>
-                                <th>Box</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {visibleLogs.map((g, i) => {
-                                const tracked = hasModernTracking(g.season);
-                                const foPct = tracked ? formatPct3(g.faceoffs_won, g.faceoffs_lost) : null;
-                                return (
-                                  <tr key={`${g.date}-${i}`}>
-                                    <td>{g.date}</td>
-                                    <td>
-                                      <span className="opp-with-logo">
-                                        <OpponentLogo name={g.opponent} />
-                                        <span>{g.opponent}</span>
-                                      </span>
-                                    </td>
-                                    <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
-                                    <td>{g.goals}</td>
-                                    <td>{g.assists}</td>
-                                    <td><strong>{g.points}</strong></td>
-                                    <td>{g.shots}</td>
-                                    <td>{g.plus_minus > 0 ? `+${g.plus_minus}` : g.plus_minus}</td>
-                                    <td>{tracked ? g.blocked_shots : <span className="muted">N/A</span>}</td>
-                                    <td>{tracked ? `${g.faceoffs_won}-${g.faceoffs_lost}` : <span className="muted">N/A</span>}</td>
-                                    <td>{foPct ?? <span className="muted">N/A</span>}</td>
-                                    <td>{g.penalty_minutes}</td>
-                                    <td>
-                                      {g.boxscore_url ? (
-                                        <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
-                                      ) : "-"}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
                     </div>
                   );
                 })()}
