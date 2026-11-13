@@ -222,6 +222,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     cached: bool = False
+    turnstile_pass: str | None = None
 
 
 class _AppState:
@@ -234,6 +235,7 @@ class _AppState:
     chat_day_limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_DAY_MAX, window_seconds=86400)
     daily_budget: DailyBudgetTracker = DailyBudgetTracker(max_daily_calls=MAX_DAILY_LLM_CALLS)
     token_manager: ChatTokenManager = ChatTokenManager()
+    turnstile_sessions: TurnstileSessionManager = TurnstileSessionManager()
 
 
 state = _AppState()
@@ -986,14 +988,18 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
 
     client_ip = _get_client_ip(request)
     _, turnstile_secret = _turnstile_config()
+    issued_turnstile_pass: str | None = None
     if turnstile_secret:
-        turnstile_token = request.headers.get("x-turnstile-token")
-        verified = await run_in_threadpool(_verify_turnstile_token, turnstile_token, client_ip)
-        if not verified:
-            raise HTTPException(
-                status_code=403,
-                detail="Human verification (Turnstile) failed or expired. Please complete the check and try again.",
-            )
+        turnstile_pass = request.headers.get("x-turnstile-pass")
+        if not state.turnstile_sessions.verify(turnstile_pass, client_ip):
+            turnstile_token = request.headers.get("x-turnstile-token")
+            verified = await run_in_threadpool(_verify_turnstile_token, turnstile_token, client_ip)
+            if not verified:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Human verification (Turnstile) failed or expired. Please complete the check and try again.",
+                )
+            issued_turnstile_pass = state.turnstile_sessions.issue(client_ip)
     if not state.chat_min_limiter.allow(client_ip):
         raise HTTPException(
             status_code=429,
@@ -1025,7 +1031,7 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
     if not history and not req.context:
         cached_ans = state.cache.get(req.question)
         if cached_ans is not None:
-            return ChatResponse(answer=cached_ans, cached=True)
+            return ChatResponse(answer=cached_ans, cached=True, turnstile_pass=issued_turnstile_pass)
 
     if not state.daily_budget.allow_and_increment():
         raise HTTPException(
@@ -1049,9 +1055,9 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
         )
     except Exception as exc:
         _, friendly = classify_api_error(exc)
-        return ChatResponse(answer=friendly, cached=False)
+        return ChatResponse(answer=friendly, cached=False, turnstile_pass=issued_turnstile_pass)
 
-    return ChatResponse(answer=answer, cached=from_cache)
+    return ChatResponse(answer=answer, cached=from_cache, turnstile_pass=issued_turnstile_pass)
 
 
 class BugReportRequest(BaseModel):
