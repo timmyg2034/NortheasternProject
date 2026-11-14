@@ -739,10 +739,27 @@ export default function App() {
     setChatLoading(true);
 
     try {
-      const activeContext =
-        selectedPlayer || tab !== "chat"
-          ? (drawerUseContext ? pageContext : null)
-          : null;
+      const hasContextTarget = Boolean(selectedPlayer || tab !== "chat");
+      let effectiveUseContext = drawerUseContext;
+      if (hasContextTarget && drawerUseContext) {
+        const lowerQ = q.toLowerCase();
+        const mentionsPronoun = /\b(he|him|his|himself|this player)\b/i.test(lowerQ);
+        const playerTokens = (selectedPlayer || "")
+          .toLowerCase()
+          .split(/\s+/)
+          .filter((t) => t.length >= 3);
+        const mentionsCurrentPlayer = playerTokens.some((t) => lowerQ.includes(t));
+        const isBroadAllStatsQuery = /\b(top\s+\d+|who\s+(leads?|led|has\s+the\s+most|had\s+the\s+most|scored\s+the\s+most)|which\s+players?|all[- ]time|program\s+history|team\s+record|northeastern\s+record|leaderboard|leaders?)\b/i.test(
+          lowerQ
+        );
+        if (isBroadAllStatsQuery && !mentionsPronoun && !mentionsCurrentPlayer) {
+          effectiveUseContext = false;
+          setDrawerUseContext(false);
+        }
+      }
+      const activeContext = hasContextTarget
+        ? (effectiveUseContext ? pageContext : null)
+        : null;
 
       async function waitForTurnstileToken(maxAttempts = 40) {
         if (!turnstileSiteKey) return "";
