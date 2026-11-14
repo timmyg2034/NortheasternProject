@@ -3608,11 +3608,11 @@ export default function App() {
               const directChem =
                 pA && pB && pA.chemistry?.find((c) => c.player_name?.toLowerCase() === pB.bio?.player_name?.toLowerCase());
 
-              const allOpponents = Array.from(
-                new Set([
-                  ...(pA?.game_logs || []).map((g) => g.opponent).filter(Boolean),
-                  ...(pB?.game_logs || []).map((g) => g.opponent).filter(Boolean),
-                ])
+              const oppsA = new Set((pA?.game_logs || []).map((g) => g.opponent).filter(Boolean));
+              const oppsB = new Set((pB?.game_logs || []).map((g) => g.opponent).filter(Boolean));
+              const allOpponents = (pA && pB
+                ? Array.from(oppsA).filter((opp) => oppsB.has(opp))
+                : Array.from(new Set([...oppsA, ...oppsB]))
               ).sort();
 
               const activeOpp = compareOpponent && allOpponents.includes(compareOpponent)
@@ -3827,16 +3827,24 @@ export default function App() {
 
                   {compareMode === "opponent" && pA && pB && (
                     <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-                      <span className="muted" style={{ fontSize: 13 }}>Opponent:</span>
-                      <select
-                        className="select-input"
-                        value={activeOpp}
-                        onChange={(e) => setCompareOpponent(e.target.value)}
-                      >
-                        {allOpponents.map((opp) => (
-                          <option key={opp} value={opp}>{opp}</option>
-                        ))}
-                      </select>
+                      {allOpponents.length > 0 ? (
+                        <>
+                          <span className="muted" style={{ fontSize: 13 }}>Opponent:</span>
+                          <select
+                            className="select-input"
+                            value={activeOpp}
+                            onChange={(e) => setCompareOpponent(e.target.value)}
+                          >
+                            {allOpponents.map((opp) => (
+                              <option key={opp} value={opp}>{opp}</option>
+                            ))}
+                          </select>
+                        </>
+                      ) : (
+                        <span className="muted" style={{ fontSize: 13 }}>
+                          No shared opponents found between {pA.bio.player_name} and {pB.bio.player_name}.
+                        </span>
+                      )}
                     </div>
                   )}
 
@@ -3849,7 +3857,7 @@ export default function App() {
                     </div>
                   )}
 
-                  {rows.length > 0 && (
+                  {rows.length > 0 && !(compareMode === "opponent" && !activeOpp) && (
                     <div className="card">
                       <div className="table-wrap">
                         <table className="data-table">
