@@ -314,7 +314,36 @@ export default function App() {
   const [penaltyPage, setPenaltyPage] = useState(1);
   const [penaltySeasonFilter, setPenaltySeasonFilter] = useState("all");
   const [penaltyInfractionFilter, setPenaltyInfractionFilter] = useState("all");
+  const [boxscoreModal, setBoxscoreModal] = useState(null);
+  const [boxscoreData, setBoxscoreData] = useState(null);
+  const [boxscoreLoading, setBoxscoreLoading] = useState(false);
+  const [boxscoreError, setBoxscoreError] = useState("");
   const hasInAppHistory = useRef(false);
+
+  async function openBoxScore(date, opponent) {
+    if (!date || !opponent) return;
+    setBoxscoreModal({ date, opponent });
+    setBoxscoreData(null);
+    setBoxscoreLoading(true);
+    setBoxscoreError("");
+    try {
+      const params = new URLSearchParams({ date, opponent });
+      const res = await fetch(`${API_BASE}/api/boxscore?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Unable to load box score");
+      setBoxscoreData(data);
+    } catch (err) {
+      setBoxscoreError(err.message || "Unable to load box score");
+    } finally {
+      setBoxscoreLoading(false);
+    }
+  }
+
+  function closeBoxScore() {
+    setBoxscoreModal(null);
+    setBoxscoreData(null);
+    setBoxscoreError("");
+  }
 
   async function loadPenaltyBreakdown(pv) {
     setPenaltyView(pv);
@@ -1114,13 +1143,13 @@ export default function App() {
                                   <td>{ev.infraction || "UNSPECIFIED"}</td>
                                   <td><strong>{ev.penalty_minutes}</strong></td>
                                   <td>
-                                    {ev.boxscore_url ? (
-                                      <a href={ev.boxscore_url} target="_blank" rel="noreferrer">
-                                        View
-                                      </a>
-                                    ) : (
-                                      "-"
-                                    )}
+                                    <button
+                                      type="button"
+                                      className="link-btn"
+                                      onClick={() => openBoxScore(ev.date, ev.opponent)}
+                                    >
+                                      View
+                                    </button>
                                   </td>
                                 </tr>
                               ))}
@@ -1527,6 +1556,45 @@ export default function App() {
                   </div>
                 )}
 
+                {playerData.chemistry?.length > 0 && (
+                  <div className="card">
+                    <div className="card-header">
+                      <h2>Line Chemistry — Top Goal Connections</h2>
+                      <span className="muted">Career scoring combinations</span>
+                    </div>
+                    <div className="table-wrap">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Teammate</th>
+                            <th>Total Connections</th>
+                            <th>Assisted by Them</th>
+                            <th>Their Goals Assisted</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {playerData.chemistry.map((c) => (
+                            <tr key={c.player_name}>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="player-link"
+                                  onClick={() => openPlayer(c.player_name)}
+                                >
+                                  {c.player_name}
+                                </button>
+                              </td>
+                              <td><strong>{c.total_connections}</strong></td>
+                              <td>{c.assisted_by_them}</td>
+                              <td>{c.assisted_for_them}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 {playerData.game_logs?.length > 0 && (() => {
                   const logSeasons = Array.from(
                     new Set(playerData.game_logs.map((g) => g.season).filter(Boolean))
@@ -1580,9 +1648,13 @@ export default function App() {
                                   <td>{g.goals_against}</td>
                                   <td>{Number(g.save_pct || 0).toFixed(3)}</td>
                                   <td>
-                                    {g.boxscore_url ? (
-                                      <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
-                                    ) : "-"}
+                                    <button
+                                      type="button"
+                                      className="link-btn"
+                                      onClick={() => openBoxScore(g.date, g.opponent)}
+                                    >
+                                      View
+                                    </button>
                                   </td>
                                 </tr>
                               ))}
@@ -1631,9 +1703,13 @@ export default function App() {
                                     <td>{foPct ?? <span className="muted">N/A</span>}</td>
                                     <td>{g.penalty_minutes}</td>
                                     <td>
-                                      {g.boxscore_url ? (
-                                        <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
-                                      ) : "-"}
+                                      <button
+                                        type="button"
+                                        className="link-btn"
+                                        onClick={() => openBoxScore(g.date, g.opponent)}
+                                      >
+                                        View
+                                      </button>
                                     </td>
                                   </tr>
                                 );
@@ -1915,9 +1991,13 @@ export default function App() {
                                       <td>{g.goals_against}</td>
                                       <td>{Number(g.save_pct || 0).toFixed(3)}</td>
                                       <td>
-                                        {g.boxscore_url ? (
-                                          <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
-                                        ) : "-"}
+                                        <button
+                                          type="button"
+                                          className="link-btn"
+                                          onClick={() => openBoxScore(g.date, g.opponent || selectedOppStats?.opponent)}
+                                        >
+                                          View
+                                        </button>
                                       </td>
                                     </tr>
                                   ))}
@@ -1954,9 +2034,13 @@ export default function App() {
                                       <td>{hasModernTracking(g.season) ? g.blocked_shots : <span className="muted">N/A</span>}</td>
                                       <td>{g.penalty_minutes}</td>
                                       <td>
-                                        {g.boxscore_url ? (
-                                          <a href={g.boxscore_url} target="_blank" rel="noreferrer">View</a>
-                                        ) : "-"}
+                                        <button
+                                          type="button"
+                                          className="link-btn"
+                                          onClick={() => openBoxScore(g.date, g.opponent || selectedOppStats?.opponent)}
+                                        >
+                                          View
+                                        </button>
                                       </td>
                                     </tr>
                                   ))}
@@ -2539,13 +2623,13 @@ export default function App() {
                                 <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
                                 <td>{g.overtime_status}</td>
                                 <td>
-                                  {g.boxscore_url ? (
-                                    <a href={g.boxscore_url} target="_blank" rel="noreferrer">
-                                      View
-                                    </a>
-                                  ) : (
-                                    "-"
-                                  )}
+                                  <button
+                                    type="button"
+                                    className="link-btn"
+                                    onClick={() => openBoxScore(g.date, g.opponent)}
+                                  >
+                                    View
+                                  </button>
                                 </td>
                               </tr>
                             ))}
@@ -2968,13 +3052,13 @@ export default function App() {
                                 <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
                                 <td>{g.overtime_status}</td>
                                 <td>
-                                  {g.boxscore_url ? (
-                                    <a href={g.boxscore_url} target="_blank" rel="noreferrer">
-                                      View
-                                    </a>
-                                  ) : (
-                                    "-"
-                                  )}
+                                  <button
+                                    type="button"
+                                    className="link-btn"
+                                    onClick={() => openBoxScore(g.date, g.opponent || selectedRival)}
+                                  >
+                                    View
+                                  </button>
                                 </td>
                               </tr>
                             ))}
@@ -3076,6 +3160,337 @@ export default function App() {
                   : "Ask Paws Chat"
         }
       />
+
+      {boxscoreModal && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeBoxScore();
+          }}
+        >
+          <div
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="boxscore-modal-title"
+            style={{ maxWidth: 860, width: "95vw" }}
+          >
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <OpponentLogo
+                  name={boxscoreData?.game?.opponent || boxscoreModal.opponent}
+                  size={28}
+                />
+                <div style={{ minWidth: 0 }}>
+                  <h2 id="boxscore-modal-title" style={{ margin: 0, fontSize: 18 }}>
+                    Northeastern vs. {boxscoreData?.game?.opponent || boxscoreModal.opponent}
+                  </h2>
+                  <div className="muted" style={{ fontSize: 12 }}>
+                    {boxscoreModal.date}
+                    {boxscoreData?.game?.season ? ` • ${boxscoreData.game.season}` : ""}
+                    {boxscoreData?.game?.location ? ` • ${boxscoreData.game.location}` : ""}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="chat-drawer-btn"
+                onClick={closeBoxScore}
+                aria-label="Close Box Score"
+              >
+                Close
+              </button>
+            </div>
+            <div className="modal-body">
+              {boxscoreLoading && <p className="muted">Loading box score...</p>}
+              {boxscoreError && <p className="error-text">{boxscoreError}</p>}
+              {!boxscoreLoading && !boxscoreError && boxscoreData && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      background: "rgba(255, 255, 255, 0.04)",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <OutcomeBadge outcome={boxscoreData.game?.outcome} />
+                      <strong style={{ fontSize: 18 }}>
+                        NU {boxscoreData.game?.nu_goals ?? "-"} – {boxscoreData.game?.opp_goals ?? "-"}{" "}
+                        {boxscoreData.game?.opponent}
+                      </strong>
+                      {boxscoreData.game?.overtime_status && (
+                        <span className="muted" style={{ fontSize: 13 }}>
+                          ({boxscoreData.game.overtime_status})
+                        </span>
+                      )}
+                    </div>
+                    {boxscoreData.game?.boxscore_url && (
+                      <a
+                        href={boxscoreData.game.boxscore_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ fontSize: 13 }}
+                      >
+                        Official Box Score ↗
+                      </a>
+                    )}
+                  </div>
+
+                  <div>
+                    <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Scoring Summary</h3>
+                    {boxscoreData.goals?.length ? (
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Per</th>
+                              <th>Time</th>
+                              <th>Team</th>
+                              <th>Scorer</th>
+                              <th>Assists</th>
+                              <th>Type</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {boxscoreData.goals.map((gl, idx) => {
+                              const isNU = gl.team === "Northeastern";
+                              const assists = [gl.primary_assist, gl.secondary_assist].filter(Boolean);
+                              return (
+                                <tr key={`${gl.period}-${gl.time}-${idx}`}>
+                                  <td>{gl.period}</td>
+                                  <td>{gl.time}</td>
+                                  <td>{gl.team}</td>
+                                  <td>
+                                    {isNU && gl.scorer ? (
+                                      <button
+                                        type="button"
+                                        className="link-btn"
+                                        onClick={() => {
+                                          closeBoxScore();
+                                          openPlayerProfile(gl.scorer);
+                                        }}
+                                      >
+                                        {gl.scorer}
+                                      </button>
+                                    ) : (
+                                      gl.scorer || "-"
+                                    )}
+                                  </td>
+                                  <td>
+                                    {assists.length === 0
+                                      ? "Unassisted"
+                                      : assists.map((a, aIdx) => (
+                                          <React.Fragment key={`${a}-${aIdx}`}>
+                                            {aIdx > 0 ? ", " : ""}
+                                            {isNU ? (
+                                              <button
+                                                type="button"
+                                                className="link-btn"
+                                                onClick={() => {
+                                                  closeBoxScore();
+                                                  openPlayerProfile(a);
+                                                }}
+                                              >
+                                                {a}
+                                              </button>
+                                            ) : (
+                                              a
+                                            )}
+                                          </React.Fragment>
+                                        ))}
+                                  </td>
+                                  <td>
+                                    {[gl.strength, gl.is_gwg ? "GWG" : ""].filter(Boolean).join(" • ") || "EV"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="muted" style={{ margin: 0, fontSize: 13 }}>
+                        No goals recorded in this game.
+                      </p>
+                    )}
+                  </div>
+
+                  {boxscoreData.shootouts?.length > 0 && (
+                    <div>
+                      <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Shootout</h3>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Rd</th>
+                              <th>Team</th>
+                              <th>Shooter</th>
+                              <th>Result</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {boxscoreData.shootouts.map((so, idx) => (
+                              <tr key={`so-${idx}`}>
+                                <td>{so.round}</td>
+                                <td>{so.shooter_team}</td>
+                                <td>{so.shooter_name || "-"}</td>
+                                <td>{so.result || "-"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {boxscoreData.skaters?.length > 0 && (
+                    <div>
+                      <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Northeastern Skaters</h3>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Player</th>
+                              <th>G</th>
+                              <th>A</th>
+                              <th>PTS</th>
+                              <th>SOG</th>
+                              <th>+/-</th>
+                              <th>BLK</th>
+                              <th>PIM</th>
+                              <th>FO</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {boxscoreData.skaters.map((sk) => {
+                              const foW = Number(sk.faceoffs_won || 0);
+                              const foL = Number(sk.faceoffs_lost || 0);
+                              const foTotal = foW + foL;
+                              return (
+                                <tr key={sk.player_name}>
+                                  <td>
+                                    <button
+                                      type="button"
+                                      className="link-btn"
+                                      onClick={() => {
+                                        closeBoxScore();
+                                        openPlayerProfile(sk.player_name);
+                                      }}
+                                    >
+                                      {sk.player_name}
+                                    </button>
+                                  </td>
+                                  <td>{sk.goals}</td>
+                                  <td>{sk.assists}</td>
+                                  <td><strong>{sk.points}</strong></td>
+                                  <td>{sk.shots}</td>
+                                  <td>{sk.plus_minus > 0 ? `+${sk.plus_minus}` : sk.plus_minus}</td>
+                                  <td>
+                                    {hasModernTracking(boxscoreData.game?.season)
+                                      ? sk.blocked_shots
+                                      : <span className="muted">N/A</span>}
+                                  </td>
+                                  <td>{sk.penalty_minutes}</td>
+                                  <td>
+                                    {foTotal > 0 ? `${foW}-${foTotal}` : <span className="muted">-</span>}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {boxscoreData.goalies?.length > 0 && (
+                    <div>
+                      <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Northeastern Goalies</h3>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Goalie</th>
+                              <th>DEC</th>
+                              <th>MIN</th>
+                              <th>SV</th>
+                              <th>GA</th>
+                              <th>SV%</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {boxscoreData.goalies.map((gl) => (
+                              <tr key={gl.goalie_name}>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="link-btn"
+                                    onClick={() => {
+                                      closeBoxScore();
+                                      openPlayerProfile(gl.goalie_name);
+                                    }}
+                                  >
+                                    {gl.goalie_name}
+                                  </button>
+                                </td>
+                                <td>{gl.decision || "-"}</td>
+                                <td>{gl.minutes || "-"}</td>
+                                <td>{gl.saves}</td>
+                                <td>{gl.goals_against}</td>
+                                <td>{Number(gl.save_pct || 0).toFixed(3)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {boxscoreData.penalties?.length > 0 && (
+                    <div>
+                      <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Penalties</h3>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Per</th>
+                              <th>Time</th>
+                              <th>Team</th>
+                              <th>Player</th>
+                              <th>Infraction</th>
+                              <th>PIM</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {boxscoreData.penalties.map((p, idx) => (
+                              <tr key={`pen-${idx}`}>
+                                <td>{p.period}</td>
+                                <td>{p.time}</td>
+                                <td>{p.team}</td>
+                                <td>{p.player_name || "-"}</td>
+                                <td>{p.infraction || "-"}</td>
+                                <td>{p.penalty_minutes}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {(selectedPlayer || tab !== "chat") && (
         !chatDrawerOpen ? (

@@ -1212,6 +1212,49 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
             shootout_stats["saves"] = saves
             shootout_stats["save_pct"] = round(saves / faced, 3) if faced > 0 else 0.0
 
+    chemistry: list[dict[str, Any]] = []
+    if not ds.goals.empty:
+        nu_goals_ev = ds.goals[ds.goals["team"] == "Northeastern"]
+        c_low = canonical_name.lower()
+        partners: dict[str, dict[str, Any]] = {}
+
+        def _bump(partner_name: str, field: str) -> None:
+            pn = str(partner_name or "").strip()
+            if not pn or pn.lower() == c_low:
+                return
+            rec = partners.setdefault(
+                pn,
+                {
+                    "player_name": pn,
+                    "total_connections": 0,
+                    "assisted_by_them": 0,
+                    "assisted_for_them": 0,
+                },
+            )
+            rec[field] += 1
+            rec["total_connections"] += 1
+
+        rel_goals = nu_goals_ev[
+            (nu_goals_ev["scorer"].str.lower() == c_low)
+            | (nu_goals_ev["primary_assist"].str.lower() == c_low)
+            | (nu_goals_ev["secondary_assist"].str.lower() == c_low)
+        ]
+        for _, gr in rel_goals.iterrows():
+            sc = str(gr.get("scorer", "")).strip()
+            a1 = str(gr.get("primary_assist", "")).strip()
+            a2 = str(gr.get("secondary_assist", "")).strip()
+            if sc.lower() == c_low:
+                _bump(a1, "assisted_by_them")
+                _bump(a2, "assisted_by_them")
+            else:
+                if a1.lower() == c_low or a2.lower() == c_low:
+                    _bump(sc, "assisted_for_them")
+
+        chemistry = sorted(
+            partners.values(),
+            key=lambda x: (-x["total_connections"], -x["assisted_for_them"], x["player_name"]),
+        )[:12]
+
     if is_goalie and not gl_logs.empty:
         game_logs = _records(gl_logs.sort_values("date", ascending=False))
     else:
@@ -1223,8 +1266,99 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
         "career_skater": career_skater,
         "career_goalie": career_goalie,
         "shootout_stats": shootout_stats,
+        "chemistry": chemistry,
         "seasons": season_rows,
         "game_logs": game_logs,
+    }
+
+
+@app.get("/api/boxscore")
+def get_boxscore(
+    date: str = Query(..., min_length=8),
+    opponent: str = Query(..., min_length=1),
+) -> dict[str, Any]:
+    ds = _require_datasets()
+    target_date = date.strip()
+    target_opp = opponent.strip()
+
+    game_df = ds.games[
+        (ds.games["date"].astype(str).str.strip() == target_date)
+        & (ds.games["opponent"].astype(str).str.strip().str.lower() == target_opp.lower())
+    ]
+    if game_df.empty:
+        game_df = ds.games[ds.games["date"].astype(str).str.strip() == target_date]
+    if game_df.empty:
+        raise HTTPException(status_code=404, detail=f"Box score not found for {target_date} vs {target_opp}.")
+
+    game_rec = _records(game_df.head(1))[0]
+    canon_opp = str(game_rec.get("opponent", target_opp))
+
+    def _match_game(df: pd.DataFrame) -> pd.DataFrame:
+        if df.empty:
+            return df
+        m = df[
+            (df["date"].astype(str).str.strip() == target_date)
+            & (df["opponent"].astype(str).str.strip().str.lower() == canon_opp.lower())
+        ]
+        if m.empty and target_opp.lower() != canon_opp.lower():
+            m = df[
+                (df["date"].astype(str).str.strip() == target_date)
+                & (df["opponent"].astype(str).str.strip().str.lower() == target_opp.lower())
+            ]
+        return m.copy()
+
+    period_order = {"1st": 1, "2nd": 2, "3rd": 3, "OT": 4, "1OT": 4, "2OT": 5, "3OT": 6}
+
+    goals_df = _match_game(ds.goals)
+    if not goals_df.empty:
+        goals_df = goals_df.assign(
+            _pord=goals_df["period"].map(lambda x: period_order.get(str(x).strip(), 99)),
+            _tsec=pd.to_numeric(goals_df["time_seconds"], errors="coerce").fillna(0),
+        ).sort_values(["_pord", "_tsec"]).drop(columns=["_pord", "_tsec"])
+
+    pen_df = _match_game(ds.penalties)
+    if not pen_df.empty:
+        nu_players: set[str] = set()
+        for src_df, col in (
+            (ds.rosters, "player_name"),
+            (ds.season_stats, "player_name"),
+            (ds.skaters, "player_name"),
+            (ds.goalies, "goalie_name"),
+        ):
+            if not src_df.empty and col in src_df.columns:
+                nu_players.update(str(n).strip().lower() for n in src_df[col].dropna() if str(n).strip())
+        if nu_players:
+            pen_df["team"] = pen_df.apply(
+                lambda r: (
+                    canon_opp
+                    if str(r.get("team", "")).strip() == "Northeastern"
+                    and str(r.get("player_name", "")).strip().lower() not in nu_players
+                    and str(r.get("player_name", "")).strip().lower() not in ("team", "tm", "")
+                    else r.get("team", "")
+                ),
+                axis=1,
+            )
+        pen_df = pen_df.assign(
+            _pord=pen_df["period"].map(lambda x: period_order.get(str(x).strip(), 99)),
+        ).sort_values(["_pord", "time"]).drop(columns=["_pord"])
+
+    so_df = _match_game(ds.shootouts)
+    if not so_df.empty and "round" in so_df.columns:
+        so_df = so_df.assign(_rnd=pd.to_numeric(so_df["round"], errors="coerce").fillna(0)).sort_values("_rnd").drop(columns=["_rnd"])
+
+    sk_df = _match_game(ds.skaters)
+    if not sk_df.empty:
+        sk_df = sk_df.sort_values(["points", "goals", "player_name"], ascending=[False, False, True])
+
+    gl_df = _match_game(ds.goalies)
+
+    return {
+        "game": game_rec,
+        "goals": _records(goals_df) if not goals_df.empty else [],
+        "penalties": _records(pen_df) if not pen_df.empty else [],
+        "shootouts": _records(so_df) if not so_df.empty else [],
+        "skaters": _records(sk_df) if not sk_df.empty else [],
+        "goalies": _records(gl_df) if not gl_df.empty else [],
     }
 
 
