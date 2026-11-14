@@ -321,6 +321,10 @@ export default function App() {
   const [allPlayers, setAllPlayers] = useState([]);
   const [compareAName, setCompareAName] = useState("");
   const [compareBName, setCompareBName] = useState("");
+  const [compareAQuery, setCompareAQuery] = useState("");
+  const [compareBQuery, setCompareBQuery] = useState("");
+  const [compareAFocus, setCompareAFocus] = useState(false);
+  const [compareBFocus, setCompareBFocus] = useState(false);
   const [compareAData, setCompareAData] = useState(null);
   const [compareBData, setCompareBData] = useState(null);
   const [compareLoading, setCompareLoading] = useState(false);
@@ -330,6 +334,25 @@ export default function App() {
   const [compareSeasonB, setCompareSeasonB] = useState("");
   const [compareOpponent, setCompareOpponent] = useState("");
   const hasInAppHistory = useRef(false);
+
+  function filterPlayerMatches(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const matches = allPlayers.filter((p) => {
+      const lower = p.player_name.toLowerCase();
+      return tokens.every((t) => lower.includes(t));
+    });
+    matches.sort((a, b) => {
+      const aWords = a.player_name.toLowerCase().split(/\s+/);
+      const bWords = b.player_name.toLowerCase().split(/\s+/);
+      const aPrefix = aWords.some((w) => w.startsWith(tokens[0])) ? 0 : 1;
+      const bPrefix = bWords.some((w) => w.startsWith(tokens[0])) ? 0 : 1;
+      if (aPrefix !== bPrefix) return aPrefix - bPrefix;
+      return a.player_name.localeCompare(b.player_name);
+    });
+    return matches.slice(0, 12);
+  }
 
   useEffect(() => {
     if (tab !== "compare" || allPlayers.length > 0) return;
@@ -342,7 +365,13 @@ export default function App() {
   useEffect(() => {
     const a = compareAName.trim();
     const b = compareBName.trim();
-    if (tab !== "compare" || (!a && !b)) return;
+    if (tab !== "compare") return;
+    if (!a && !b) {
+      setCompareAData(null);
+      setCompareBData(null);
+      setCompareError("");
+      return;
+    }
     let cancelled = false;
     setCompareLoading(true);
     setCompareError("");
@@ -385,7 +414,9 @@ export default function App() {
   }, [tab, compareAName, compareBName]);
 
   function openCompareWith(playerName) {
-    setCompareAName(playerName || "");
+    const name = playerName || "";
+    setCompareAName(name);
+    setCompareAQuery(name);
     navigateTab("compare");
   }
 
@@ -3218,66 +3249,262 @@ export default function App() {
                 </div>
               </div>
 
-              <datalist id="nu-players-datalist">
-                {allPlayers.map((p) => (
-                  <option
-                    key={p.player_name}
-                    value={p.player_name}
-                    label={`${p.position || "?"} • ${p.seasons_span || ""}`}
-                  />
-                ))}
-              </datalist>
+              {(() => {
+                const matchesA = compareAFocus && compareAQuery.trim() && compareAQuery.trim() !== compareAName
+                  ? filterPlayerMatches(compareAQuery)
+                  : [];
+                const matchesB = compareBFocus && compareBQuery.trim() && compareBQuery.trim() !== compareBName
+                  ? filterPlayerMatches(compareBQuery)
+                  : [];
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr auto 1fr",
-                  gap: 10,
-                  alignItems: "end",
-                }}
-              >
-                <div>
-                  <label className="muted" htmlFor="compare-a-input" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
-                    Player A
-                  </label>
-                  <input
-                    id="compare-a-input"
-                    list="nu-players-datalist"
-                    className="text-input"
-                    type="text"
-                    placeholder="Search Player A (e.g. Justin Hryckowian)"
-                    value={compareAName}
-                    onChange={(e) => setCompareAName(e.target.value)}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  title="Swap players"
-                  onClick={() => {
-                    const tmpA = compareAName;
-                    const tmpB = compareBName;
-                    setCompareAName(tmpB);
-                    setCompareBName(tmpA);
-                  }}
-                >
-                  ⇄
-                </button>
-                <div>
-                  <label className="muted" htmlFor="compare-b-input" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
-                    Player B
-                  </label>
-                  <input
-                    id="compare-b-input"
-                    list="nu-players-datalist"
-                    className="text-input"
-                    type="text"
-                    placeholder="Search Player B (e.g. Aidan McDonough)"
-                    value={compareBName}
-                    onChange={(e) => setCompareBName(e.target.value)}
-                  />
-                </div>
-              </div>
+                const dropdownStyle = {
+                  position: "absolute",
+                  top: "calc(100% + 4px)",
+                  left: 0,
+                  right: 0,
+                  zIndex: 40,
+                  background: "#15171c",
+                  border: "1px solid var(--nu-border, #2e323d)",
+                  borderRadius: 10,
+                  boxShadow: "0 10px 28px rgba(0, 0, 0, 0.55)",
+                  maxHeight: 280,
+                  overflowY: "auto",
+                  padding: 4,
+                };
+
+                const itemBtnStyle = {
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 10px",
+                  border: "none",
+                  background: "transparent",
+                  color: "inherit",
+                  borderRadius: 7,
+                  cursor: "pointer",
+                  textAlign: "left",
+                  fontSize: 13,
+                };
+
+                return (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto 1fr",
+                      gap: 10,
+                      alignItems: "end",
+                    }}
+                  >
+                    <div style={{ position: "relative" }}>
+                      <label className="muted" htmlFor="compare-a-input" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+                        Player A
+                      </label>
+                      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                        <input
+                          id="compare-a-input"
+                          className="text-input"
+                          type="text"
+                          autoComplete="off"
+                          placeholder="Search first or last name (e.g. Justin, Hryckowian)"
+                          value={compareAQuery}
+                          onFocus={() => setCompareAFocus(true)}
+                          onBlur={() => setTimeout(() => setCompareAFocus(false), 150)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCompareAQuery(val);
+                            setCompareAFocus(true);
+                            if (!val.trim()) setCompareAName("");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && matchesA.length > 0) {
+                              e.preventDefault();
+                              const pick = matchesA[0].player_name;
+                              setCompareAQuery(pick);
+                              setCompareAName(pick);
+                              setCompareAFocus(false);
+                            } else if (e.key === "Escape") {
+                              setCompareAFocus(false);
+                            }
+                          }}
+                          style={{ paddingRight: compareAQuery ? 28 : undefined, width: "100%" }}
+                        />
+                        {compareAQuery && (
+                          <button
+                            type="button"
+                            aria-label="Clear Player A"
+                            onClick={() => {
+                              setCompareAQuery("");
+                              setCompareAName("");
+                            }}
+                            style={{
+                              position: "absolute",
+                              right: 8,
+                              background: "transparent",
+                              border: "none",
+                              color: "var(--muted, #9ca3af)",
+                              cursor: "pointer",
+                              fontSize: 15,
+                              lineHeight: 1,
+                              padding: 2,
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                      {compareAFocus && compareAQuery.trim() && compareAQuery.trim() !== compareAName && (
+                        <div style={dropdownStyle} role="listbox" aria-label="Player A matches">
+                          {matchesA.length > 0 ? (
+                            matchesA.map((p) => (
+                              <button
+                                key={p.player_name}
+                                type="button"
+                                role="option"
+                                style={itemBtnStyle}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setCompareAQuery(p.player_name);
+                                  setCompareAName(p.player_name);
+                                  setCompareAFocus(false);
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = "transparent";
+                                }}
+                              >
+                                <span style={{ fontWeight: 600 }}>{p.player_name}</span>
+                                <span className="muted" style={{ fontSize: 11, whiteSpace: "nowrap" }}>
+                                  {[p.position, p.seasons_span].filter(Boolean).join(" • ")}
+                                </span>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="muted" style={{ padding: "8px 10px", fontSize: 12 }}>
+                              No matching players found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      title="Swap players"
+                      onClick={() => {
+                        const tmpNameA = compareAName;
+                        const tmpNameB = compareBName;
+                        const tmpQueryA = compareAQuery;
+                        const tmpQueryB = compareBQuery;
+                        setCompareAName(tmpNameB);
+                        setCompareBName(tmpNameA);
+                        setCompareAQuery(tmpQueryB);
+                        setCompareBQuery(tmpQueryA);
+                      }}
+                    >
+                      ⇄
+                    </button>
+
+                    <div style={{ position: "relative" }}>
+                      <label className="muted" htmlFor="compare-b-input" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+                        Player B
+                      </label>
+                      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                        <input
+                          id="compare-b-input"
+                          className="text-input"
+                          type="text"
+                          autoComplete="off"
+                          placeholder="Search first or last name (e.g. Aidan, McDonough)"
+                          value={compareBQuery}
+                          onFocus={() => setCompareBFocus(true)}
+                          onBlur={() => setTimeout(() => setCompareBFocus(false), 150)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setCompareBQuery(val);
+                            setCompareBFocus(true);
+                            if (!val.trim()) setCompareBName("");
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && matchesB.length > 0) {
+                              e.preventDefault();
+                              const pick = matchesB[0].player_name;
+                              setCompareBQuery(pick);
+                              setCompareBName(pick);
+                              setCompareBFocus(false);
+                            } else if (e.key === "Escape") {
+                              setCompareBFocus(false);
+                            }
+                          }}
+                          style={{ paddingRight: compareBQuery ? 28 : undefined, width: "100%" }}
+                        />
+                        {compareBQuery && (
+                          <button
+                            type="button"
+                            aria-label="Clear Player B"
+                            onClick={() => {
+                              setCompareBQuery("");
+                              setCompareBName("");
+                            }}
+                            style={{
+                              position: "absolute",
+                              right: 8,
+                              background: "transparent",
+                              border: "none",
+                              color: "var(--muted, #9ca3af)",
+                              cursor: "pointer",
+                              fontSize: 15,
+                              lineHeight: 1,
+                              padding: 2,
+                            }}
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                      {compareBFocus && compareBQuery.trim() && compareBQuery.trim() !== compareBName && (
+                        <div style={dropdownStyle} role="listbox" aria-label="Player B matches">
+                          {matchesB.length > 0 ? (
+                            matchesB.map((p) => (
+                              <button
+                                key={p.player_name}
+                                type="button"
+                                role="option"
+                                style={itemBtnStyle}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setCompareBQuery(p.player_name);
+                                  setCompareBName(p.player_name);
+                                  setCompareBFocus(false);
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = "transparent";
+                                }}
+                              >
+                                <span style={{ fontWeight: 600 }}>{p.player_name}</span>
+                                <span className="muted" style={{ fontSize: 11, whiteSpace: "nowrap" }}>
+                                  {[p.position, p.seasons_span].filter(Boolean).join(" • ")}
+                                </span>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="muted" style={{ padding: "8px 10px", fontSize: 12 }}>
+                              No matching players found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {!compareAName && !compareBName && (
                 <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -3294,7 +3521,9 @@ export default function App() {
                       style={{ fontSize: 12, padding: "4px 10px" }}
                       onClick={() => {
                         setCompareAName(a);
+                        setCompareAQuery(a);
                         setCompareBName(b);
+                        setCompareBQuery(b);
                       }}
                     >
                       {a} vs. {b}
