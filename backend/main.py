@@ -174,6 +174,16 @@ class ChatTokenManager:
             self._used[nonce] = float(exp)
         return True
 
+    def sign_history_turn(self, role: str, content: str) -> str:
+        msg = f"{role}\n{content}".encode("utf-8")
+        return hmac.new(self._secret, msg, hashlib.sha256).hexdigest()[:32]
+
+    def verify_history_turn(self, role: str, content: str, sig: str | None) -> bool:
+        if not sig or not isinstance(sig, str):
+            return False
+        expected = self.sign_history_turn(role, content)
+        return hmac.compare_digest(sig.strip(), expected)
+
 
 class TurnstileSessionManager:
     """Issues and verifies short-lived IP-bound HMAC passes after Turnstile succeeds once."""
@@ -251,6 +261,7 @@ def _verify_browser_request(request: Request) -> None:
 class ChatMessage(BaseModel):
     role: str = Field(..., pattern="^(user|assistant)$")
     content: str = Field(..., min_length=1, max_length=4000)
+    sig: str | None = Field(default=None, max_length=64)
 
 
 class ChatRequest(BaseModel):
@@ -263,6 +274,7 @@ class ChatResponse(BaseModel):
     answer: str
     cached: bool = False
     turnstile_pass: str | None = None
+    answer_sig: str | None = None
 
 
 class _AppState:
@@ -1645,12 +1657,23 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
             ),
         )
 
-    history = [{"role": m.role, "content": m.content} for m in req.history]
+    history: list[dict[str, str]] = []
+    for m in req.history:
+        if m.role == "user":
+            history.append({"role": "user", "content": m.content[:1000]})
+        elif m.role == "assistant" and state.token_manager.verify_history_turn("assistant", m.content, m.sig):
+            history.append({"role": "assistant", "content": m.content})
+
     # Check standalone cache before consuming global daily LLM budget
     if not history and not req.context:
         cached_ans = state.cache.get(req.question)
         if cached_ans is not None:
-            return ChatResponse(answer=cached_ans, cached=True, turnstile_pass=issued_turnstile_pass)
+            return ChatResponse(
+                answer=cached_ans,
+                cached=True,
+                turnstile_pass=issued_turnstile_pass,
+                answer_sig=state.token_manager.sign_history_turn("assistant", cached_ans),
+            )
 
     if not state.daily_budget.allow_and_increment():
         raise HTTPException(
@@ -1676,7 +1699,12 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
         _, friendly = classify_api_error(exc)
         return ChatResponse(answer=friendly, cached=False, turnstile_pass=issued_turnstile_pass)
 
-    return ChatResponse(answer=answer, cached=from_cache, turnstile_pass=issued_turnstile_pass)
+    return ChatResponse(
+        answer=answer,
+        cached=from_cache,
+        turnstile_pass=issued_turnstile_pass,
+        answer_sig=state.token_manager.sign_history_turn("assistant", answer),
+    )
 
 
 class BugReportRequest(BaseModel):

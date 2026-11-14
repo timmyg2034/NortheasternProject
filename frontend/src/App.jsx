@@ -724,7 +724,11 @@ export default function App() {
     const q = questionText.trim();
     if (!q || chatLoading) return;
 
-    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+    const history = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      ...(m.sig ? { sig: m.sig } : {}),
+    }));
     setMessages((prev) => [...prev, { role: "user", content: q }]);
     setInput("");
     setChatLoading(true);
@@ -831,7 +835,7 @@ export default function App() {
       }
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.answer, cached: data.cached },
+        { role: "assistant", content: data.answer, cached: data.cached, sig: data.answer_sig || undefined },
       ]);
     } catch (err) {
       setMessages((prev) => [
