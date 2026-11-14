@@ -318,7 +318,76 @@ export default function App() {
   const [boxscoreData, setBoxscoreData] = useState(null);
   const [boxscoreLoading, setBoxscoreLoading] = useState(false);
   const [boxscoreError, setBoxscoreError] = useState("");
+  const [allPlayers, setAllPlayers] = useState([]);
+  const [compareAName, setCompareAName] = useState("");
+  const [compareBName, setCompareBName] = useState("");
+  const [compareAData, setCompareAData] = useState(null);
+  const [compareBData, setCompareBData] = useState(null);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState("");
+  const [compareMode, setCompareMode] = useState("career"); // "career" | "per_game" | "season" | "opponent"
+  const [compareSeasonA, setCompareSeasonA] = useState("");
+  const [compareSeasonB, setCompareSeasonB] = useState("");
+  const [compareOpponent, setCompareOpponent] = useState("");
   const hasInAppHistory = useRef(false);
+
+  useEffect(() => {
+    if (tab !== "compare" || allPlayers.length > 0) return;
+    fetch(`${API_BASE}/api/players`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load players"))))
+      .then((d) => setAllPlayers(d.players || []))
+      .catch(() => {});
+  }, [tab, allPlayers.length]);
+
+  useEffect(() => {
+    const a = compareAName.trim();
+    const b = compareBName.trim();
+    if (tab !== "compare" || (!a && !b)) return;
+    let cancelled = false;
+    setCompareLoading(true);
+    setCompareError("");
+
+    const fetchPlayer = (name) =>
+      name.length >= 2
+        ? fetch(`${API_BASE}/api/player?name=${encodeURIComponent(name)}`).then(async (r) => {
+            const d = await r.json();
+            if (!r.ok) throw new Error(d.detail || `Player '${name}' not found`);
+            return d;
+          })
+        : Promise.resolve(null);
+
+    Promise.all([a ? fetchPlayer(a) : Promise.resolve(null), b ? fetchPlayer(b) : Promise.resolve(null)])
+      .then(([resA, resB]) => {
+        if (cancelled) return;
+        setCompareAData(resA);
+        setCompareBData(resB);
+        if (resA?.seasons?.length) {
+          setCompareSeasonA((prev) =>
+            resA.seasons.some((s) => s.season === prev) ? prev : resA.seasons[0].season
+          );
+        }
+        if (resB?.seasons?.length) {
+          setCompareSeasonB((prev) =>
+            resB.seasons.some((s) => s.season === prev) ? prev : resB.seasons[0].season
+          );
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setCompareError(err.message || "Unable to compare players");
+      })
+      .finally(() => {
+        if (!cancelled) setCompareLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, compareAName, compareBName]);
+
+  function openCompareWith(playerName) {
+    setCompareAName(playerName || "");
+    navigateTab("compare");
+  }
 
   async function openBoxScore(date, opponent) {
     if (!date || !opponent) return;
@@ -393,7 +462,7 @@ export default function App() {
       } else {
         const params = new URLSearchParams(window.location.search);
         const t = params.get("tab");
-        setTab(["chat", "leaders", "roster", "rivalry"].includes(t) ? t : "chat");
+        setTab(["chat", "leaders", "roster", "rivalry", "compare"].includes(t) ? t : "chat");
         setSelectedPlayer(params.get("player") || null);
         setPenaltyView(null);
         setPenaltyData(null);
@@ -833,6 +902,15 @@ export default function App() {
             <SwordsIcon />
             <span>Opponents</span>
           </button>
+          <button
+            type="button"
+            className={`tab-btn ${!selectedPlayer && tab === "compare" ? "active" : ""}`}
+            aria-current={!selectedPlayer && tab === "compare" ? "page" : undefined}
+            onClick={() => navigateTab("compare")}
+          >
+            <UsersIcon />
+            <span>Compare</span>
+          </button>
         </nav>
       </div>
 
@@ -1196,6 +1274,13 @@ export default function App() {
             <div className="controls-row">
               <button type="button" className="btn-ghost" onClick={closePlayer}>
                 &larr; Back to {tab === "roster" ? "Roster" : "Leaders"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => openCompareWith(playerData?.bio?.player_name || selectedPlayer)}
+              >
+                Compare with...
               </button>
               {playerData?.bio?.roster_url && (
                 <a
@@ -3102,6 +3187,494 @@ export default function App() {
             )}
           </section>
         )}
+
+        {tab === "compare" && (
+          <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div className="card">
+              <div className="card-header-row" style={{ marginBottom: 12 }}>
+                <div>
+                  <h2 style={{ margin: 0 }}>Compare Players</h2>
+                  <p className="muted" style={{ margin: "4px 0 0 0", fontSize: 13 }}>
+                    Side-by-side comparison of any two Northeastern players across career, per-game rates, specific seasons, or vs. an opponent.
+                  </p>
+                </div>
+                <div className="pill-row">
+                  {[
+                    ["career", "Career"],
+                    ["per_game", "Per Game"],
+                    ["season", "By Season"],
+                    ["opponent", "vs. Opponent"],
+                  ].map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`pill-btn ${compareMode === id ? "active" : ""}`}
+                      onClick={() => setCompareMode(id)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <datalist id="nu-players-datalist">
+                {allPlayers.map((p) => (
+                  <option
+                    key={p.player_name}
+                    value={p.player_name}
+                    label={`${p.position || "?"} • ${p.seasons_span || ""}`}
+                  />
+                ))}
+              </datalist>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr auto 1fr",
+                  gap: 10,
+                  alignItems: "end",
+                }}
+              >
+                <div>
+                  <label className="muted" htmlFor="compare-a-input" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+                    Player A
+                  </label>
+                  <input
+                    id="compare-a-input"
+                    list="nu-players-datalist"
+                    className="text-input"
+                    type="text"
+                    placeholder="Search Player A (e.g. Justin Hryckowian)"
+                    value={compareAName}
+                    onChange={(e) => setCompareAName(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  title="Swap players"
+                  onClick={() => {
+                    const tmpA = compareAName;
+                    const tmpB = compareBName;
+                    setCompareAName(tmpB);
+                    setCompareBName(tmpA);
+                  }}
+                >
+                  ⇄
+                </button>
+                <div>
+                  <label className="muted" htmlFor="compare-b-input" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
+                    Player B
+                  </label>
+                  <input
+                    id="compare-b-input"
+                    list="nu-players-datalist"
+                    className="text-input"
+                    type="text"
+                    placeholder="Search Player B (e.g. Aidan McDonough)"
+                    value={compareBName}
+                    onChange={(e) => setCompareBName(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {!compareAName && !compareBName && (
+                <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                  <span className="muted" style={{ fontSize: 12 }}>Try a matchup:</span>
+                  {[
+                    ["Justin Hryckowian", "Aidan McDonough"],
+                    ["Devon Levi", "Cayden Primeau"],
+                    ["Dylan Hryckowian", "Jack Williams"],
+                  ].map(([a, b]) => (
+                    <button
+                      key={`${a}-${b}`}
+                      type="button"
+                      className="btn-ghost"
+                      style={{ fontSize: 12, padding: "4px 10px" }}
+                      onClick={() => {
+                        setCompareAName(a);
+                        setCompareBName(b);
+                      }}
+                    >
+                      {a} vs. {b}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {compareLoading && (
+              <div className="card" role="status" aria-live="polite">
+                <p className="muted" style={{ margin: 0 }}>Loading player comparison...</p>
+              </div>
+            )}
+
+            {compareError && (
+              <div className="card" role="alert">
+                <p className="error-text" style={{ margin: 0 }}>{compareError}</p>
+              </div>
+            )}
+
+            {!compareLoading && (compareAData || compareBData) && (() => {
+              const pA = compareAData;
+              const pB = compareBData;
+
+              const renderHero = (pdata, label) => {
+                if (!pdata) {
+                  return (
+                    <div className="card" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 110 }}>
+                      <span className="muted">Select {label} to compare</span>
+                    </div>
+                  );
+                }
+                const bio = pdata.bio || {};
+                return (
+                  <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    {bio.image_url ? (
+                      <img
+                        src={proxyImageUrl(bio.image_url)}
+                        alt={bio.player_name}
+                        className="player-avatar-lg"
+                        style={{ width: 64, height: 64 }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="jersey-box" style={{ width: 56, height: 56, fontSize: 18 }}>
+                        {bio.jersey_number || "--"}
+                      </div>
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <button
+                        type="button"
+                        className="link-btn"
+                        style={{ fontSize: 17, fontWeight: 700, textAlign: "left" }}
+                        onClick={() => openPlayer(bio.player_name)}
+                      >
+                        {bio.jersey_number ? `#${bio.jersey_number} ` : ""}
+                        {bio.player_name}
+                      </button>
+                      <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
+                        {[
+                          bio.position,
+                          bio.seasons_played?.length ? `${bio.seasons_played.length} Season${bio.seasons_played.length > 1 ? "s" : ""}` : null,
+                          bio.shoots ? `Shoots ${bio.shoots}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" • ")}
+                      </div>
+                      {(bio.height || bio.weight || bio.hometown) && (
+                        <div className="muted" style={{ fontSize: 12 }}>
+                          {[bio.height, bio.weight ? `${bio.weight} lbs` : null, bio.hometown].filter(Boolean).join(" • ")}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              };
+
+              const directChem =
+                pA && pB && pA.chemistry?.find((c) => c.player_name?.toLowerCase() === pB.bio?.player_name?.toLowerCase());
+
+              const allOpponents = Array.from(
+                new Set([
+                  ...(pA?.game_logs || []).map((g) => g.opponent).filter(Boolean),
+                  ...(pB?.game_logs || []).map((g) => g.opponent).filter(Boolean),
+                ])
+              ).sort();
+
+              const activeOpp = compareOpponent && allOpponents.includes(compareOpponent)
+                ? compareOpponent
+                : allOpponents[0] || "";
+
+              const aggOpponent = (pdata) => {
+                if (!pdata || !activeOpp) return null;
+                const logs = (pdata.game_logs || []).filter((g) => g.opponent === activeOpp);
+                if (pdata.is_goalie) {
+                  const gp = logs.length;
+                  const wins = logs.filter((g) => g.decision === "W").length;
+                  const losses = logs.filter((g) => g.decision === "L").length;
+                  const ties = logs.filter((g) => g.decision === "T").length;
+                  const saves = logs.reduce((s, g) => s + Number(g.saves || 0), 0);
+                  const ga = logs.reduce((s, g) => s + Number(g.goals_against || 0), 0);
+                  const shutouts = logs.filter((g) => Number(g.goals_against || 0) === 0 && Number(g.saves || 0) > 0).length;
+                  const sa = saves + ga;
+                  return {
+                    gp,
+                    wins,
+                    losses,
+                    ties,
+                    saves,
+                    goals_against: ga,
+                    save_pct: sa > 0 ? saves / sa : 0,
+                    shutouts,
+                  };
+                }
+                const gp = logs.length;
+                const goals = logs.reduce((s, g) => s + Number(g.goals || 0), 0);
+                const assists = logs.reduce((s, g) => s + Number(g.assists || 0), 0);
+                const points = logs.reduce((s, g) => s + Number(g.points || 0), 0);
+                const shots = logs.reduce((s, g) => s + Number(g.shots || 0), 0);
+                const plus_minus = logs.reduce((s, g) => s + Number(g.plus_minus || 0), 0);
+                const pim = logs.reduce((s, g) => s + Number(g.penalty_minutes || 0), 0);
+                const blocked_shots = logs.reduce((s, g) => s + Number(g.blocked_shots || 0), 0);
+                const faceoffs_won = logs.reduce((s, g) => s + Number(g.faceoffs_won || 0), 0);
+                const faceoffs_lost = logs.reduce((s, g) => s + Number(g.faceoffs_lost || 0), 0);
+                const gwg = logs.reduce((s, g) => s + Number(g.gwg || 0), 0);
+                const foTotal = faceoffs_won + faceoffs_lost;
+                return {
+                  gp,
+                  goals,
+                  assists,
+                  points,
+                  shots,
+                  shooting_pct: shots > 0 ? (goals / shots) * 100 : 0,
+                  plus_minus,
+                  pim,
+                  blocked_shots,
+                  faceoffs_won,
+                  faceoffs_lost,
+                  faceoff_pct: foTotal > 0 ? (faceoffs_won / foTotal) * 100 : 0,
+                  gwg,
+                };
+              };
+
+              const getStatsObj = (pdata, seasonSel) => {
+                if (!pdata) return null;
+                if (compareMode === "season") {
+                  const row = (pdata.seasons || []).find((s) => s.season === seasonSel) || pdata.seasons?.[0];
+                  if (!row) return null;
+                  if (pdata.is_goalie) {
+                    return { ...row, gp: row.goalie_gp ?? row.gp ?? 0 };
+                  }
+                  return row;
+                }
+                if (compareMode === "opponent") {
+                  return aggOpponent(pdata);
+                }
+                return pdata.is_goalie ? pdata.career_goalie : pdata.career_skater;
+              };
+
+              const statsA = getStatsObj(pA, compareSeasonA);
+              const statsB = getStatsObj(pB, compareSeasonB);
+
+              const bothGoalies = Boolean(pA?.is_goalie && pB?.is_goalie);
+              const bothSkaters = Boolean(pA && pB && !pA.is_goalie && !pB.is_goalie);
+              const mixedPositions = Boolean(pA && pB && pA.is_goalie !== pB.is_goalie);
+
+              const buildSkaterRows = (sA, sB) => {
+                const gpA = Number(sA?.gp || 0);
+                const gpB = Number(sB?.gp || 0);
+                if (compareMode === "per_game") {
+                  const rate = (val, gp, dec = 2) => (gp > 0 ? Number((Number(val || 0) / gp).toFixed(dec)) : 0);
+                  return [
+                    { label: "Games Played (GP)", a: gpA, b: gpB, fmt: (v) => v },
+                    { label: "Goals / Game", a: rate(sA?.goals, gpA), b: rate(sB?.goals, gpB), fmt: (v) => v.toFixed(2) },
+                    { label: "Assists / Game", a: rate(sA?.assists, gpA), b: rate(sB?.assists, gpB), fmt: (v) => v.toFixed(2) },
+                    { label: "Points / Game", a: rate(sA?.points, gpA), b: rate(sB?.points, gpB), fmt: (v) => v.toFixed(2) },
+                    { label: "Shots / Game", a: rate(sA?.shots, gpA), b: rate(sB?.shots, gpB), fmt: (v) => v.toFixed(2) },
+                    { label: "Shooting %", a: Number(sA?.shooting_pct || 0), b: Number(sB?.shooting_pct || 0), fmt: (v) => `${v.toFixed(1)}%` },
+                    { label: "Blocks / Game", a: rate(sA?.blocked_shots, gpA), b: rate(sB?.blocked_shots, gpB), fmt: (v) => v.toFixed(2) },
+                    { label: "Faceoff %", a: Number(sA?.faceoff_pct || 0), b: Number(sB?.faceoff_pct || 0), fmt: (v) => `${v.toFixed(1)}%` },
+                    { label: "PIM / Game", a: rate(sA?.pim, gpA), b: rate(sB?.pim, gpB), fmt: (v) => v.toFixed(2), neutral: true },
+                  ];
+                }
+                const foA = Number(sA?.faceoffs_won || 0) + Number(sA?.faceoffs_lost || 0);
+                const foB = Number(sB?.faceoffs_won || 0) + Number(sB?.faceoffs_lost || 0);
+                return [
+                  { label: "Games Played (GP)", a: gpA, b: gpB, fmt: (v) => v },
+                  { label: "Goals (G)", a: Number(sA?.goals || 0), b: Number(sB?.goals || 0), fmt: (v) => v },
+                  { label: "Assists (A)", a: Number(sA?.assists || 0), b: Number(sB?.assists || 0), fmt: (v) => v },
+                  { label: "Points (PTS)", a: Number(sA?.points || 0), b: Number(sB?.points || 0), fmt: (v) => v },
+                  { label: "+/-", a: Number(sA?.plus_minus || 0), b: Number(sB?.plus_minus || 0), fmt: (v) => (v > 0 ? `+${v}` : v) },
+                  { label: "Shots on Goal (SOG)", a: Number(sA?.shots || 0), b: Number(sB?.shots || 0), fmt: (v) => v },
+                  { label: "Shooting %", a: Number(sA?.shooting_pct || 0), b: Number(sB?.shooting_pct || 0), fmt: (v) => `${v.toFixed(1)}%` },
+                  { label: "Power-Play Goals (PPG)", a: Number(sA?.ppg || 0), b: Number(sB?.ppg || 0), fmt: (v) => v },
+                  { label: "Short-Handed Goals (SHG)", a: Number(sA?.shg || 0), b: Number(sB?.shg || 0), fmt: (v) => v },
+                  { label: "Game-Winning Goals (GWG)", a: Number(sA?.gwg || 0), b: Number(sB?.gwg || 0), fmt: (v) => v },
+                  { label: "Blocked Shots (BLK)", a: Number(sA?.blocked_shots || 0), b: Number(sB?.blocked_shots || 0), fmt: (v) => v },
+                  {
+                    label: "Faceoffs (W-Total)",
+                    a: foA > 0 ? Number(sA?.faceoff_pct || 0) : -1,
+                    b: foB > 0 ? Number(sB?.faceoff_pct || 0) : -1,
+                    displayA: foA > 0 ? `${sA.faceoffs_won}-${foA} (${Number(sA.faceoff_pct || 0).toFixed(1)}%)` : "-",
+                    displayB: foB > 0 ? `${sB.faceoffs_won}-${foB} (${Number(sB.faceoff_pct || 0).toFixed(1)}%)` : "-",
+                  },
+                  { label: "Penalty Minutes (PIM)", a: Number(sA?.pim || 0), b: Number(sB?.pim || 0), fmt: (v) => v, neutral: true },
+                ];
+              };
+
+              const buildGoalieRows = (sA, sB) => {
+                const gpA = Number(sA?.gp || 0);
+                const gpB = Number(sB?.gp || 0);
+                if (compareMode === "per_game") {
+                  const rate = (val, gp) => (gp > 0 ? Number((Number(val || 0) / gp).toFixed(2)) : 0);
+                  return [
+                    { label: "Games Played (GP)", a: gpA, b: gpB, fmt: (v) => v },
+                    { label: "Save % (SV%)", a: Number(sA?.save_pct || 0), b: Number(sB?.save_pct || 0), fmt: (v) => v.toFixed(3) },
+                    ...(sA?.gaa !== undefined && sB?.gaa !== undefined
+                      ? [{ label: "Goals Against Avg (GAA)", a: Number(sA.gaa || 0), b: Number(sB.gaa || 0), fmt: (v) => v.toFixed(2), lowerBetter: true }]
+                      : []),
+                    { label: "Saves / Game", a: rate(sA?.saves, gpA), b: rate(sB?.saves, gpB), fmt: (v) => v.toFixed(1) },
+                    { label: "Goals Against / Game", a: rate(sA?.goals_against, gpA), b: rate(sB?.goals_against, gpB), fmt: (v) => v.toFixed(2), lowerBetter: true },
+                  ];
+                }
+                return [
+                  { label: "Games Played (GP)", a: gpA, b: gpB, fmt: (v) => v },
+                  { label: "Wins (W)", a: Number(sA?.wins || 0), b: Number(sB?.wins || 0), fmt: (v) => v },
+                  { label: "Losses (L)", a: Number(sA?.losses || 0), b: Number(sB?.losses || 0), fmt: (v) => v, lowerBetter: true },
+                  { label: "Ties (T)", a: Number(sA?.ties || 0), b: Number(sB?.ties || 0), fmt: (v) => v, neutral: true },
+                  { label: "Save % (SV%)", a: Number(sA?.save_pct || 0), b: Number(sB?.save_pct || 0), fmt: (v) => v.toFixed(3) },
+                  ...(sA?.gaa !== undefined && sB?.gaa !== undefined
+                    ? [{ label: "Goals Against Avg (GAA)", a: Number(sA.gaa || 0), b: Number(sB.gaa || 0), fmt: (v) => v.toFixed(2), lowerBetter: true }]
+                    : []),
+                  { label: "Saves (SV)", a: Number(sA?.saves || 0), b: Number(sB?.saves || 0), fmt: (v) => v },
+                  { label: "Goals Against (GA)", a: Number(sA?.goals_against || 0), b: Number(sB?.goals_against || 0), fmt: (v) => v, lowerBetter: true },
+                  { label: "Shutouts (SO)", a: Number(sA?.shutouts || 0), b: Number(sB?.shutouts || 0), fmt: (v) => v },
+                ];
+              };
+
+              const rows = bothGoalies
+                ? buildGoalieRows(statsA, statsB)
+                : bothSkaters
+                  ? buildSkaterRows(statsA, statsB)
+                  : [];
+
+              return (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
+                    {renderHero(pA, "Player A")}
+                    {renderHero(pB, "Player B")}
+                  </div>
+
+                  {directChem && (
+                    <div
+                      className="card"
+                      style={{
+                        borderColor: "var(--accent)",
+                        background: "rgba(212, 27, 44, 0.08)",
+                        padding: "10px 14px",
+                        fontSize: 13,
+                      }}
+                    >
+                      <strong>Teammate Goal Chemistry:</strong> {pA.bio.player_name} and {pB.bio.player_name} connected on{" "}
+                      <strong>{directChem.total_connections}</strong> Northeastern goal{directChem.total_connections === 1 ? "" : "s"} (
+                      {pA.bio.player_name} scored {directChem.assisted_by_them}x off {pB.bio.player_name}, assisted{" "}
+                      {directChem.assisted_for_them}x).
+                    </div>
+                  )}
+
+                  {compareMode === "season" && pA && pB && (
+                    <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span className="muted" style={{ fontSize: 13 }}>{pA.bio.player_name} Season:</span>
+                        <select
+                          className="select-input"
+                          value={compareSeasonA}
+                          onChange={(e) => setCompareSeasonA(e.target.value)}
+                        >
+                          {(pA.seasons || []).map((s) => (
+                            <option key={s.season} value={s.season}>{s.season}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span className="muted" style={{ fontSize: 13 }}>{pB.bio.player_name} Season:</span>
+                        <select
+                          className="select-input"
+                          value={compareSeasonB}
+                          onChange={(e) => setCompareSeasonB(e.target.value)}
+                        >
+                          {(pB.seasons || []).map((s) => (
+                            <option key={s.season} value={s.season}>{s.season}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {compareMode === "opponent" && pA && pB && (
+                    <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+                      <span className="muted" style={{ fontSize: 13 }}>Opponent:</span>
+                      <select
+                        className="select-input"
+                        value={activeOpp}
+                        onChange={(e) => setCompareOpponent(e.target.value)}
+                      >
+                        {allOpponents.map((opp) => (
+                          <option key={opp} value={opp}>{opp}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {mixedPositions && (
+                    <div className="card">
+                      <p className="muted" style={{ margin: 0 }}>
+                        {pA.bio.player_name} ({pA.is_goalie ? "Goalie" : "Skater"}) and {pB.bio.player_name} (
+                        {pB.is_goalie ? "Goalie" : "Skater"}) play different positions, so direct stat-by-stat comparison isn&apos;t available.
+                      </p>
+                    </div>
+                  )}
+
+                  {rows.length > 0 && (
+                    <div className="card">
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th style={{ textAlign: "right", width: "30%" }}>{pA.bio.player_name}</th>
+                              <th style={{ textAlign: "center", width: "40%" }}>Stat</th>
+                              <th style={{ textAlign: "left", width: "30%" }}>{pB.bio.player_name}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {rows.map((r) => {
+                              const aBetter =
+                                !r.neutral &&
+                                r.a !== r.b &&
+                                (r.lowerBetter ? r.a < r.b : r.a > r.b);
+                              const bBetter =
+                                !r.neutral &&
+                                r.a !== r.b &&
+                                (r.lowerBetter ? r.b < r.a : r.b > r.a);
+                              return (
+                                <tr key={r.label}>
+                                  <td
+                                    style={{
+                                      textAlign: "right",
+                                      fontWeight: aBetter ? 700 : 400,
+                                      color: aBetter ? "#4ade80" : undefined,
+                                    }}
+                                  >
+                                    {r.displayA ?? r.fmt(r.a)}
+                                  </td>
+                                  <td style={{ textAlign: "center" }} className="muted">
+                                    {r.label}
+                                  </td>
+                                  <td
+                                    style={{
+                                      textAlign: "left",
+                                      fontWeight: bBetter ? 700 : 400,
+                                      color: bBetter ? "#4ade80" : undefined,
+                                    }}
+                                  >
+                                    {r.displayB ?? r.fmt(r.b)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </section>
+        )}
         </>
         )}
       </main>
@@ -3275,7 +3848,7 @@ export default function App() {
                                         className="link-btn"
                                         onClick={() => {
                                           closeBoxScore();
-                                          openPlayerProfile(gl.scorer);
+                                          openPlayer(gl.scorer);
                                         }}
                                       >
                                         {gl.scorer}
@@ -3296,7 +3869,7 @@ export default function App() {
                                                 className="link-btn"
                                                 onClick={() => {
                                                   closeBoxScore();
-                                                  openPlayerProfile(a);
+                                                  openPlayer(a);
                                                 }}
                                               >
                                                 {a}
@@ -3382,7 +3955,7 @@ export default function App() {
                                       className="link-btn"
                                       onClick={() => {
                                         closeBoxScore();
-                                        openPlayerProfile(sk.player_name);
+                                        openPlayer(sk.player_name);
                                       }}
                                     >
                                       {sk.player_name}
@@ -3435,7 +4008,7 @@ export default function App() {
                                     className="link-btn"
                                     onClick={() => {
                                       closeBoxScore();
-                                      openPlayerProfile(gl.goalie_name);
+                                      openPlayer(gl.goalie_name);
                                     }}
                                   >
                                     {gl.goalie_name}

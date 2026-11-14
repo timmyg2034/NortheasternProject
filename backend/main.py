@@ -1025,6 +1025,62 @@ def get_rivalry(
     }
 
 
+@app.get("/api/players")
+def list_players() -> dict[str, Any]:
+    ds = _require_datasets()
+    players_map: dict[str, dict[str, Any]] = {}
+
+    def _upsert(name: Any, season: Any = "", pos: Any = "") -> None:
+        n = str(name or "").strip()
+        if not n:
+            return
+        k = n.lower()
+        s = str(season or "").strip()
+        p = str(pos or "").strip()
+        if k not in players_map:
+            players_map[k] = {
+                "player_name": n,
+                "position": p,
+                "seasons": set(),
+            }
+        if s:
+            players_map[k]["seasons"].add(s)
+        if p and not players_map[k]["position"]:
+            players_map[k]["position"] = p
+
+    if not ds.rosters.empty:
+        for _, r in ds.rosters.iterrows():
+            _upsert(r.get("player_name"), r.get("season"), r.get("position"))
+    if not ds.season_stats.empty:
+        for _, r in ds.season_stats.iterrows():
+            _upsert(r.get("player_name"), r.get("season"), r.get("position"))
+    if not ds.skaters.empty:
+        for _, r in ds.skaters.iterrows():
+            _upsert(r.get("player_name"), r.get("season"), r.get("position"))
+    if not ds.goalies.empty:
+        for _, r in ds.goalies.iterrows():
+            _upsert(r.get("goalie_name"), r.get("season"), "G")
+
+    out = []
+    for rec in players_map.values():
+        seasons_sorted = sorted(rec["seasons"])
+        span = (
+            f"{seasons_sorted[0]}–{seasons_sorted[-1]}"
+            if len(seasons_sorted) > 1
+            else (seasons_sorted[0] if seasons_sorted else "")
+        )
+        out.append(
+            {
+                "player_name": rec["player_name"],
+                "position": rec["position"],
+                "seasons_span": span,
+                "latest_season": seasons_sorted[-1] if seasons_sorted else "",
+            }
+        )
+    out.sort(key=lambda x: x["player_name"].lower())
+    return {"players": out}
+
+
 @app.get("/api/player")
 def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
     ds = _require_datasets()
