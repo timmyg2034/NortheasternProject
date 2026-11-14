@@ -3191,14 +3191,14 @@ export default function App() {
         {tab === "compare" && (
           <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="card">
-              <div className="card-header-row" style={{ marginBottom: 12 }}>
+              <div className="card-header" style={{ marginBottom: 14 }}>
                 <div>
                   <h2 style={{ margin: 0 }}>Compare Players</h2>
                   <p className="muted" style={{ margin: "4px 0 0 0", fontSize: 13 }}>
                     Side-by-side comparison of any two Northeastern players across career, per-game rates, specific seasons, or vs. an opponent.
                   </p>
                 </div>
-                <div className="pill-row">
+                <div className="segmented" role="group" aria-label="Comparison mode">
                   {[
                     ["career", "Career"],
                     ["per_game", "Per Game"],
@@ -3208,7 +3208,8 @@ export default function App() {
                     <button
                       key={id}
                       type="button"
-                      className={`pill-btn ${compareMode === id ? "active" : ""}`}
+                      className={`segmented-btn ${compareMode === id ? "active" : ""}`}
+                      aria-pressed={compareMode === id}
                       onClick={() => setCompareMode(id)}
                     >
                       {label}
