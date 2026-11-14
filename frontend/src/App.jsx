@@ -3263,10 +3263,11 @@ export default function App() {
                   left: 0,
                   right: 0,
                   zIndex: 40,
-                  background: "#15171c",
-                  border: "1px solid var(--nu-border, #2e323d)",
+                  background: "var(--nu-surface, #ffffff)",
+                  color: "var(--nu-text, #111827)",
+                  border: "1px solid var(--nu-border, #dde1e7)",
                   borderRadius: 10,
-                  boxShadow: "0 10px 28px rgba(0, 0, 0, 0.55)",
+                  boxShadow: "0 10px 28px rgba(17, 18, 20, 0.14)",
                   maxHeight: 280,
                   overflowY: "auto",
                   padding: 4,
@@ -3281,7 +3282,7 @@ export default function App() {
                   padding: "8px 10px",
                   border: "none",
                   background: "transparent",
-                  color: "inherit",
+                  color: "var(--nu-text, #111827)",
                   borderRadius: 7,
                   cursor: "pointer",
                   textAlign: "left",
@@ -3370,7 +3371,7 @@ export default function App() {
                                   setCompareAFocus(false);
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
+                                  e.currentTarget.style.background = "var(--nu-bg, #f1f3f6)";
                                 }}
                                 onMouseLeave={(e) => {
                                   e.currentTarget.style.background = "transparent";
@@ -3482,7 +3483,7 @@ export default function App() {
                                   setCompareBFocus(false);
                                 }}
                                 onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = "rgba(255, 255, 255, 0.08)";
+                                  e.currentTarget.style.background = "var(--nu-bg, #f1f3f6)";
                                 }}
                                 onMouseLeave={(e) => {
                                   e.currentTarget.style.background = "transparent";
@@ -3875,7 +3876,7 @@ export default function App() {
                                     style={{
                                       textAlign: "right",
                                       fontWeight: aBetter ? 700 : 400,
-                                      color: aBetter ? "#4ade80" : undefined,
+                                      color: aBetter ? "#15803d" : undefined,
                                     }}
                                   >
                                     {r.displayA ?? r.fmt(r.a)}
@@ -3887,7 +3888,7 @@ export default function App() {
                                     style={{
                                       textAlign: "left",
                                       fontWeight: bBetter ? 700 : 400,
-                                      color: bBetter ? "#4ade80" : undefined,
+                                      color: bBetter ? "#15803d" : undefined,
                                     }}
                                   >
                                     {r.displayB ?? r.fmt(r.b)}
