@@ -90,16 +90,70 @@ function CaptainBadge({ role }) {
   return null;
 }
 
+const OPPONENT_LOGO_ALIASES = {
+  "uconn": "Connecticut",
+  "university of connecticut": "Connecticut",
+  "umass": "Massachusetts",
+  "umass-amherst": "Massachusetts",
+  "university of massachusetts": "Massachusetts",
+  "umass lowell": "Massachusetts Lowell",
+  "umass-lowell": "Massachusetts Lowell",
+  "university of massachusetts lowell": "Massachusetts Lowell",
+  "unh": "New Hampshire",
+  "u. of new hampshire": "New Hampshire",
+  "university of new hampshire": "New Hampshire",
+  "rpi": "Rensselaer",
+  "providence college": "Providence",
+  "quinnipiac university": "Quinnipiac",
+  "merrimack college": "Merrimack",
+  "harvard university": "Harvard",
+  "brown university": "Brown",
+  "colgate university": "Colgate",
+  "bentley university": "Bentley",
+  "stonehill college": "Stonehill",
+  "union college": "Union",
+  "army west point": "Army",
+  "university of vermont": "Vermont",
+  "univ. of maine": "Maine",
+  "university of maine": "Maine",
+  "university of denver": "Denver",
+  "minnesota-duluth": "Minnesota Duluth",
+  "alaska-anchorage": "Alaska Anchorage",
+  "university of alaska anchorage": "Alaska Anchorage",
+};
+
+const OPPONENT_LOGOS_LOWER = Object.fromEntries(
+  Object.entries(OPPONENT_LOGOS).map(([k, v]) => [k.toLowerCase(), v])
+);
+
+function resolveOpponentLogo(name) {
+  if (!name) return "";
+  if (OPPONENT_LOGOS[name]) return OPPONENT_LOGOS[name];
+  const cleaned = String(name)
+    .replace(/^(?:#\d+(?:\/\d+|\/RV)?\s+|No\.\s*\d+(?:\/\d+)?\s+|\[\d+\]\s+)+/gi, "")
+    .replace(/\s*\((?:exh\.?|championship game)\)\s*$/gi, "")
+    .trim();
+  if (OPPONENT_LOGOS[cleaned]) return OPPONENT_LOGOS[cleaned];
+  const low = cleaned.toLowerCase();
+  if (OPPONENT_LOGOS_LOWER[low]) return OPPONENT_LOGOS_LOWER[low];
+  const alias = OPPONENT_LOGO_ALIASES[low];
+  return alias ? OPPONENT_LOGOS[alias] || "" : "";
+}
+
 function OpponentLogo({ name, large = false }) {
-  const src = OPPONENT_LOGOS[name];
+  const src = resolveOpponentLogo(name);
   if (!src) return null;
   return (
     <img
       src={src}
       alt=""
       aria-hidden="true"
+      referrerPolicy="no-referrer"
       className={large ? "opp-logo-lg" : "opp-logo-sm"}
       loading="lazy"
+      onError={(e) => {
+        e.currentTarget.style.display = "none";
+      }}
     />
   );
 }
