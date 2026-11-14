@@ -1037,18 +1037,29 @@ def get_rivalry(
     }
 
 
+_PLAYERS_CACHE: list[dict[str, Any]] | None = None
+
+
 @app.get("/api/players")
 def list_players() -> dict[str, Any]:
+    global _PLAYERS_CACHE
     ds = _require_datasets()
+    if _PLAYERS_CACHE is not None:
+        return {"players": _PLAYERS_CACHE}
+
     players_map: dict[str, dict[str, Any]] = {}
 
     def _upsert(name: Any, season: Any = "", pos: Any = "") -> None:
-        n = str(name or "").strip()
-        if not n:
+        n = str(name).strip() if name is not None else ""
+        if not n or n.lower() == "nan":
             return
         k = n.lower()
-        s = str(season or "").strip()
-        p = str(pos or "").strip()
+        s = str(season).strip() if season is not None else ""
+        if s.lower() == "nan":
+            s = ""
+        p = str(pos).strip() if pos is not None else ""
+        if p.lower() == "nan":
+            p = ""
         if k not in players_map:
             players_map[k] = {
                 "player_name": n,
@@ -1061,17 +1072,32 @@ def list_players() -> dict[str, Any]:
             players_map[k]["position"] = p
 
     if not ds.rosters.empty:
-        for _, r in ds.rosters.iterrows():
-            _upsert(r.get("player_name"), r.get("season"), r.get("position"))
+        for n, s, p in zip(
+            ds.rosters["player_name"].fillna(""),
+            ds.rosters["season"].fillna(""),
+            ds.rosters["position"].fillna("") if "position" in ds.rosters.columns else [""] * len(ds.rosters),
+        ):
+            _upsert(n, s, p)
     if not ds.season_stats.empty:
-        for _, r in ds.season_stats.iterrows():
-            _upsert(r.get("player_name"), r.get("season"), r.get("position"))
+        for n, s, p in zip(
+            ds.season_stats["player_name"].fillna(""),
+            ds.season_stats["season"].fillna(""),
+            ds.season_stats["position"].fillna("") if "position" in ds.season_stats.columns else [""] * len(ds.season_stats),
+        ):
+            _upsert(n, s, p)
     if not ds.skaters.empty:
-        for _, r in ds.skaters.iterrows():
-            _upsert(r.get("player_name"), r.get("season"), r.get("position"))
+        for n, s, p in zip(
+            ds.skaters["player_name"].fillna(""),
+            ds.skaters["season"].fillna(""),
+            ds.skaters["position"].fillna("") if "position" in ds.skaters.columns else [""] * len(ds.skaters),
+        ):
+            _upsert(n, s, p)
     if not ds.goalies.empty:
-        for _, r in ds.goalies.iterrows():
-            _upsert(r.get("goalie_name"), r.get("season"), "G")
+        for n, s in zip(
+            ds.goalies["goalie_name"].fillna(""),
+            ds.goalies["season"].fillna(""),
+        ):
+            _upsert(n, s, "G")
 
     out = []
     for rec in players_map.values():
@@ -1090,6 +1116,7 @@ def list_players() -> dict[str, Any]:
             }
         )
     out.sort(key=lambda x: x["player_name"].lower())
+    _PLAYERS_CACHE = out
     return {"players": out}
 
 
@@ -1100,11 +1127,11 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
 
     roster_df = ds.rosters[ds.rosters["player_name"].str.lower() == target.lower()].copy()
     if roster_df.empty:
-        roster_df = ds.rosters[ds.rosters["player_name"].str.contains(target, case=False, na=False)].copy()
+        roster_df = ds.rosters[ds.rosters["player_name"].str.contains(target, case=False, na=False, regex=False)].copy()
 
     stats_df = ds.season_stats[ds.season_stats["player_name"].str.lower() == target.lower()].copy()
     if stats_df.empty:
-        stats_df = ds.season_stats[ds.season_stats["player_name"].str.contains(target, case=False, na=False)].copy()
+        stats_df = ds.season_stats[ds.season_stats["player_name"].str.contains(target, case=False, na=False, regex=False)].copy()
 
     sk_logs = ds.skaters[ds.skaters["player_name"].str.lower() == target.lower()].copy()
     gl_logs = ds.goalies[ds.goalies["goalie_name"].str.lower() == target.lower()].copy()

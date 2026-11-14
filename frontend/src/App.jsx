@@ -319,6 +319,8 @@ export default function App() {
   const [boxscoreLoading, setBoxscoreLoading] = useState(false);
   const [boxscoreError, setBoxscoreError] = useState("");
   const [allPlayers, setAllPlayers] = useState([]);
+  const [playersLoading, setPlayersLoading] = useState(false);
+  const [playersError, setPlayersError] = useState("");
   const [compareAName, setCompareAName] = useState("");
   const [compareBName, setCompareBName] = useState("");
   const [compareAQuery, setCompareAQuery] = useState("");
@@ -355,11 +357,14 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (tab !== "compare" || allPlayers.length > 0) return;
+    if (tab !== "compare" || allPlayers.length > 0 || playersLoading) return;
+    setPlayersLoading(true);
+    setPlayersError("");
     fetch(`${API_BASE}/api/players`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load players"))))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`Failed to load players (${r.status})`))))
       .then((d) => setAllPlayers(d.players || []))
-      .catch(() => {});
+      .catch((err) => setPlayersError(err.message || "Unable to load players"))
+      .finally(() => setPlayersLoading(false));
   }, [tab, allPlayers.length]);
 
   useEffect(() => {
@@ -3389,7 +3394,11 @@ export default function App() {
                             ))
                           ) : (
                             <div className="muted" style={{ padding: "8px 10px", fontSize: 12 }}>
-                              No matching players found
+                              {playersLoading
+                                ? "Loading player list..."
+                                : playersError
+                                  ? playersError
+                                  : "No matching players found"}
                             </div>
                           )}
                         </div>
@@ -3501,7 +3510,11 @@ export default function App() {
                             ))
                           ) : (
                             <div className="muted" style={{ padding: "8px 10px", fontSize: 12 }}>
-                              No matching players found
+                              {playersLoading
+                                ? "Loading player list..."
+                                : playersError
+                                  ? playersError
+                                  : "No matching players found"}
                             </div>
                           )}
                         </div>
