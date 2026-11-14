@@ -23,7 +23,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
@@ -1560,6 +1560,60 @@ def submit_bug_report(req: BugReportRequest, request: Request) -> BugReportRespo
     threading.Thread(target=_forward_bug_webhook, args=(entry,), daemon=True).start()
 
     return BugReportResponse(status="ok", id=report_id, created_at=created_at)
+
+
+_ALLOWED_IMAGE_HOSTS = {
+    "a.espncdn.com",
+    "nuhuskies.com",
+    "www.nuhuskies.com",
+    "images.sidearmdev.com",
+    "static.gonu.com",
+}
+_IMAGE_PROXY_CACHE: dict[str, tuple[bytes, str]] = {}
+_IMAGE_PROXY_LOCK = threading.Lock()
+
+
+def _fetch_proxied_image(url: str) -> tuple[bytes, str]:
+    with _IMAGE_PROXY_LOCK:
+        cached = _IMAGE_PROXY_CACHE.get(url)
+    if cached is not None:
+        return cached
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=8) as resp:
+        data = resp.read()
+        ctype = resp.headers.get("Content-Type", "image/png").split(";")[0].strip() or "image/png"
+    if not ctype.startswith("image/"):
+        raise HTTPException(status_code=502, detail="Upstream resource is not an image.")
+    with _IMAGE_PROXY_LOCK:
+        if len(_IMAGE_PROXY_CACHE) >= 600:
+            _IMAGE_PROXY_CACHE.clear()
+        _IMAGE_PROXY_CACHE[url] = (data, ctype)
+    return data, ctype
+
+
+@app.get("/api/image-proxy")
+async def image_proxy(url: str = Query(..., min_length=10)) -> Response:
+    parsed = urllib.parse.urlparse(url.strip())
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or host not in _ALLOWED_IMAGE_HOSTS:
+        raise HTTPException(status_code=400, detail="Unsupported image host.")
+    try:
+        data, ctype = await run_in_threadpool(_fetch_proxied_image, url.strip())
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=404, detail="Image unavailable.")
+    return Response(
+        content=data,
+        media_type=ctype,
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 FRONTEND_DIST_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"

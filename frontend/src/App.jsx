@@ -140,15 +140,20 @@ function resolveOpponentLogo(name) {
   return alias ? OPPONENT_LOGOS[alias] || "" : "";
 }
 
+function proxyImageUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("/") || url.startsWith("data:") || url.startsWith("blob:")) return url;
+  return `${API_BASE}/api/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
 function OpponentLogo({ name, large = false }) {
   const src = resolveOpponentLogo(name);
   if (!src) return null;
   return (
     <img
-      src={src}
+      src={proxyImageUrl(src)}
       alt=""
       aria-hidden="true"
-      referrerPolicy="no-referrer"
       className={large ? "opp-logo-lg" : "opp-logo-sm"}
       loading="lazy"
       onError={(e) => {
@@ -1194,9 +1199,12 @@ export default function App() {
                   <div className="player-hero-left">
                     {playerData.bio.image_url ? (
                       <img
-                        src={playerData.bio.image_url}
+                        src={proxyImageUrl(playerData.bio.image_url)}
                         alt={playerData.bio.player_name}
                         className="player-avatar-lg"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
                       />
                     ) : (
                       <div className="jersey-box">
@@ -2639,10 +2647,13 @@ export default function App() {
                           <span className="roster-player-cell">
                             {p.image_url && (
                               <img
-                                src={p.image_url}
+                                src={proxyImageUrl(p.image_url)}
                                 alt=""
                                 className="player-avatar-sm"
                                 loading="lazy"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                }}
                               />
                             )}
                             <button
@@ -2776,10 +2787,13 @@ export default function App() {
                       <span className="roster-player-cell">
                         {p.image_url && (
                           <img
-                            src={p.image_url}
+                            src={proxyImageUrl(p.image_url)}
                             alt=""
                             className="player-avatar-sm"
                             loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                            }}
                           />
                         )}
                         <button
