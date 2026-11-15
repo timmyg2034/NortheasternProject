@@ -1191,11 +1191,15 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
     if not stats_df.empty and int(stats_df["gp"].sum()) > 0:
         fow = int(sk_logs["faceoffs_won"].sum()) if not sk_logs.empty and "faceoffs_won" in sk_logs.columns else 0
         fol = int(sk_logs["faceoffs_lost"].sum()) if not sk_logs.empty and "faceoffs_lost" in sk_logs.columns else 0
+        total_shots = int(stats_df["shots"].sum()) if "shots" in stats_df.columns else 0
+        total_goals = int(stats_df["goals"].sum())
         career_skater = {
             "gp": int(stats_df["gp"].sum()),
-            "goals": int(stats_df["goals"].sum()),
+            "goals": total_goals,
             "assists": int(stats_df["assists"].sum()),
             "points": int(stats_df["points"].sum()),
+            "shots": total_shots,
+            "shooting_pct": round((total_goals / total_shots) * 100, 1) if total_shots > 0 else 0.0,
             "plus_minus": int(stats_df["plus_minus"].sum()),
             "pim": int(stats_df["pim"].sum()),
             "ppg": int(stats_df["ppg"].sum()),

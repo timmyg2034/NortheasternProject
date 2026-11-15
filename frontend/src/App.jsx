@@ -3739,7 +3739,7 @@ export default function App() {
                     { label: "Assists / Game", a: rate(sA?.assists, gpA), b: rate(sB?.assists, gpB), fmt: (v) => v.toFixed(2) },
                     { label: "Points / Game", a: rate(sA?.points, gpA), b: rate(sB?.points, gpB), fmt: (v) => v.toFixed(2) },
                     { label: "Shots / Game", a: rate(sA?.shots, gpA), b: rate(sB?.shots, gpB), fmt: (v) => v.toFixed(2) },
-                    { label: "Shooting %", a: Number(sA?.shooting_pct || 0), b: Number(sB?.shooting_pct || 0), fmt: (v) => `${v.toFixed(1)}%` },
+                    { label: "Shooting %", a: Number(sA?.shooting_pct ?? sA?.shot_pct ?? 0), b: Number(sB?.shooting_pct ?? sB?.shot_pct ?? 0), fmt: (v) => `${v.toFixed(1)}%` },
                     { label: "Blocks / Game", a: rate(sA?.blocked_shots, gpA), b: rate(sB?.blocked_shots, gpB), fmt: (v) => v.toFixed(2) },
                     { label: "Faceoff %", a: Number(sA?.faceoff_pct || 0), b: Number(sB?.faceoff_pct || 0), fmt: (v) => `${v.toFixed(1)}%` },
                     { label: "PIM / Game", a: rate(sA?.pim, gpA), b: rate(sB?.pim, gpB), fmt: (v) => v.toFixed(2), neutral: true },
@@ -3754,7 +3754,7 @@ export default function App() {
                   { label: "Points (PTS)", a: Number(sA?.points || 0), b: Number(sB?.points || 0), fmt: (v) => v },
                   { label: "+/-", a: Number(sA?.plus_minus || 0), b: Number(sB?.plus_minus || 0), fmt: (v) => (v > 0 ? `+${v}` : v) },
                   { label: "Shots on Goal (SOG)", a: Number(sA?.shots || 0), b: Number(sB?.shots || 0), fmt: (v) => v },
-                  { label: "Shooting %", a: Number(sA?.shooting_pct || 0), b: Number(sB?.shooting_pct || 0), fmt: (v) => `${v.toFixed(1)}%` },
+                  { label: "Shooting %", a: Number(sA?.shooting_pct ?? sA?.shot_pct ?? 0), b: Number(sB?.shooting_pct ?? sB?.shot_pct ?? 0), fmt: (v) => `${v.toFixed(1)}%` },
                   { label: "Power-Play Goals (PPG)", a: Number(sA?.ppg || 0), b: Number(sB?.ppg || 0), fmt: (v) => v },
                   { label: "Short-Handed Goals (SHG)", a: Number(sA?.shg || 0), b: Number(sB?.shg || 0), fmt: (v) => v },
                   { label: "Game-Winning Goals (GWG)", a: Number(sA?.gwg || 0), b: Number(sB?.gwg || 0), fmt: (v) => v },
@@ -3771,8 +3771,10 @@ export default function App() {
               };
 
               const buildGoalieRows = (sA, sB) => {
-                const gpA = Number(sA?.gp || 0);
-                const gpB = Number(sB?.gp || 0);
+                const gpA = Number(sA?.gp ?? sA?.goalie_gp ?? 0);
+                const gpB = Number(sB?.gp ?? sB?.goalie_gp ?? 0);
+                const gaA = Number(sA?.goals_against ?? sA?.ga ?? 0);
+                const gaB = Number(sB?.goals_against ?? sB?.ga ?? 0);
                 if (compareMode === "per_game") {
                   const rate = (val, gp) => (gp > 0 ? Number((Number(val || 0) / gp).toFixed(2)) : 0);
                   return [
@@ -3782,7 +3784,7 @@ export default function App() {
                       ? [{ label: "Goals Against Avg (GAA)", a: Number(sA.gaa || 0), b: Number(sB.gaa || 0), fmt: (v) => v.toFixed(2), lowerBetter: true }]
                       : []),
                     { label: "Saves / Game", a: rate(sA?.saves, gpA), b: rate(sB?.saves, gpB), fmt: (v) => v.toFixed(1) },
-                    { label: "Goals Against / Game", a: rate(sA?.goals_against, gpA), b: rate(sB?.goals_against, gpB), fmt: (v) => v.toFixed(2), lowerBetter: true },
+                    { label: "Goals Against / Game", a: rate(gaA, gpA), b: rate(gaB, gpB), fmt: (v) => v.toFixed(2), lowerBetter: true },
                   ];
                 }
                 return [
@@ -3795,7 +3797,7 @@ export default function App() {
                     ? [{ label: "Goals Against Avg (GAA)", a: Number(sA.gaa || 0), b: Number(sB.gaa || 0), fmt: (v) => v.toFixed(2), lowerBetter: true }]
                     : []),
                   { label: "Saves (SV)", a: Number(sA?.saves || 0), b: Number(sB?.saves || 0), fmt: (v) => v },
-                  { label: "Goals Against (GA)", a: Number(sA?.goals_against || 0), b: Number(sB?.goals_against || 0), fmt: (v) => v, lowerBetter: true },
+                  { label: "Goals Against (GA)", a: gaA, b: gaB, fmt: (v) => v, lowerBetter: true },
                   { label: "Shutouts (SO)", a: Number(sA?.shutouts || 0), b: Number(sB?.shutouts || 0), fmt: (v) => v },
                 ];
               };
