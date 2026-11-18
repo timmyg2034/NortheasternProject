@@ -3259,6 +3259,7 @@ export default function App() {
                             <tr>
                               <th>Date</th>
                               <th>Opponent</th>
+                              <th>Venue</th>
                               <th>Result</th>
                               <th>Score</th>
                               <th>OT/SO</th>
@@ -3274,6 +3275,11 @@ export default function App() {
                                     <OpponentLogo name={g.opponent} />
                                     <span>{g.opponent}</span>
                                   </span>
+                                </td>
+                                <td>
+                                  {g.venue
+                                    ? `${g.venue}${g.location ? ` (${g.location})` : ""}`
+                                    : g.location || "—"}
                                 </td>
                                 <td><OutcomeBadge outcome={g.outcome} /></td>
                                 <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
@@ -3695,6 +3701,7 @@ export default function App() {
                             <tr>
                               <th>Date</th>
                               <th>Season</th>
+                              <th>Venue</th>
                               <th>Result</th>
                               <th>Score</th>
                               <th>OT/SO</th>
@@ -3706,6 +3713,11 @@ export default function App() {
                               <tr key={`${g.date}-${g.opponent}`}>
                                 <td>{g.date}</td>
                                 <td>{g.season}</td>
+                                <td>
+                                  {g.venue
+                                    ? `${g.venue}${g.location ? ` (${g.location})` : ""}`
+                                    : g.location || "—"}
+                                </td>
                                 <td><OutcomeBadge outcome={g.outcome} /></td>
                                 <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
                                 <td>{g.overtime_status}</td>
@@ -5515,7 +5527,11 @@ export default function App() {
                                 <span>{g.opponent}</span>
                               </span>
                             </td>
-                            <td>{g.location}</td>
+                            <td>
+                              {g.venue
+                                ? `${g.venue}${g.location ? ` (${g.location})` : ""}`
+                                : g.location || "—"}
+                            </td>
                             <td>{g.game_type}</td>
                             <td><OutcomeBadge outcome={g.outcome} /></td>
                             <td>
@@ -5632,6 +5648,7 @@ export default function App() {
                   <div className="muted" style={{ fontSize: 12 }}>
                     {boxscoreModal.date}
                     {boxscoreData?.game?.season ? ` • ${boxscoreData.game.season}` : ""}
+                    {boxscoreData?.game?.venue ? ` • ${boxscoreData.game.venue}` : ""}
                     {boxscoreData?.game?.location ? ` • ${boxscoreData.game.location}` : ""}
                   </div>
                 </div>

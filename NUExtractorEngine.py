@@ -58,6 +58,51 @@ def url_to_filename(url: str) -> str:
     return f"{h}.html"
 
 
+def normalize_venue_name(raw_venue: str) -> str:
+    """Clean and normalize arena/venue strings from box scores."""
+    v = re.sub(r'\s+', ' ', (raw_venue or "").strip())
+    if not v:
+        return ""
+    # Strip trailing city/state or attendance if attached on same line
+    v = re.split(r'\s+(?:Attendance|Time|Start|Date|Officials|Referees?)\s*:', v, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+    v = re.sub(r'\s*\([^)]*\)\s*$', '', v).strip().rstrip(".,;")
+    aliases = {
+        "matthews arena": "Matthews Arena",
+        "td garden": "TD Garden",
+        "agganis arena": "Agganis Arena",
+        "conte forum": "Conte Forum",
+        "kelley rink": "Conte Forum",
+        "silvio o. conte forum": "Conte Forum",
+        "whittemore center": "Whittemore Center",
+        "whittemore center arena": "Whittemore Center",
+        "tsongas center": "Tsongas Center",
+        "tsongas arena": "Tsongas Center",
+        "schneider arena": "Schneider Arena",
+        "gutterson fieldhouse": "Gutterson Fieldhouse",
+        "alfond arena": "Alfond Arena",
+        "lawler rink": "Lawler Rink",
+        "lawler arena": "Lawler Rink",
+        "mullins center": "Mullins Center",
+        "hart center": "Hart Center",
+        "bright-landry hockey center": "Bright-Landry Hockey Center",
+        "bright hockey center": "Bright-Landry Hockey Center",
+        "meehan auditorium": "Meehan Auditorium",
+        "walter brown arena": "Walter Brown Arena",
+        "bentley arena": "Bentley Arena",
+        "fenway park": "Fenway Park",
+        "toscano family ice forum": "Toscano Family Ice Forum",
+    }
+    low = v.lower()
+    for k, canon in aliases.items():
+        if low == k or low.startswith(k + ",") or low.startswith(k + " -"):
+            return canon
+    if "," in v:
+        first_part = v.split(",", 1)[0].strip()
+        if any(w in first_part.lower() for w in ("arena", "center", "centre", "rink", "forum", "fieldhouse", "auditorium", "garden", "park", "pavilion", "coliseum")):
+            return first_part
+    return v
+
+
 def parse_modern_boxscore(soup, url, html):
     """Parses modern Sidearm box scores for games, skaters, goalies, goals, penalties, and shootouts."""
     title = soup.title.string.strip() if soup.title else ""
@@ -203,6 +248,23 @@ def parse_modern_boxscore(soup, url, html):
     elif re.search(r'\bvs\.?\s+', title, re.IGNORECASE):
         location = "Home"
 
+    # Extract venue / arena if present in Sidearm boxscore header
+    venue = ""
+    header_txt = soup.get_text("\n", strip=True)[:8000]
+    vm = re.search(r'(?:^|\n)\s*(?:Site|Arena|Venue|Stadium|Facility)\s*:\s*([^\n]+)', header_txt, re.IGNORECASE)
+    if vm:
+        venue = normalize_venue_name(vm.group(1))
+    if not venue:
+        # Sidearm sometimes puts arena in <dd> after <dt>Site</dt> or <dt>Location</dt>
+        for dt in soup.find_all("dt"):
+            if re.match(r'^\s*(?:site|arena|venue|facility|location)\s*:?\s*$', dt.get_text(strip=True), re.IGNORECASE):
+                dd = dt.find_next_sibling("dd")
+                if dd:
+                    cand = normalize_venue_name(dd.get_text(" ", strip=True))
+                    if cand:
+                        venue = cand
+                        break
+
     # Extract team power play stats (goals-opportunities) if present in a Power Plays table
     nu_pp_goals, nu_pp_opps = "", ""
     opp_pp_goals, opp_pp_opps = "", ""
@@ -224,6 +286,7 @@ def parse_modern_boxscore(soup, url, html):
         "date": date,
         "opponent": opponent,
         "location": location,
+        "venue": venue,
         "nu_goals": nu_goals,
         "opp_goals": opp_goals,
         "outcome": outcome,
@@ -601,10 +664,21 @@ def parse_legacy_boxscore(soup, url, html):
     elif re.search(r'\bvs\.?\s+', title, re.IGNORECASE):
         location = "Home"
 
+    venue = ""
+    legacy_txt = soup.get_text("\n", strip=True)[:8000]
+    vm = re.search(r'(?:^|\n)\s*(?:Arena|Site|Venue|Location)\s*:\s*([^\n]+)', legacy_txt, re.IGNORECASE)
+    if vm:
+        venue = normalize_venue_name(vm.group(1))
+    if not venue:
+        vm2 = re.search(r'(?:Arena|Site)\s*:\s*([^\n<]+?)(?:\s+Attendance|\s+Start|\s+Time|\n|$)', html[:12000], re.IGNORECASE)
+        if vm2:
+            venue = normalize_venue_name(vm2.group(1))
+
     game_record = {
         "date": date,
         "opponent": opponent,
         "location": location,
+        "venue": venue,
         "nu_goals": nu_goals,
         "opp_goals": opp_goals,
         "outcome": outcome,
@@ -2554,15 +2628,20 @@ async def run_pipeline():
             elif p.get("team") == "Northeastern" and p.get("opponent"):
                 p["team"] = p["opponent"]
 
-    # Preserve existing verified locations from northeastern_game_results.csv if present
+    # Preserve existing verified locations and venues from northeastern_game_results.csv if present
     existing_locations = {}
+    existing_venues = {}
     if Path(games_csv).exists():
         try:
             with open(games_csv, "r", encoding="utf-8") as f:
                 for row in csv.DictReader(f):
-                    if row.get("date") and row.get("location"):
-                        existing_locations[(row["date"], row.get("opponent", ""))] = row["location"]
-                        existing_locations[row["date"]] = row["location"]
+                    if row.get("date"):
+                        if row.get("location"):
+                            existing_locations[(row["date"], row.get("opponent", ""))] = row["location"]
+                            existing_locations[row["date"]] = row["location"]
+                        if row.get("venue"):
+                            existing_venues[(row["date"], row.get("opponent", ""))] = row["venue"]
+                            existing_venues[row["date"]] = row["venue"]
         except Exception:
             pass
 
@@ -2587,6 +2666,16 @@ async def run_pipeline():
                 r["location"] = sched_loc
             elif not r.get("location"):
                 r["location"] = "Home"
+
+            ver_venue = existing_venues.get((d, opp)) or existing_venues.get(d)
+            if ver_venue:
+                r["venue"] = ver_venue
+            elif not r.get("venue"):
+                # Default home venue to Matthews Arena for historical games prior to Dec 14, 2025
+                if r["location"] == "Home" and d and d <= "2025-12-13":
+                    r["venue"] = "Matthews Arena"
+                else:
+                    r["venue"] = ""
 
             g_list = goals_by_game.get((d, opp), [])
             p_list = pens_by_game.get((d, opp), [])
@@ -2613,7 +2702,7 @@ async def run_pipeline():
             r["opp_pp_opps"] = max(opp_ppo, opp_ppg)
 
         valid_games.sort(key=lambda x: x.get("date", ""))
-        gm_keys = ["date", "season", "opponent", "location", "nu_goals", "opp_goals", "outcome", "overtime_status", "is_overtime", "is_shootout", "shootout_winner", "is_shutout", "shutout_team", "nu_pp_goals", "nu_pp_opps", "opp_pp_goals", "opp_pp_opps", "boxscore_url"]
+        gm_keys = ["date", "season", "opponent", "location", "venue", "nu_goals", "opp_goals", "outcome", "overtime_status", "is_overtime", "is_shootout", "shootout_winner", "is_shutout", "shutout_team", "nu_pp_goals", "nu_pp_opps", "opp_pp_goals", "opp_pp_opps", "boxscore_url"]
         with open(games_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=gm_keys, extrasaction="ignore")
             w.writeheader()

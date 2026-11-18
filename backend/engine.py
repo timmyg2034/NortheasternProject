@@ -324,6 +324,10 @@ def load_datasets(data_dir: Path | str = ".") -> HockeyDatasets:
             games_df["location"] = games_df["location"].fillna("Home").astype(str).str.strip().replace("", "Home")
         else:
             games_df["location"] = "Home"
+        if "venue" in games_df.columns:
+            games_df["venue"] = games_df["venue"].fillna("").astype(str).str.strip()
+        else:
+            games_df["venue"] = ""
 
     # Clean shootout events
     if not shootouts_df.empty:
@@ -995,8 +999,9 @@ def answer_question(
         "   - `team`: 'Northeastern' for NU penalties, or the opponent school name for opponent penalties. ALWAYS filter `team == 'Northeastern'` unless the user explicitly asks about opponent penalties!\n"
         "   - `period`: Formatted as strings '1st', '2nd', '3rd', 'OT'.\n"
         "   - `infraction`: Standardized uppercase penalty infraction/type (e.g., 'ROUGHING', 'HOOKING', 'INTERFERENCE', 'TRIPPING', 'SLASHING', 'HOLDING', 'CROSS-CHECKING', 'HIGH STICKING', 'BOARDING', 'HITTING FROM BEHIND', 'GAME MISCONDUCT', '10-MINUTE MISCONDUCT', 'UNSPORTSMANLIKE CONDUCT').\n"
-        "5. `df5` (game outcomes, venue splits, tournaments, power play & penalty kill, overtime, shutouts): columns = ['date', 'season', 'opponent', 'location', 'game_type', 'nu_goals', 'opp_goals', 'outcome', 'overtime_status', 'is_overtime', 'is_shootout', 'shootout_winner', 'is_shutout', 'shutout_team', 'nu_pp_goals', 'nu_pp_opps', 'opp_pp_goals', 'opp_pp_opps', 'boxscore_url']\n"
+        "5. `df5` (game outcomes, venue splits, tournaments, power play & penalty kill, overtime, shutouts): columns = ['date', 'season', 'opponent', 'location', 'venue', 'game_type', 'nu_goals', 'opp_goals', 'outcome', 'overtime_status', 'is_overtime', 'is_shootout', 'shootout_winner', 'is_shutout', 'shutout_team', 'nu_pp_goals', 'nu_pp_opps', 'opp_pp_goals', 'opp_pp_opps', 'boxscore_url']\n"
         "   - `location`: 'Home', 'Away', or 'Neutral' (verified across all 989 games! Use this for Home/Away/Neutral records and splits)\n"
+        "   - `venue`: Exact arena/stadium name (e.g., 'Matthews Arena', 'TD Garden', 'Agganis Arena', 'Conte Forum', 'Fenway Park', 'Walter Brown Arena', 'Tsongas Center', 'Whittemore Center', 'Schneider Arena', 'Mullins Center', 'Alfond Arena', 'Gutterson Fieldhouse', 'Lawler Rink', 'Toscano Family Ice Forum', 'XL Center', 'SSE Arena'). Use case-insensitive substring matching on `venue` for arena-specific questions!\n"
         "   - `game_type`: 'Regular Season', 'Beanpot', 'Hockey East Tournament', or 'NCAA Tournament'\n"
         "   - `nu_pp_goals`, `nu_pp_opps`: Northeastern power-play goals and opportunities (Team PP% = `100 * nu_pp_goals.sum() / nu_pp_opps.sum()`)\n"
         "   - `opp_pp_goals`, `opp_pp_opps`: Opponent power-play goals and opportunities (Team PK% = `100 * (opp_pp_opps.sum() - opp_pp_goals.sum()) / opp_pp_opps.sum()`)\n"
