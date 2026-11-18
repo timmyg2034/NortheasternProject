@@ -869,9 +869,44 @@ def parse_boxscore(html: str, url: str):
         return parse_legacy_boxscore(soup, url, html)
 
 
+def _extract_schedule_link_location(a_tag) -> str:
+    """Determines Home / Away / Neutral from the nuhuskies.com schedule item containing a boxscore link."""
+    node = a_tag
+    for _ in range(8):
+        if not node or not getattr(node, "name", None):
+            break
+        classes = " ".join(node.get("class", [])).lower()
+        if "sidearm-schedule-game" in classes or node.name in ("li", "tr"):
+            if "neutral" in classes:
+                return "Neutral"
+            if "away" in classes:
+                return "Away"
+            if "home" in classes:
+                return "Home"
+            vs_node = node.find(class_=re.compile(r"versus|location|home-away", re.I))
+            if vs_node:
+                vtxt = vs_node.get_text(" ", strip=True).lower()
+                if "neutral" in vtxt:
+                    return "Neutral"
+                if re.search(r"\bat\b", vtxt):
+                    return "Away"
+                if re.search(r"\bvs\.?\b", vtxt):
+                    return "Home"
+            txt = node.get_text(" ", strip=True)
+            if re.search(r"\bBeanpot\b", txt, re.I):
+                return "Neutral"
+            if re.search(r"\bat\s+[A-Z]", txt):
+                return "Away"
+            if re.search(r"\bvs\.?\s+[A-Z]", txt):
+                return "Home"
+        node = node.parent
+    return ""
+
+
 async def gather_all_game_urls(client: httpx.AsyncClient):
-    """Scrapes game box score URLs across all seasons 1999 to 2027."""
+    """Scrapes game box score URLs and schedule locations across all seasons 1999 to 2027."""
     all_urls = []
+    schedule_locations = {}
     print("\n1. Discovering box score URLs across all seasons (1999-2027)...")
 
     for year in range(1999, 2027):
@@ -893,10 +928,15 @@ async def gather_all_game_urls(client: httpx.AsyncClient):
                         href_low = href.lower()
                         text = a.get_text(" ", strip=True).lower()
                         if "box" in text and href_low.endswith(".aspx") and "1002114319" not in href_low:
-                            season_links.append(urllib.parse.urljoin("https://nuhuskies.com", href))
+                            full_u = urllib.parse.urljoin("https://nuhuskies.com", href)
+                            season_links.append(full_u)
+                            loc = _extract_schedule_link_location(a)
+                            if loc:
+                                schedule_locations[full_u] = loc
             except Exception:
                 pass
             season_links.append("https://static.gonu.com/custompages/mhockey/MHK1112/HTML/bp2.htm")
+            schedule_locations["https://static.gonu.com/custompages/mhockey/MHK1112/HTML/bp2.htm"] = "Neutral"
         else:
             try:
                 res_legacy = await client.get(legacy_url, timeout=6.0)
@@ -918,7 +958,11 @@ async def gather_all_game_urls(client: httpx.AsyncClient):
                             href = a["href"].lower()
                             text = a.get_text(strip=True).lower()
                             if ("boxscore" in href or "box score" in text or "stats" in text or "/stats/" in href) and "roster" not in href and "cumulative" not in href and "boxscore/3363" not in href:
-                                season_links.append(urllib.parse.urljoin("https://nuhuskies.com", a["href"]))
+                                full_u = urllib.parse.urljoin("https://nuhuskies.com", a["href"])
+                                season_links.append(full_u)
+                                loc = _extract_schedule_link_location(a)
+                                if loc:
+                                    schedule_locations[full_u] = loc
                 except Exception:
                     pass
 
@@ -929,7 +973,7 @@ async def gather_all_game_urls(client: httpx.AsyncClient):
 
     all_urls = sorted(list(set(all_urls)))
     print(f"\nTotal unique games discovered: {len(all_urls)}\n")
-    return all_urls
+    return all_urls, schedule_locations
 
 
 async def fetch_or_load_html(client: httpx.AsyncClient, semaphore: asyncio.Semaphore, url: str, index: dict):
@@ -2419,7 +2463,7 @@ async def run_pipeline():
 
     limits = httpx.Limits(max_keepalive_connections=25, max_connections=40)
     async with httpx.AsyncClient(headers=HEADERS, limits=limits, follow_redirects=True, verify=False) as client:
-        all_urls = await gather_all_game_urls(client)
+        all_urls, schedule_locations = await gather_all_game_urls(client)
 
         cached_count = sum(1 for u in all_urls if (CACHE_DIR / url_to_filename(u)).exists())
         print(f"2. Cache Status: {cached_count}/{len(all_urls)} already cached.")
@@ -2517,6 +2561,7 @@ async def run_pipeline():
             with open(games_csv, "r", encoding="utf-8") as f:
                 for row in csv.DictReader(f):
                     if row.get("date") and row.get("location"):
+                        existing_locations[(row["date"], row.get("opponent", ""))] = row["location"]
                         existing_locations[row["date"]] = row["location"]
         except Exception:
             pass
@@ -2534,10 +2579,14 @@ async def run_pipeline():
             d = r.get("date", "")
             opp = r.get("opponent", "")
             r["season"] = date_to_season(d)
-            if not r.get("location") and d in existing_locations:
-                r["location"] = existing_locations[d]
-            elif d in existing_locations and r.get("location") in ("", "Home"):
-                r["location"] = existing_locations[d]
+            sched_loc = schedule_locations.get(r.get("boxscore_url", ""), "")
+            ver_loc = existing_locations.get((d, opp)) or existing_locations.get(d)
+            if ver_loc:
+                r["location"] = ver_loc
+            elif sched_loc:
+                r["location"] = sched_loc
+            elif not r.get("location"):
+                r["location"] = "Home"
 
             g_list = goals_by_game.get((d, opp), [])
             p_list = pens_by_game.get((d, opp), [])

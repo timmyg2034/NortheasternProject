@@ -2638,7 +2638,7 @@ def get_program_records(
     chemistry_season: str = Query(default="all"),
     chemistry_strength: str = Query(default="all", pattern="^(all|EV|PP|SH|ev|pp|sh)$"),
     mmdd: str | None = Query(default=None),
-    limit: int = Query(default=25, ge=5, le=100),
+    limit: int = Query(default=500, ge=5, le=2000),
 ) -> dict[str, Any]:
     ds = _require_datasets()
     pos_filter = position.upper() if position and position.lower() in ("f", "d", "g") else "all"
@@ -2652,11 +2652,12 @@ def get_program_records(
         sk_df = sk_df[sk_df["class_year"].str.lower() == cls_filter.lower()]
 
     # Single-season skaters
+    sk_df["pts_per_gp"] = sk_df.apply(lambda r: round(r["points"] / r["gp"], 2) if r["gp"] > 0 else 0.0, axis=1)
     ss_sk = sk_df.sort_values(["points", "goals", "gp"], ascending=[False, False, True]).head(limit)
     single_season_skaters = _records(
         ss_sk[[
             "season", "player_name", "position", "class_year", "captain_role",
-            "gp", "goals", "assists", "points", "ppg", "shg", "gwg", "otg", "shots", "shot_pct", "plus_minus", "pim",
+            "gp", "goals", "assists", "points", "pts_per_gp", "ppg", "shg", "gwg", "otg", "shots", "shot_pct", "plus_minus", "pim",
         ]]
     )
 

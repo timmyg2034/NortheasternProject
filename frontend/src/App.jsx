@@ -558,10 +558,12 @@ export default function App() {
   // Records & History state
   const [recordsData, setRecordsData] = useState(null);
   const [recordsLoading, setRecordsLoading] = useState(false);
-  const [recordsSubTab, setRecordsSubTab] = useState("book"); // "book" | "milestones" | "chemistry" | "otd"
-  const [recordsLeaderboardMode, setRecordsLeaderboardMode] = useState("career"); // "career" | "single_season" | "single_game"
+  const [recordsSubTab, setRecordsSubTab] = useState("recordbook"); // "recordbook" | "milestones" | "chemistry" | "onthisday"
+  const [recordsLeaderboardMode, setRecordsLeaderboardMode] = useState("career"); // "career" | "season"
   const [recordsPosition, setRecordsPosition] = useState("all");
   const [recordsClassYear, setRecordsClassYear] = useState("all");
+  const [recordSkaterSort, setRecordSkaterSort] = useState({ key: "points", dir: "desc" });
+  const [recordGoalieSort, setRecordGoalieSort] = useState({ key: "wins", dir: "desc" });
   const [chemSeason, setChemSeason] = useState("all");
   const [chemStrength, setChemStrength] = useState("all");
   const [otdMmdd, setOtdMmdd] = useState("");
@@ -964,7 +966,7 @@ export default function App() {
       class_year: recordsClassYear,
       chemistry_season: chemSeason,
       chemistry_strength: chemStrength,
-      limit: "25",
+      limit: "1000",
     });
     if (otdMmdd) params.set("mmdd", otdMmdd);
     fetch(`${API_BASE}/api/records?${params.toString()}`)
@@ -4524,11 +4526,74 @@ export default function App() {
                 return (cls || "").toLowerCase() === classFilter.toLowerCase();
               };
 
+              const classRank = {
+                "fr.": 1,
+                "so.": 2,
+                "jr.": 3,
+                "sr.": 4,
+                "gr.": 5,
+              };
+
+              const toggleRecordSkaterSort = (key) => {
+                const defaultAsc = ["player_name", "position", "class_year"].includes(key);
+                setRecordSkaterSort((prev) =>
+                  prev.key === key
+                    ? { key, dir: prev.dir === "desc" ? "asc" : "desc" }
+                    : { key, dir: defaultAsc ? "asc" : "desc" }
+                );
+              };
+
+              const toggleRecordGoalieSort = (key) => {
+                const defaultAsc = ["player_name", "class_year", "gaa"].includes(key);
+                setRecordGoalieSort((prev) =>
+                  prev.key === key
+                    ? { key, dir: prev.dir === "desc" ? "asc" : "desc" }
+                    : { key, dir: defaultAsc ? "asc" : "desc" }
+                );
+              };
+
+              const getSkaterSortVal = (r, key) => {
+                if (key === "player_name") return String(r.player_name || "").toLowerCase();
+                if (key === "position") return String(r.position || r.position_group || "").toLowerCase();
+                if (key === "season") return String(r.season || r.first_season || "");
+                if (key === "class_year") return classRank[String(r.class_year || "").toLowerCase()] || 99;
+                if (key === "pts_per_gp") {
+                  return r.pts_per_gp !== undefined && r.pts_per_gp !== null
+                    ? Number(r.pts_per_gp)
+                    : r.gp > 0
+                      ? Number(r.points || 0) / Number(r.gp)
+                      : 0;
+                }
+                return Number(r[key] ?? 0);
+              };
+
+              const getGoalieSortVal = (r, key) => {
+                if (key === "player_name") return String(r.player_name || "").toLowerCase();
+                if (key === "season") return String(r.season || r.first_season || "");
+                if (key === "class_year") return classRank[String(r.class_year || "").toLowerCase()] || 99;
+                if (key === "gp") return Number(r.gp ?? r.goalie_gp ?? 0);
+                return Number(r[key] ?? 0);
+              };
+
               const rawSkaters = isSeasonMode
                 ? (recordsData.single_season_skaters || [])
                 : (recordsData.career_skaters || []);
               const filteredSkaters = rawSkaters
                 .filter((r) => matchPos(r.position_group || r.position) && (!isSeasonMode || matchClass(r.class_year)))
+                .slice()
+                .sort((a, b) => {
+                  const k = recordSkaterSort.key;
+                  const dirMult = recordSkaterSort.dir === "asc" ? 1 : -1;
+                  const va = getSkaterSortVal(a, k);
+                  const vb = getSkaterSortVal(b, k);
+                  if (typeof va === "string" || typeof vb === "string") {
+                    const cmp = String(va).localeCompare(String(vb));
+                    if (cmp !== 0) return cmp * dirMult;
+                  } else if (va !== vb) {
+                    return (va - vb) * dirMult;
+                  }
+                  return Number(b.points || 0) - Number(a.points || 0) || Number(b.goals || 0) - Number(a.goals || 0);
+                })
                 .slice(0, 50);
 
               const rawGoalies = isSeasonMode
@@ -4536,7 +4601,62 @@ export default function App() {
                 : (recordsData.career_goalies || []);
               const filteredGoalies = rawGoalies
                 .filter((r) => !isSeasonMode || matchClass(r.class_year))
+                .slice()
+                .sort((a, b) => {
+                  const k = recordGoalieSort.key;
+                  const dirMult = recordGoalieSort.dir === "asc" ? 1 : -1;
+                  const va = getGoalieSortVal(a, k);
+                  const vb = getGoalieSortVal(b, k);
+                  if (typeof va === "string" || typeof vb === "string") {
+                    const cmp = String(va).localeCompare(String(vb));
+                    if (cmp !== 0) return cmp * dirMult;
+                  } else if (va !== vb) {
+                    return (va - vb) * dirMult;
+                  }
+                  return Number(b.wins || 0) - Number(a.wins || 0) || Number(b.save_pct || 0) - Number(a.save_pct || 0);
+                })
                 .slice(0, 35);
+
+              const skaterColumns = [
+                ["player_name", "Player", "Player Name"],
+                ["position", "Pos", "Position"],
+                ...(isSeasonMode
+                  ? [
+                      ["season", "Season", "Season"],
+                      ["class_year", "Class", "Class Year"],
+                    ]
+                  : [["season", "Seasons", "Career Span"]]),
+                ["gp", "GP", "Games Played"],
+                ["goals", "G", "Goals"],
+                ["assists", "A", "Assists"],
+                ["points", "PTS", "Points"],
+                ["pts_per_gp", "PTS/G", "Points Per Game"],
+                ["ppg", "PPG", "Power-Play Goals"],
+                ["shg", "SHG", "Short-Handed Goals"],
+                ["gwg", "GWG", "Game-Winning Goals"],
+                ["shots", "SOG", "Shots on Goal"],
+                ["plus_minus", "+/-", "Plus/Minus"],
+                ["pim", "PIM", "Penalty Minutes"],
+              ];
+
+              const goalieColumns = [
+                ["player_name", "Goalie", "Goalie Name"],
+                ...(isSeasonMode
+                  ? [
+                      ["season", "Season", "Season"],
+                      ["class_year", "Class", "Class Year"],
+                    ]
+                  : [["season", "Seasons", "Career Span"]]),
+                ["gp", "GP", "Games Played"],
+                ["wins", "W", "Wins"],
+                ["losses", "L", "Losses"],
+                ["ties", "T", "Ties"],
+                ["save_pct", "SV%", "Save Percentage"],
+                ["gaa", "GAA", "Goals Against Average"],
+                ["saves", "SV", "Saves"],
+                ["ga", "GA", "Goals Against"],
+                ["shutouts", "SO", "Shutouts"],
+              ];
 
               const sgr = recordsData.single_game_records || {};
               const streaks = recordsData.streaks || {};
@@ -4549,8 +4669,8 @@ export default function App() {
                         <h2>Program Leaderboards (1999&ndash;Present)</h2>
                         <span className="muted">
                           {isSeasonMode
-                            ? "All-time single-season benchmarks — filterable by position & class year"
-                            : "All-time career totals across the modern Huskies archive"}
+                            ? "All-time single-season benchmarks — tap any column header to sort"
+                            : "All-time career totals across the modern Huskies archive — tap any column header to sort"}
                         </span>
                       </div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
@@ -4609,28 +4729,34 @@ export default function App() {
                         <table className="data-table">
                           <thead>
                             <tr>
-                              <th>#</th>
-                              <th>Player</th>
-                              <th>Pos</th>
-                              {isSeasonMode ? (
-                                <>
-                                  <th>Season</th>
-                                  <th>Class</th>
-                                </>
-                              ) : (
-                                <th>Seasons</th>
-                              )}
-                              <th>GP</th>
-                              <th>G</th>
-                              <th>A</th>
-                              <th>PTS</th>
-                              <th>PTS/G</th>
-                              <th>PPG</th>
-                              <th>SHG</th>
-                              <th>GWG</th>
-                              <th>SOG</th>
-                              <th>+/-</th>
-                              <th>PIM</th>
+                              <th scope="col">#</th>
+                              {skaterColumns.map(([colKey, label, fullLabel]) => {
+                                const isSorted = recordSkaterSort.key === colKey;
+                                const ariaSort = isSorted
+                                  ? recordSkaterSort.dir === "desc"
+                                    ? "descending"
+                                    : "ascending"
+                                  : "none";
+                                return (
+                                  <th
+                                    key={colKey}
+                                    scope="col"
+                                    className="sortable"
+                                    aria-sort={ariaSort}
+                                    tabIndex={0}
+                                    aria-label={`Sort skaters by ${fullLabel}`}
+                                    onClick={() => toggleRecordSkaterSort(colKey)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        toggleRecordSkaterSort(colKey);
+                                      }
+                                    }}
+                                  >
+                                    {label} {isSorted ? (recordSkaterSort.dir === "desc" ? "↓" : "↑") : ""}
+                                  </th>
+                                );
+                              })}
                             </tr>
                           </thead>
                           <tbody>
@@ -4688,23 +4814,34 @@ export default function App() {
                         <table className="data-table">
                           <thead>
                             <tr>
-                              <th>#</th>
-                              <th>Goalie</th>
-                              {isSeasonMode ? (
-                                <>
-                                  <th>Season</th>
-                                  <th>Class</th>
-                                </>
-                              ) : (
-                                <th>Seasons</th>
-                              )}
-                              <th>GP</th>
-                              <th>W-L-T</th>
-                              <th>SV%</th>
-                              <th>GAA</th>
-                              <th>SV</th>
-                              <th>GA</th>
-                              <th>SO</th>
+                              <th scope="col">#</th>
+                              {goalieColumns.map(([colKey, label, fullLabel]) => {
+                                const isSorted = recordGoalieSort.key === colKey;
+                                const ariaSort = isSorted
+                                  ? recordGoalieSort.dir === "desc"
+                                    ? "descending"
+                                    : "ascending"
+                                  : "none";
+                                return (
+                                  <th
+                                    key={colKey}
+                                    scope="col"
+                                    className="sortable"
+                                    aria-sort={ariaSort}
+                                    tabIndex={0}
+                                    aria-label={`Sort goalies by ${fullLabel}`}
+                                    onClick={() => toggleRecordGoalieSort(colKey)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        toggleRecordGoalieSort(colKey);
+                                      }
+                                    }}
+                                  >
+                                    {label} {isSorted ? (recordGoalieSort.dir === "desc" ? "↓" : "↑") : ""}
+                                  </th>
+                                );
+                              })}
                             </tr>
                           </thead>
                           <tbody>
@@ -4733,7 +4870,9 @@ export default function App() {
                                   </td>
                                 )}
                                 <td>{gl.gp ?? gl.goalie_gp}</td>
-                                <td>{`${gl.wins}-${gl.losses}-${gl.ties}`}</td>
+                                <td><strong>{gl.wins}</strong></td>
+                                <td>{gl.losses}</td>
+                                <td>{gl.ties}</td>
                                 <td><strong>{Number(gl.save_pct || 0).toFixed(3)}</strong></td>
                                 <td>{Number(gl.gaa || 0).toFixed(2)}</td>
                                 <td>{gl.saves}</td>
