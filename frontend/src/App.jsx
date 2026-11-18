@@ -5596,7 +5596,7 @@ export default function App() {
                   Boston&apos;s annual tournament at TD Garden &bull; 9 All-Time Championships (1980, 1984, 1985, 1988, 2018, 2019, 2020, 2023, 2024)
                 </p>
               </div>
-              <div className="subtab-bar" role="tablist" aria-label="Beanpot sections">
+              <div className="segmented" role="tablist" aria-label="Beanpot sections">
                 {[
                   ["overview", "Overview & Titles"],
                   ["history", "Tournament History"],
@@ -5608,7 +5608,7 @@ export default function App() {
                     type="button"
                     role="tab"
                     aria-selected={beanpotSubTab === key}
-                    className={`subtab-btn ${beanpotSubTab === key ? "active" : ""}`}
+                    className={`segmented-btn ${beanpotSubTab === key ? "active" : ""}`}
                     onClick={() => setBeanpotSubTab(key)}
                   >
                     {label}
@@ -5784,7 +5784,7 @@ export default function App() {
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                        <div className="subtab-bar">
+                        <div className="segmented">
                           {[
                             ["all", `All Tournaments (${(beanpotData.tournaments || []).length})`],
                             ["titles", "Championships"],
@@ -5793,7 +5793,7 @@ export default function App() {
                             <button
                               key={k}
                               type="button"
-                              className={`subtab-btn ${beanpotHistoryFilter === k ? "active" : ""}`}
+                              className={`segmented-btn ${beanpotHistoryFilter === k ? "active" : ""}`}
                               onClick={() => setBeanpotHistoryFilter(k)}
                             >
                               {lbl}
