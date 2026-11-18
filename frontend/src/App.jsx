@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import LegalModal from "./LegalModals.jsx";
@@ -571,6 +571,7 @@ export default function App() {
   // Beanpot Hub state
   const [beanpotData, setBeanpotData] = useState(null);
   const [beanpotLoading, setBeanpotLoading] = useState(false);
+  const [beanpotError, setBeanpotError] = useState("");
   const [beanpotSubTab, setBeanpotSubTab] = useState("overview"); // "overview" | "history" | "leaders" | "moments"
   const [beanpotHistoryFilter, setBeanpotHistoryFilter] = useState("all"); // "all" | "titles" | "finals"
   const [beanpotSkaterSort, setBeanpotSkaterSort] = useState({ key: "points", dir: "desc" });
@@ -988,14 +989,26 @@ export default function App() {
       .finally(() => setRecordsLoading(false));
   }, [tab, recordsPosition, recordsClassYear, chemSeason, chemStrength, otdMmdd]);
 
-  useEffect(() => {
-    if (tab !== "beanpot" || beanpotData) return;
+  const fetchBeanpotData = useCallback(() => {
     setBeanpotLoading(true);
+    setBeanpotError("");
     fetch(`${API_BASE}/api/beanpot`)
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (!r.ok) {
+          const text = await r.text().catch(() => "");
+          throw new Error(text || `Request failed (${r.status})`);
+        }
+        return r.json();
+      })
       .then((data) => setBeanpotData(data))
+      .catch((err) => setBeanpotError(err?.message || "Failed to load Beanpot data."))
       .finally(() => setBeanpotLoading(false));
-  }, [tab, beanpotData]);
+  }, []);
+
+  useEffect(() => {
+    if (tab !== "beanpot" || beanpotData || beanpotLoading || beanpotError) return;
+    fetchBeanpotData();
+  }, [tab, beanpotData, beanpotLoading, beanpotError, fetchBeanpotData]);
 
   useEffect(() => {
     if (!selectedSeason) return;
@@ -5617,7 +5630,16 @@ export default function App() {
               </div>
             </div>
 
-            {beanpotLoading || !beanpotData ? (
+            {beanpotError ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
+                <p className="muted" style={{ margin: 0 }}>
+                  Could not load Beanpot data: {beanpotError}
+                </p>
+                <button type="button" className="btn-ghost" onClick={fetchBeanpotData}>
+                  Retry
+                </button>
+              </div>
+            ) : beanpotLoading || !beanpotData ? (
               <p className="muted">Loading Beanpot history and statistics...</p>
             ) : (
               <>

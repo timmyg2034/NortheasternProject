@@ -2788,7 +2788,16 @@ _ALL_TIME_TITLES_BY_SCHOOL = [
 ]
 
 
+_BEANPOT_CACHE: dict[str, Any] = {}
+_BEANPOT_LOCK = threading.Lock()
+
+
 def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
+    v = getattr(ds, "dataset_version", None) or getattr(state, "dataset_version", None) or "default"
+    with _BEANPOT_LOCK:
+        if _BEANPOT_CACHE.get("version") == v and "data" in _BEANPOT_CACHE:
+            return _BEANPOT_CACHE["data"]
+
     games = ds.games.copy()
     bp_games = games[games.get("game_type", "") == "Beanpot"].sort_values("date").copy()
 
@@ -2825,7 +2834,7 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
     }
 
     for yr, grp in bp_games.groupby("year"):
-        yr_games = grp.sort_values("date").to_dict(orient="records")
+        yr_games = _records(grp.sort_values("date"))
         g1 = yr_games[0] if len(yr_games) >= 1 else None
         g2 = yr_games[1] if len(yr_games) >= 2 else None
 
@@ -2918,8 +2927,18 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
     gf_tot = int(bp_games["nu_goals"].sum())
     ga_tot = int(bp_games["opp_goals"].sum())
 
+    # Goals scored by NU in Beanpot games (used for PPG/SHG and OT winner moments)
+    g_bp = ds.goals[(ds.goals["date"].isin(bp_dates)) & (ds.goals["team"] == "Northeastern")].copy()
+    ppg_by_player: dict[str, int] = {}
+    shg_by_player: dict[str, int] = {}
+    if not g_bp.empty and "scorer" in g_bp.columns and "strength" in g_bp.columns:
+        ppg_by_player = g_bp[g_bp["strength"] == "PP"].groupby("scorer").size().to_dict()
+        shg_by_player = g_bp[g_bp["strength"] == "SH"].groupby("scorer").size().to_dict()
+
     # Skater leaders in Beanpot (box-score era)
     sk_bp = ds.skaters[ds.skaters["date"].isin(bp_dates)].copy()
+    if not sk_bp.empty and "position" in sk_bp.columns:
+        sk_bp = sk_bp[sk_bp["position"] != "G"].copy()
     skater_leaders: list[dict[str, Any]] = []
     if not sk_bp.empty:
         sk_bp["year"] = sk_bp["date"].astype(str).str.slice(0, 4).astype(int)
@@ -2931,8 +2950,6 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
                 goals=("goals", "sum"),
                 assists=("assists", "sum"),
                 points=("points", "sum"),
-                ppg=("ppg", "sum"),
-                shg=("shg", "sum"),
                 gwg=("gwg", "sum"),
                 shots=("shots", "sum"),
                 pim=("penalty_minutes", "sum"),
@@ -2941,6 +2958,8 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
                 last_year=("year", "max"),
             )
         )
+        sk_agg["ppg"] = sk_agg["player_name"].map(lambda n: int(ppg_by_player.get(n, 0)))
+        sk_agg["shg"] = sk_agg["player_name"].map(lambda n: int(shg_by_player.get(n, 0)))
         sk_agg["pts_per_gp"] = sk_agg.apply(lambda r: round(r["points"] / r["gp"], 2) if r["gp"] > 0 else 0.0, axis=1)
         sk_agg["span"] = sk_agg.apply(
             lambda r: str(r["first_year"]) if r["first_year"] == r["last_year"] else f"{r['first_year']}–{str(r['last_year'])[-2:]}",
@@ -2958,6 +2977,8 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
         gl_bp["wins"] = (gl_bp["decision"] == "W").astype(int)
         gl_bp["losses"] = (gl_bp["decision"] == "L").astype(int)
         gl_bp["ties"] = (gl_bp["decision"] == "T").astype(int)
+        gl_bp["shutouts"] = pd.to_numeric(gl_bp["shutouts"], errors="coerce").fillna(0).astype(int)
+        gl_bp["minutes_num"] = gl_bp["minutes"].apply(_parse_minutes_to_float)
         gl_agg = (
             gl_bp.groupby("goalie_name", as_index=False)
             .agg(
@@ -2968,7 +2989,7 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
                 saves=("saves", "sum"),
                 ga=("goals_against", "sum"),
                 shutouts=("shutouts", "sum"),
-                minutes=("minutes", "sum"),
+                minutes=("minutes_num", "sum"),
                 first_year=("year", "min"),
                 last_year=("year", "max"),
             )
@@ -2981,6 +3002,7 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
             lambda r: round((r["ga"] * 60.0) / r["minutes"], 2) if r["minutes"] > 0 else 0.0,
             axis=1,
         )
+        gl_agg["minutes"] = gl_agg["minutes"].round(1)
         gl_agg["span"] = gl_agg.apply(
             lambda r: str(r["first_year"]) if r["first_year"] == r["last_year"] else f"{r['first_year']}–{str(r['last_year'])[-2:]}",
             axis=1,
@@ -3012,7 +3034,6 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
                     "headline": f"{pname}: {gls}G, {ast}A ({pts} PTS) vs. {opp}",
                 })
 
-    g_bp = ds.goals[(ds.goals["date"].isin(bp_dates)) & (ds.goals["team"] == "Northeastern")].copy()
     if not g_bp.empty:
         for r in g_bp[(g_bp["period"].isin(["OT", "1OT", "2OT", "3OT"])) & (g_bp["is_gwg"] == 1)].sort_values("date", ascending=False).itertuples():
             dt = str(getattr(r, "date", ""))
@@ -3073,7 +3094,7 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
 
     moments.sort(key=lambda x: x["date"], reverse=True)
 
-    return {
+    result = {
         "summary": {
             "era": "2000–2026 (Box-Score Era)",
             "tournaments": len(tournaments),
@@ -3098,6 +3119,10 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
         "all_time_titles": _ALL_TIME_TITLES_BY_SCHOOL,
         "nu_championships": _NU_ALL_TIME_BEANPOT_TITLES,
     }
+    with _BEANPOT_LOCK:
+        _BEANPOT_CACHE["version"] = v
+        _BEANPOT_CACHE["data"] = result
+    return result
 
 
 @app.get("/api/beanpot")
