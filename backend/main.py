@@ -2760,6 +2760,352 @@ def get_program_records(
     }
 
 
+_NU_ALL_TIME_BEANPOT_TITLES = [
+    {"year": 1980, "opponent": "Boston College", "score": "5-4 OT", "mvp": "Dave Archambault", "eberly": "—", "note": "Program's first Beanpot title; Wayne Turner OT winner"},
+    {"year": 1984, "opponent": "Boston University", "score": "7-3", "mvp": "Tim Marshall", "eberly": "—", "note": "Second Beanpot championship"},
+    {"year": 1985, "opponent": "Boston College", "score": "6-3", "mvp": "Bruce Racine", "eberly": "Bruce Racine", "note": "Back-to-back titles"},
+    {"year": 1988, "opponent": "Boston University", "score": "6-3", "mvp": "Bruce Racine", "eberly": "Bruce Racine", "note": "Racine became only goalie to win two Beanpot MVPs"},
+    {"year": 2018, "opponent": "Boston University", "score": "5-2", "mvp": "Adam Gaudette", "eberly": "Cayden Primeau", "note": "Ended 30-year drought; Gaudette hat trick in final"},
+    {"year": 2019, "opponent": "Boston College", "score": "4-2", "mvp": "Cayden Primeau", "eberly": "Cayden Primeau", "note": "Back-to-back Beanpot champions"},
+    {"year": 2020, "opponent": "Boston University", "score": "5-4 2OT", "mvp": "Zach Solow", "eberly": "Craig Pantano", "note": "Three-peat! Jordan Harris 2OT winner (4-4 NCAA official)"},
+    {"year": 2023, "opponent": "Harvard", "score": "3-2 SO", "mvp": "Devon Levi", "eberly": "Devon Levi", "note": "First-ever NU–Harvard final & first Beanpot shootout"},
+    {"year": 2024, "opponent": "Boston University", "score": "4-3 OT", "mvp": "Gunnarwolfe Fontaine", "eberly": "Cameron Whitehead", "note": "5th title in 6 tournaments; Fontaine OT winner in both games"},
+]
+
+_BEANPOT_YEAR_AWARDS = {
+    2018: {"mvp": "Adam Gaudette", "eberly": "Cayden Primeau", "note": "Ended 30-year drought"},
+    2019: {"mvp": "Cayden Primeau", "eberly": "Cayden Primeau", "note": "Back-to-back champions"},
+    2020: {"mvp": "Zach Solow", "eberly": "Craig Pantano", "note": "Three-peat (5-4 2OT; 4-4 NCAA official)"},
+    2023: {"mvp": "Devon Levi", "eberly": "Devon Levi", "note": "First NU–Harvard final & SO win"},
+    2024: {"mvp": "Gunnarwolfe Fontaine", "eberly": "Cameron Whitehead", "note": "5th title in 6 tournaments"},
+}
+
+_ALL_TIME_TITLES_BY_SCHOOL = [
+    {"school": "Boston University", "titles": 32, "finals": 58, "last_title": 2025},
+    {"school": "Boston College", "titles": 21, "finals": 38, "last_title": 2026},
+    {"school": "Harvard", "titles": 11, "finals": 27, "last_title": 2017},
+    {"school": "Northeastern", "titles": 9, "finals": 23, "last_title": 2024},
+]
+
+
+def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
+    games = ds.games.copy()
+    bp_games = games[games.get("game_type", "") == "Beanpot"].sort_values("date").copy()
+
+    if bp_games.empty:
+        return {
+            "summary": {},
+            "tournaments": [],
+            "rivals": [],
+            "skater_leaders": [],
+            "goalie_leaders": [],
+            "moments": [],
+            "all_time_titles": _ALL_TIME_TITLES_BY_SCHOOL,
+            "nu_championships": _NU_ALL_TIME_BEANPOT_TITLES,
+        }
+
+    bp_games["year"] = bp_games["date"].astype(str).str.slice(0, 4).astype(int)
+    bp_dates = set(bp_games["date"].astype(str))
+
+    tournaments: list[dict[str, Any]] = []
+    semi_w = semi_l = semi_t = 0
+    champ_w = champ_l = champ_t = 0
+    cons_w = cons_l = cons_t = 0
+    championships_era = 0
+    finals_era = 0
+
+    rival_stats: dict[str, dict[str, Any]] = {
+        opp: {
+            "opponent": opp,
+            "gp": 0, "wins": 0, "losses": 0, "ties": 0,
+            "gf": 0, "ga": 0, "ot_games": 0, "so_games": 0,
+            "finals_vs": 0, "titles_won_vs": 0,
+        }
+        for opp in ("Boston University", "Boston College", "Harvard")
+    }
+
+    for yr, grp in bp_games.groupby("year"):
+        yr_games = grp.sort_values("date").to_dict(orient="records")
+        g1 = yr_games[0] if len(yr_games) >= 1 else None
+        g2 = yr_games[1] if len(yr_games) >= 2 else None
+
+        def _won_or_advanced(g: dict[str, Any] | None) -> bool:
+            if not g:
+                return False
+            if g.get("outcome") == "W":
+                return True
+            if g.get("outcome") == "T" and g.get("shootout_winner") == "Northeastern":
+                return True
+            return False
+
+        advanced = _won_or_advanced(g1)
+        round2_label = "Championship" if advanced else "Consolation"
+        if advanced:
+            finals_era += 1
+
+        # Determine tournament finish
+        if yr == 2020:
+            finish = "Champion"
+            championships_era += 1
+        elif round2_label == "Championship" and _won_or_advanced(g2):
+            finish = "Champion"
+            championships_era += 1
+        elif round2_label == "Championship":
+            finish = "Runner-Up"
+        elif _won_or_advanced(g2):
+            finish = "3rd Place"
+        elif g2 and g2.get("outcome") == "T" and g2.get("shootout_winner") in ("None", "", None):
+            finish = "3rd Place (Tie)"
+        else:
+            finish = "4th Place"
+
+        # Accumulate round & rival stats
+        for idx, g in enumerate(yr_games):
+            out = g.get("outcome")
+            opp = str(g.get("opponent", ""))
+            nug = int(g.get("nu_goals", 0) or 0)
+            oppg = int(g.get("opp_goals", 0) or 0)
+            is_ot = int(g.get("is_overtime", 0) or 0)
+            is_so = int(g.get("is_shootout", 0) or 0)
+
+            if idx == 0:
+                if out == "W": semi_w += 1
+                elif out == "L": semi_l += 1
+                else: semi_t += 1
+            else:
+                if round2_label == "Championship":
+                    if out == "W": champ_w += 1
+                    elif out == "L": champ_l += 1
+                    else: champ_t += 1
+                else:
+                    if out == "W": cons_w += 1
+                    elif out == "L": cons_l += 1
+                    else: cons_t += 1
+
+            if opp in rival_stats:
+                rs = rival_stats[opp]
+                rs["gp"] += 1
+                if out == "W": rs["wins"] += 1
+                elif out == "L": rs["losses"] += 1
+                else: rs["ties"] += 1
+                rs["gf"] += nug
+                rs["ga"] += oppg
+                rs["ot_games"] += is_ot
+                rs["so_games"] += is_so
+                if idx == 1 and round2_label == "Championship":
+                    rs["finals_vs"] += 1
+                    if finish == "Champion":
+                        rs["titles_won_vs"] += 1
+
+        awards = _BEANPOT_YEAR_AWARDS.get(int(yr), {})
+        tournaments.append({
+            "year": int(yr),
+            "season": g1.get("season", "") if g1 else (g2.get("season", "") if g2 else ""),
+            "semifinal": g1,
+            "round2_label": round2_label,
+            "round2": g2,
+            "finish": finish,
+            "mvp": awards.get("mvp", ""),
+            "eberly": awards.get("eberly", ""),
+            "note": awards.get("note", ""),
+        })
+
+    tournaments.sort(key=lambda x: x["year"], reverse=True)
+
+    tot_w = int((bp_games["outcome"] == "W").sum())
+    tot_l = int((bp_games["outcome"] == "L").sum())
+    tot_t = int((bp_games["outcome"] == "T").sum())
+    gf_tot = int(bp_games["nu_goals"].sum())
+    ga_tot = int(bp_games["opp_goals"].sum())
+
+    # Skater leaders in Beanpot (box-score era)
+    sk_bp = ds.skaters[ds.skaters["date"].isin(bp_dates)].copy()
+    skater_leaders: list[dict[str, Any]] = []
+    if not sk_bp.empty:
+        sk_bp["year"] = sk_bp["date"].astype(str).str.slice(0, 4).astype(int)
+        sk_bp["gp"] = 1
+        sk_agg = (
+            sk_bp.groupby("player_name", as_index=False)
+            .agg(
+                gp=("gp", "sum"),
+                goals=("goals", "sum"),
+                assists=("assists", "sum"),
+                points=("points", "sum"),
+                ppg=("ppg", "sum"),
+                shg=("shg", "sum"),
+                gwg=("gwg", "sum"),
+                shots=("shots", "sum"),
+                pim=("penalty_minutes", "sum"),
+                plus_minus=("plus_minus", "sum"),
+                first_year=("year", "min"),
+                last_year=("year", "max"),
+            )
+        )
+        sk_agg["pts_per_gp"] = sk_agg.apply(lambda r: round(r["points"] / r["gp"], 2) if r["gp"] > 0 else 0.0, axis=1)
+        sk_agg["span"] = sk_agg.apply(
+            lambda r: str(r["first_year"]) if r["first_year"] == r["last_year"] else f"{r['first_year']}–{str(r['last_year'])[-2:]}",
+            axis=1,
+        )
+        sk_agg = sk_agg.sort_values(["points", "goals", "gp"], ascending=[False, False, True]).head(100)
+        skater_leaders = _records(sk_agg)
+
+    # Goalie leaders in Beanpot (box-score era)
+    gl_bp = ds.goalies[ds.goalies["date"].isin(bp_dates)].copy()
+    goalie_leaders: list[dict[str, Any]] = []
+    if not gl_bp.empty:
+        gl_bp["year"] = gl_bp["date"].astype(str).str.slice(0, 4).astype(int)
+        gl_bp["gp"] = 1
+        gl_bp["wins"] = (gl_bp["decision"] == "W").astype(int)
+        gl_bp["losses"] = (gl_bp["decision"] == "L").astype(int)
+        gl_bp["ties"] = (gl_bp["decision"] == "T").astype(int)
+        gl_agg = (
+            gl_bp.groupby("goalie_name", as_index=False)
+            .agg(
+                gp=("gp", "sum"),
+                wins=("wins", "sum"),
+                losses=("losses", "sum"),
+                ties=("ties", "sum"),
+                saves=("saves", "sum"),
+                ga=("goals_against", "sum"),
+                shutouts=("shutouts", "sum"),
+                minutes=("minutes", "sum"),
+                first_year=("year", "min"),
+                last_year=("year", "max"),
+            )
+        )
+        gl_agg["save_pct"] = gl_agg.apply(
+            lambda r: round(r["saves"] / (r["saves"] + r["ga"]), 3) if (r["saves"] + r["ga"]) > 0 else 0.0,
+            axis=1,
+        )
+        gl_agg["gaa"] = gl_agg.apply(
+            lambda r: round((r["ga"] * 60.0) / r["minutes"], 2) if r["minutes"] > 0 else 0.0,
+            axis=1,
+        )
+        gl_agg["span"] = gl_agg.apply(
+            lambda r: str(r["first_year"]) if r["first_year"] == r["last_year"] else f"{r['first_year']}–{str(r['last_year'])[-2:]}",
+            axis=1,
+        )
+        gl_agg = gl_agg.sort_values(["wins", "save_pct", "saves"], ascending=[False, False, False]).head(50)
+        goalie_leaders = _records(gl_agg)
+
+    # Iconic Beanpot moments (box-score era)
+    moments: list[dict[str, Any]] = []
+    seen_moments: set[tuple[str, str, str]] = set()
+    if not sk_bp.empty:
+        for r in sk_bp[(sk_bp["goals"] >= 3) | (sk_bp["points"] >= 3)].sort_values(["date", "points"], ascending=[False, False]).itertuples():
+            dt = str(getattr(r, "date", ""))
+            opp = str(getattr(r, "opponent", ""))
+            pname = str(getattr(r, "player_name", ""))
+            gls = int(getattr(r, "goals", 0) or 0)
+            ast = int(getattr(r, "assists", 0) or 0)
+            pts = int(getattr(r, "points", 0) or 0)
+            badge = "Hat Trick" if gls >= 3 else f"{pts}-Point Night"
+            key = (dt, pname, badge)
+            if key not in seen_moments:
+                seen_moments.add(key)
+                moments.append({
+                    "type": badge,
+                    "date": dt,
+                    "year": int(dt[:4]),
+                    "opponent": opp,
+                    "player_name": pname,
+                    "headline": f"{pname}: {gls}G, {ast}A ({pts} PTS) vs. {opp}",
+                })
+
+    g_bp = ds.goals[(ds.goals["date"].isin(bp_dates)) & (ds.goals["team"] == "Northeastern")].copy()
+    if not g_bp.empty:
+        for r in g_bp[(g_bp["period"].isin(["OT", "1OT", "2OT", "3OT"])) & (g_bp["is_gwg"] == 1)].sort_values("date", ascending=False).itertuples():
+            dt = str(getattr(r, "date", ""))
+            opp = str(getattr(r, "opponent", ""))
+            sc = str(getattr(r, "scorer", ""))
+            tm = str(getattr(r, "time", ""))
+            prd = str(getattr(r, "period", "OT"))
+            key = (dt, sc, "OT Winner")
+            if key not in seen_moments:
+                seen_moments.add(key)
+                moments.append({
+                    "type": "OT Winner",
+                    "date": dt,
+                    "year": int(dt[:4]),
+                    "opponent": opp,
+                    "player_name": sc,
+                    "headline": f"{sc} scored the {prd} winner ({tm}) vs. {opp}",
+                })
+
+    if "2020-02-10" in bp_dates:
+        moments.append({
+            "type": "2OT Title Winner",
+            "date": "2020-02-10",
+            "year": 2020,
+            "opponent": "Boston University",
+            "player_name": "Jordan Harris",
+            "headline": "Jordan Harris scored in 2OT (5-4) vs. Boston University to clinch the three-peat",
+        })
+    if "2023-02-13" in bp_dates:
+        moments.append({
+            "type": "SO Title Winner",
+            "date": "2023-02-13",
+            "year": 2023,
+            "opponent": "Harvard",
+            "player_name": "Aidan McDonough",
+            "headline": "Aidan McDonough & Devon Levi sealed the first-ever Beanpot shootout title vs. Harvard",
+        })
+
+    if not gl_bp.empty:
+        for r in gl_bp[(gl_bp["shutouts"] > 0) | ((gl_bp["saves"] >= 35) & (gl_bp["decision"] == "W"))].sort_values(["date", "saves"], ascending=[False, False]).itertuples():
+            dt = str(getattr(r, "date", ""))
+            opp = str(getattr(r, "opponent", ""))
+            gname = str(getattr(r, "goalie_name", ""))
+            sv = int(getattr(r, "saves", 0) or 0)
+            sho = int(getattr(r, "shutouts", 0) or 0)
+            badge = "Shutout" if sho > 0 else f"{sv}-Save Win"
+            key = (dt, gname, badge)
+            if key not in seen_moments:
+                seen_moments.add(key)
+                moments.append({
+                    "type": badge,
+                    "date": dt,
+                    "year": int(dt[:4]),
+                    "opponent": opp,
+                    "player_name": gname,
+                    "headline": f"{gname} posted {sv} saves in a {'shutout ' if sho > 0 else ''}win vs. {opp}",
+                })
+
+    moments.sort(key=lambda x: x["date"], reverse=True)
+
+    return {
+        "summary": {
+            "era": "2000–2026 (Box-Score Era)",
+            "tournaments": len(tournaments),
+            "games": int(len(bp_games)),
+            "championships": championships_era,
+            "finals_appearances": finals_era,
+            "record": f"{tot_w}-{tot_l}-{tot_t}",
+            "wins": tot_w,
+            "losses": tot_l,
+            "ties": tot_t,
+            "semifinal_record": f"{semi_w}-{semi_l}-{semi_t}",
+            "championship_record": f"{champ_w}-{champ_l}-{champ_t}",
+            "consolation_record": f"{cons_w}-{cons_l}-{cons_t}",
+            "goals_for": gf_tot,
+            "goals_against": ga_tot,
+        },
+        "tournaments": tournaments,
+        "rivals": list(rival_stats.values()),
+        "skater_leaders": skater_leaders,
+        "goalie_leaders": goalie_leaders,
+        "moments": moments[:30],
+        "all_time_titles": _ALL_TIME_TITLES_BY_SCHOOL,
+        "nu_championships": _NU_ALL_TIME_BEANPOT_TITLES,
+    }
+
+
+@app.get("/api/beanpot")
+def get_beanpot_hub() -> dict[str, Any]:
+    ds = _require_datasets()
+    return _build_beanpot_data(ds)
+
+
 FRONTEND_DIST_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if FRONTEND_DIST_DIR.is_dir():
     assets_dir = FRONTEND_DIST_DIR / "assets"

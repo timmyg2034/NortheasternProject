@@ -568,6 +568,14 @@ export default function App() {
   const [chemStrength, setChemStrength] = useState("all");
   const [otdMmdd, setOtdMmdd] = useState("");
 
+  // Beanpot Hub state
+  const [beanpotData, setBeanpotData] = useState(null);
+  const [beanpotLoading, setBeanpotLoading] = useState(false);
+  const [beanpotSubTab, setBeanpotSubTab] = useState("overview"); // "overview" | "history" | "leaders" | "moments"
+  const [beanpotHistoryFilter, setBeanpotHistoryFilter] = useState("all"); // "all" | "titles" | "finals"
+  const [beanpotSkaterSort, setBeanpotSkaterSort] = useState({ key: "points", dir: "desc" });
+  const [beanpotGoalieSort, setBeanpotGoalieSort] = useState({ key: "wins", dir: "desc" });
+
   // Roster state
   const [roster, setRoster] = useState(null);
   const [rosterLoading, setRosterLoading] = useState(false);
@@ -981,6 +989,15 @@ export default function App() {
   }, [tab, recordsPosition, recordsClassYear, chemSeason, chemStrength, otdMmdd]);
 
   useEffect(() => {
+    if (tab !== "beanpot" || beanpotData) return;
+    setBeanpotLoading(true);
+    fetch(`${API_BASE}/api/beanpot`)
+      .then((r) => r.json())
+      .then((data) => setBeanpotData(data))
+      .finally(() => setBeanpotLoading(false));
+  }, [tab, beanpotData]);
+
+  useEffect(() => {
     if (!selectedSeason) return;
     if (tab === "leaders") {
       setLeadersLoading(true);
@@ -1071,8 +1088,11 @@ export default function App() {
     if (tab === "rivalry") {
       return `User is viewing Opponent history vs. ${selectedRival}.`;
     }
+    if (tab === "beanpot") {
+      return `User is viewing Beanpot Tournament Hub (${beanpotSubTab}).`;
+    }
     return null;
-  }, [selectedPlayer, tab, selectedSeason, leaderScope, leaderLocation, leaderOpponent, selectedRival, recordsSubTab]);
+  }, [selectedPlayer, tab, selectedSeason, leaderScope, leaderLocation, leaderOpponent, selectedRival, recordsSubTab, beanpotSubTab]);
 
   const sortedSkaters = useMemo(() => {
     if (!leaders?.skaters) return [];
@@ -1368,6 +1388,15 @@ export default function App() {
           >
             <SwordsIcon />
             <span>Opponents</span>
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${!selectedPlayer && tab === "beanpot" ? "active" : ""}`}
+            aria-current={!selectedPlayer && tab === "beanpot" ? "page" : undefined}
+            onClick={() => navigateTab("beanpot")}
+          >
+            <TrophyIcon />
+            <span>Beanpot</span>
           </button>
           <button
             type="button"
@@ -5557,6 +5586,480 @@ export default function App() {
             })()}
           </section>
         )}
+
+        {tab === "beanpot" && (
+          <section className="card" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+              <div>
+                <h2 style={{ margin: 0 }}>The Beanpot — Northeastern Huskies Hub</h2>
+                <p className="muted" style={{ margin: "4px 0 0" }}>
+                  Boston&apos;s annual tournament at TD Garden &bull; 9 All-Time Championships (1980, 1984, 1985, 1988, 2018, 2019, 2020, 2023, 2024)
+                </p>
+              </div>
+              <div className="subtab-bar" role="tablist" aria-label="Beanpot sections">
+                {[
+                  ["overview", "Overview & Titles"],
+                  ["history", "Tournament History"],
+                  ["leaders", "Beanpot Leaders"],
+                  ["moments", "Iconic Moments"],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={beanpotSubTab === key}
+                    className={`subtab-btn ${beanpotSubTab === key ? "active" : ""}`}
+                    onClick={() => setBeanpotSubTab(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {beanpotLoading || !beanpotData ? (
+              <p className="muted">Loading Beanpot history and statistics...</p>
+            ) : (
+              <>
+                <div className="kpi-grid">
+                  <div className="kpi-card">
+                    <div className="val">9</div>
+                    <div className="lbl">All-Time Titles (5 since 2018)</div>
+                  </div>
+                  <div className="kpi-card">
+                    <div className="val">{beanpotData.summary?.record || "—"}</div>
+                    <div className="lbl">Record (2000–2026)</div>
+                  </div>
+                  <div className="kpi-card">
+                    <div className="val">{beanpotData.summary?.finals_appearances ?? 0}</div>
+                    <div className="lbl">Finals Since 2000 ({beanpotData.summary?.championships ?? 0} Won)</div>
+                  </div>
+                  <div className="kpi-card">
+                    <div className="val">
+                      {beanpotData.summary ? `${beanpotData.summary.goals_for}-${beanpotData.summary.goals_against}` : "—"}
+                    </div>
+                    <div className="lbl">Goals (NU–Opp, 2000–2026)</div>
+                  </div>
+                </div>
+
+                {beanpotSubTab === "overview" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                    <div>
+                      <h3>Northeastern vs. Beanpot Rivals (2000–2026 Box-Score Era)</h3>
+                      <p className="muted" style={{ marginTop: 0 }}>
+                        Semifinal record: <strong>{beanpotData.summary?.semifinal_record}</strong> &bull;
+                        Championship games: <strong>{beanpotData.summary?.championship_record}</strong> &bull;
+                        Consolation games: <strong>{beanpotData.summary?.consolation_record}</strong>
+                      </p>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Opponent</th>
+                              <th>GP</th>
+                              <th>W-L-T</th>
+                              <th>GF-GA</th>
+                              <th>OT Games</th>
+                              <th>SO Games</th>
+                              <th>Finals Met</th>
+                              <th>Titles Won vs.</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(beanpotData.rivals || []).map((rv) => (
+                              <tr key={rv.opponent}>
+                                <td>
+                                  <span className="opp-with-logo">
+                                    <OpponentLogo name={rv.opponent} />
+                                    <strong>{rv.opponent}</strong>
+                                  </span>
+                                </td>
+                                <td>{rv.gp}</td>
+                                <td><strong>{`${rv.wins}-${rv.losses}-${rv.ties}`}</strong></td>
+                                <td>{`${rv.gf}-${rv.ga}`}</td>
+                                <td>{rv.ot_games}</td>
+                                <td>{rv.so_games}</td>
+                                <td>{rv.finals_vs}</td>
+                                <td><strong>{rv.titles_won_vs}</strong></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3>All 9 Northeastern Beanpot Championships (1952–Present)</h3>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Year</th>
+                              <th>Final Opponent</th>
+                              <th>Score</th>
+                              <th>Beanpot MVP</th>
+                              <th>Eberly Award</th>
+                              <th>Highlight</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(beanpotData.nu_championships || []).map((c) => (
+                              <tr key={c.year}>
+                                <td><strong>{c.year}</strong></td>
+                                <td>
+                                  <span className="opp-with-logo">
+                                    <OpponentLogo name={c.opponent} />
+                                    <span>{c.opponent}</span>
+                                  </span>
+                                </td>
+                                <td><strong>{c.score}</strong></td>
+                                <td>{c.mvp}</td>
+                                <td>{c.eberly}</td>
+                                <td className="muted">{c.note}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3>All-Time Men&apos;s Beanpot Titles by School (1952–2026)</h3>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>School</th>
+                              <th>Titles</th>
+                              <th>Finals Appearances</th>
+                              <th>Last Championship</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(beanpotData.all_time_titles || []).map((s) => (
+                              <tr key={s.school}>
+                                <td>
+                                  <strong>{s.school}</strong>
+                                </td>
+                                <td><strong>{s.titles}</strong></td>
+                                <td>{s.finals}</td>
+                                <td>{s.last_title}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {beanpotSubTab === "history" && (() => {
+                  const filtered = (beanpotData.tournaments || []).filter((t) => {
+                    if (beanpotHistoryFilter === "titles") return t.finish === "Champion";
+                    if (beanpotHistoryFilter === "finals") return t.finish === "Champion" || t.finish === "Runner-Up";
+                    return true;
+                  });
+                  const renderGameCell = (g, labelPrefix) => {
+                    if (!g) return <span className="muted">—</span>;
+                    const otLabel = g.overtime_status && g.overtime_status !== "REG" ? ` (${g.overtime_status})` : "";
+                    return (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                        <span className="opp-with-logo">
+                          <OpponentLogo name={g.opponent} />
+                          <span>
+                            {labelPrefix ? <strong>{labelPrefix}: </strong> : ""}
+                            {g.opponent} &bull; <OutcomeBadge outcome={g.outcome} /> <strong>{`${g.nu_goals}-${g.opp_goals}`}</strong>{otLabel}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          className="link-btn"
+                          onClick={() => openBoxScore(g.date, g.opponent)}
+                        >
+                          Box
+                        </button>
+                      </div>
+                    );
+                  };
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                        <div className="subtab-bar">
+                          {[
+                            ["all", `All Tournaments (${(beanpotData.tournaments || []).length})`],
+                            ["titles", "Championships"],
+                            ["finals", "Finals Appearances"],
+                          ].map(([k, lbl]) => (
+                            <button
+                              key={k}
+                              type="button"
+                              className={`subtab-btn ${beanpotHistoryFilter === k ? "active" : ""}`}
+                              onClick={() => setBeanpotHistoryFilter(k)}
+                            >
+                              {lbl}
+                            </button>
+                          ))}
+                        </div>
+                        <span className="muted" style={{ fontSize: 12 }}>
+                          Note: The 2021 Beanpot was cancelled due to COVID-19.
+                        </span>
+                      </div>
+
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Year</th>
+                              <th>Semifinal (Round 1)</th>
+                              <th>Round 2 (Final / Consolation)</th>
+                              <th>Finish</th>
+                              <th>Awards / Notes</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filtered.map((t) => (
+                              <tr key={t.year}>
+                                <td><strong>{t.year}</strong></td>
+                                <td>{renderGameCell(t.semifinal, "")}</td>
+                                <td>{renderGameCell(t.round2, t.round2_label)}</td>
+                                <td>
+                                  <span
+                                    style={{
+                                      fontWeight: 700,
+                                      color: t.finish === "Champion" ? "#d41b2c" : undefined,
+                                    }}
+                                  >
+                                    {t.finish === "Champion" ? "🏆 Champion" : t.finish}
+                                  </span>
+                                </td>
+                                <td className="muted" style={{ fontSize: 12 }}>
+                                  {t.mvp ? `MVP: ${t.mvp}` : ""}
+                                  {t.eberly ? `${t.mvp ? " • " : ""}Eberly: ${t.eberly}` : ""}
+                                  {t.note && !t.mvp ? t.note : ""}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {beanpotSubTab === "leaders" && (() => {
+                  const toggleBpSkaterSort = (key) => {
+                    setBeanpotSkaterSort((prev) =>
+                      prev.key === key ? { key, dir: prev.dir === "desc" ? "asc" : "desc" } : { key, dir: "desc" }
+                    );
+                  };
+                  const toggleBpGoalieSort = (key) => {
+                    setBeanpotGoalieSort((prev) =>
+                      prev.key === key
+                        ? { key, dir: prev.dir === "desc" ? "asc" : "desc" }
+                        : { key, dir: key === "gaa" ? "asc" : "desc" }
+                    );
+                  };
+                  const sortRows = (rows, sortSpec) => {
+                    const list = [...(rows || [])];
+                    const { key, dir } = sortSpec;
+                    list.sort((a, b) => {
+                      if (key === "player_name" || key === "goalie_name" || key === "span") {
+                        const av = String(a[key] || "");
+                        const bv = String(b[key] || "");
+                        return dir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+                      }
+                      const av = Number(a[key] ?? 0);
+                      const bv = Number(b[key] ?? 0);
+                      return dir === "desc" ? bv - av : av - bv;
+                    });
+                    return list;
+                  };
+                  const bpSkaters = sortRows(beanpotData.skater_leaders, beanpotSkaterSort);
+                  const bpGoalies = sortRows(beanpotData.goalie_leaders, beanpotGoalieSort);
+
+                  const skTh = (key, label) => {
+                    const active = beanpotSkaterSort.key === key;
+                    return (
+                      <th
+                        key={key}
+                        className={`sortable ${active ? "sorted" : ""}`}
+                        onClick={() => toggleBpSkaterSort(key)}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleBpSkaterSort(key);
+                          }
+                        }}
+                      >
+                        {label} {active ? (beanpotSkaterSort.dir === "desc" ? "↓" : "↑") : ""}
+                      </th>
+                    );
+                  };
+                  const glTh = (key, label) => {
+                    const active = beanpotGoalieSort.key === key;
+                    return (
+                      <th
+                        key={key}
+                        className={`sortable ${active ? "sorted" : ""}`}
+                        onClick={() => toggleBpGoalieSort(key)}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            toggleBpGoalieSort(key);
+                          }
+                        }}
+                      >
+                        {label} {active ? (beanpotGoalieSort.dir === "desc" ? "↓" : "↑") : ""}
+                      </th>
+                    );
+                  };
+
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+                      <div>
+                        <h3>Beanpot Career Skater Leaders (2000–2026)</h3>
+                        <div className="table-wrap">
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                {skTh("player_name", "Player")}
+                                {skTh("span", "Years")}
+                                {skTh("gp", "GP")}
+                                {skTh("goals", "G")}
+                                {skTh("assists", "A")}
+                                {skTh("points", "PTS")}
+                                {skTh("pts_per_gp", "P/GP")}
+                                {skTh("ppg", "PPG")}
+                                {skTh("gwg", "GWG")}
+                                {skTh("plus_minus", "+/-")}
+                                {skTh("pim", "PIM")}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bpSkaters.map((r, idx) => (
+                                <tr key={r.player_name}>
+                                  <td>{idx + 1}</td>
+                                  <td>
+                                    <button
+                                      type="button"
+                                      className="link-btn"
+                                      onClick={() => openPlayer(r.player_name)}
+                                    >
+                                      {r.player_name}
+                                    </button>
+                                  </td>
+                                  <td>{r.span}</td>
+                                  <td>{r.gp}</td>
+                                  <td>{r.goals}</td>
+                                  <td>{r.assists}</td>
+                                  <td><strong>{r.points}</strong></td>
+                                  <td>{Number(r.pts_per_gp ?? 0).toFixed(2)}</td>
+                                  <td>{r.ppg}</td>
+                                  <td>{r.gwg}</td>
+                                  <td>{r.plus_minus > 0 ? `+${r.plus_minus}` : r.plus_minus}</td>
+                                  <td>{r.pim}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3>Beanpot Career Goalie Leaders (2000–2026)</h3>
+                        <div className="table-wrap">
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                {glTh("goalie_name", "Goalie")}
+                                {glTh("span", "Years")}
+                                {glTh("gp", "GP")}
+                                {glTh("wins", "W")}
+                                {glTh("losses", "L")}
+                                {glTh("ties", "T")}
+                                {glTh("saves", "SV")}
+                                {glTh("ga", "GA")}
+                                {glTh("save_pct", "SV%")}
+                                {glTh("gaa", "GAA")}
+                                {glTh("shutouts", "SO")}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bpGoalies.map((r, idx) => (
+                                <tr key={r.goalie_name}>
+                                  <td>{idx + 1}</td>
+                                  <td>
+                                    <button
+                                      type="button"
+                                      className="link-btn"
+                                      onClick={() => openPlayer(r.goalie_name)}
+                                    >
+                                      {r.goalie_name}
+                                    </button>
+                                  </td>
+                                  <td>{r.span}</td>
+                                  <td>{r.gp}</td>
+                                  <td><strong>{r.wins}</strong></td>
+                                  <td>{r.losses}</td>
+                                  <td>{r.ties}</td>
+                                  <td>{r.saves}</td>
+                                  <td>{r.ga}</td>
+                                  <td><strong>{Number(r.save_pct ?? 0).toFixed(3)}</strong></td>
+                                  <td>{Number(r.gaa ?? 0).toFixed(2)}</td>
+                                  <td>{r.shutouts}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {beanpotSubTab === "moments" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <h3 style={{ margin: 0 }}>Iconic Beanpot Performances &amp; Moments (2000–2026)</h3>
+                    <div className="table-wrap">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Moment</th>
+                            <th>Box Score</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(beanpotData.moments || []).map((m, i) => (
+                            <tr key={`${m.date}-${m.player_name}-${m.type}-${i}`}>
+                              <td><strong>{m.date}</strong></td>
+                              <td><span className="pill">{m.type}</span></td>
+                              <td>{m.headline}</td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="link-btn"
+                                  onClick={() => openBoxScore(m.date, m.opponent)}
+                                >
+                                  View
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        )}
         </>
         )}
       </main>
@@ -5610,10 +6113,12 @@ export default function App() {
               ? `Stats (${statsView}) • Season: ${selectedSeason || "latest"} • Scope: ${leaderScope}${leaderOpponent ? ` • vs ${leaderOpponent}` : ""}`
               : tab === "records"
                 ? `Records (${recordsSubTab})`
-                : tab === "compare"
-                  ? `Compare (${comparePlayerA} vs ${comparePlayerB})`
-                  : tab === "roster"
-                    ? `Roster • Season: ${selectedSeason || "latest"} • View: ${rosterView}`
+                : tab === "beanpot"
+                  ? `Beanpot (${beanpotSubTab})`
+                  : tab === "compare"
+                    ? `Compare (${comparePlayerA} vs ${comparePlayerB})`
+                    : tab === "roster"
+                      ? `Roster • Season: ${selectedSeason || "latest"} • View: ${rosterView}`
                     : tab === "rivalry"
                       ? `Opponents • ${selectedRival} • ${rivalryScope === "season" ? seasons[0] || "This Season" : "All-Time"}`
                       : "Ask Paws Chat"
