@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import threading
 import time
@@ -280,7 +281,7 @@ class ChatResponse(BaseModel):
 class _AppState:
     datasets: HockeyDatasets | None = None
     llm: Any = None
-    cache: ResponseCache = ResponseCache(ttl_seconds=86400, max_entries=1000)
+    cache: ResponseCache = ResponseCache(ttl_seconds=None, max_entries=2000)
     limiter: RateLimiter = RateLimiter(max_requests=20, window_seconds=60)
     chat_min_limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_MAX, window_seconds=60)
     chat_hour_limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_HOUR_MAX, window_seconds=3600)
@@ -293,11 +294,29 @@ class _AppState:
 state = _AppState()
 
 
+def _compute_dataset_version(data_dir: Path) -> str:
+    h = hashlib.sha256()
+    for csv_path in sorted(data_dir.glob("northeastern_*.csv")):
+        stat = csv_path.stat()
+        h.update(f"{csv_path.name}:{stat.st_size}:{stat.st_mtime_ns}|".encode("utf-8"))
+    return h.hexdigest()[:16]
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     state.datasets = load_datasets(DATA_DIR)
+    state.cache.sync_version(_compute_dataset_version(DATA_DIR))
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
-    if api_key:
+    has_any_llm = bool(
+        api_key
+        or os.getenv("GEMINI_API_KEYS", "").strip()
+        or os.getenv("GROQ_API_KEY", "").strip()
+        or os.getenv("AXFORGE_API_KEY", "").strip()
+        or os.getenv("NVIDIA_API_KEY", "").strip()
+        or os.getenv("KILO_API_KEY", "").strip()
+        or os.getenv("ENABLE_KILO_FREE_FALLBACK", "").strip().lower() in ("1", "true", "yes")
+    )
+    if has_any_llm:
         state.llm = build_llm(api_key)
     yield
 
@@ -467,19 +486,47 @@ def _parse_minutes_to_float(val: Any) -> float:
         return 0.0
 
 
+def _filter_games_by_criteria(
+    games_df: pd.DataFrame,
+    target_season: str,
+    scope: str,
+    target_opponent: str | None,
+    location: str = "all",
+) -> pd.DataFrame:
+    df = games_df if target_season == "all" else games_df[games_df["season"] == target_season]
+    if scope == "conference":
+        df = df[df["opponent"].isin(HOCKEY_EAST_TEAMS) & (df.get("game_type", "Regular Season") == "Regular Season")]
+    elif scope == "beanpot":
+        df = df[df.get("game_type", "") == "Beanpot"]
+    elif scope == "postseason":
+        df = df[df.get("game_type", "") == "Hockey East Tournament"]
+    elif scope == "ncaa":
+        df = df[df.get("game_type", "") == "NCAA Tournament"]
+    if location and location.lower() != "all":
+        df = df[df["location"].str.lower() == location.lower()]
+    if target_opponent:
+        df = df[df["opponent"].str.lower() == target_opponent.lower()]
+    return df
+
+
 def _skater_log_extras(
     ds: HockeyDatasets,
     target_season: str,
     scope: str,
     target_opponent: str | None,
+    location: str = "all",
 ) -> dict[str, Any]:
     """Return per-player maps and team totals for MGG, HTG, MPG, and Faceoffs from skater logs."""
     sk_df = ds.skaters if target_season == "all" else ds.skaters[ds.skaters["season"] == target_season]
     sk_df = sk_df[sk_df["position"] != "G"]
-    if scope == "conference":
-        sk_df = sk_df[sk_df["opponent"].isin(HOCKEY_EAST_TEAMS)]
-    if target_opponent:
-        sk_df = sk_df[sk_df["opponent"].str.lower() == target_opponent.lower()]
+    if scope != "all" or (location and location.lower() != "all") or target_opponent:
+        fg = _filter_games_by_criteria(ds.games, target_season, scope, target_opponent, location)
+        valid_keys = set(zip(fg["date"].astype(str), fg["opponent"].astype(str)))
+        if not valid_keys:
+            sk_df = sk_df.iloc[0:0]
+        else:
+            mask = [(str(d), str(o)) in valid_keys for d, o in zip(sk_df["date"], sk_df["opponent"])]
+            sk_df = sk_df[mask]
     if sk_df.empty:
         return {
             "mgg_map": {}, "htg_map": {}, "mpg_map": {}, "fow_map": {}, "fol_map": {},
@@ -513,12 +560,11 @@ def _build_team_stats(
     target_season: str,
     scope: str,
     target_opponent: str | None,
+    location: str = "all",
 ) -> dict[str, Any]:
-    games_df = ds.games if target_season == "all" else ds.games[ds.games["season"] == target_season]
-    if scope == "conference":
-        games_df = games_df[games_df["opponent"].isin(HOCKEY_EAST_TEAMS)]
-    if target_opponent:
-        games_df = games_df[games_df["opponent"].str.lower() == target_opponent.lower()]
+    games_df = _filter_games_by_criteria(ds.games, target_season, scope, target_opponent, location)
+    unfiltered_loc_games = _filter_games_by_criteria(ds.games, target_season, scope, target_opponent, "all")
+    valid_keys = set(zip(games_df["date"].astype(str), games_df["opponent"].astype(str)))
 
     gp = int(len(games_df))
     wins = int((games_df["outcome"] == "W").sum()) if gp else 0
@@ -535,25 +581,55 @@ def _build_team_stats(
     shutouts_for = int(((games_df["is_shutout"] == 1) & (games_df["shutout_team"] == "Northeastern")).sum()) if gp else 0
     shutouts_against = int(((games_df["is_shutout"] == 1) & (games_df["shutout_team"] != "Northeastern")).sum()) if gp else 0
 
-    ppg: int | None = None
+    pp_goals = int(games_df["nu_pp_goals"].sum()) if (gp and "nu_pp_goals" in games_df.columns) else 0
+    pp_opps = int(games_df["nu_pp_opps"].sum()) if (gp and "nu_pp_opps" in games_df.columns) else 0
+    pp_pct = round((pp_goals / pp_opps) * 100.0, 1) if pp_opps > 0 else 0.0
+
+    opp_pp_goals = int(games_df["opp_pp_goals"].sum()) if (gp and "opp_pp_goals" in games_df.columns) else 0
+    opp_pp_opps = int(games_df["opp_pp_opps"].sum()) if (gp and "opp_pp_opps" in games_df.columns) else 0
+    pk_kills = max(0, opp_pp_opps - opp_pp_goals)
+    pk_pct = round((pk_kills / opp_pp_opps) * 100.0, 1) if opp_pp_opps > 0 else 0.0
+
+    use_game_logs = (
+        target_opponent is not None
+        or (location and location.lower() != "all")
+        or scope in ("beanpot", "postseason", "ncaa")
+    )
+
+    ppg: int | None = pp_goals
     shg: int | None = None
-    if target_opponent:
+    if use_game_logs:
         sk_df = ds.skaters if target_season == "all" else ds.skaters[ds.skaters["season"] == target_season]
-        sk_df = sk_df[(sk_df["opponent"].str.lower() == target_opponent.lower()) & (sk_df["position"] != "G")]
+        sk_df = sk_df[sk_df["position"] != "G"]
+        if valid_keys:
+            sk_df = sk_df[[(str(d), str(o)) in valid_keys for d, o in zip(sk_df["date"], sk_df["opponent"])]]
+        else:
+            sk_df = sk_df.iloc[0:0]
         shots = int(sk_df["shots"].sum()) if not sk_df.empty else 0
         pim = int(sk_df["penalty_minutes"].sum()) if not sk_df.empty else 0
         blocked_shots = int(sk_df["blocked_shots"].sum()) if not sk_df.empty else 0
 
         gl_df = ds.goalies if target_season == "all" else ds.goalies[ds.goalies["season"] == target_season]
-        gl_df = gl_df[gl_df["opponent"].str.lower() == target_opponent.lower()]
+        if valid_keys:
+            gl_df = gl_df[[(str(d), str(o)) in valid_keys for d, o in zip(gl_df["date"], gl_df["opponent"])]]
+        else:
+            gl_df = gl_df.iloc[0:0]
         saves = int(gl_df["saves"].sum()) if not gl_df.empty else 0
         ga = int(gl_df["goals_against"].sum()) if not gl_df.empty else 0
+
+        g_sub = ds.goals if target_season == "all" else ds.goals[ds.goals["season"] == target_season]
+        if valid_keys:
+            g_sub = g_sub[[(str(d), str(o)) in valid_keys for d, o in zip(g_sub["date"], g_sub["opponent"])]]
+        else:
+            g_sub = g_sub.iloc[0:0]
+        nu_g_sub = g_sub[g_sub["team"] == "Northeastern"] if not g_sub.empty else g_sub
+        shg = int((nu_g_sub["strength"] == "SH").sum()) if not nu_g_sub.empty else 0
     else:
         prefix = "conf_" if scope == "conference" else ""
         season_rows = ds.season_stats if target_season == "all" else ds.season_stats[ds.season_stats["season"] == target_season]
         sk_rows = season_rows[season_rows["position"] != "G"]
         shots = int(sk_rows[f"{prefix}shots"].sum()) if not sk_rows.empty else 0
-        ppg = int(sk_rows[f"{prefix}ppg"].sum()) if not sk_rows.empty else 0
+        ppg = int(sk_rows[f"{prefix}ppg"].sum()) if not sk_rows.empty else pp_goals
         shg = int(sk_rows[f"{prefix}shg"].sum()) if not sk_rows.empty else 0
         pim = int(sk_rows[f"{prefix}pim"].sum()) if not sk_rows.empty else 0
         blocked_shots = int(sk_rows[f"{prefix}blocked_shots"].sum()) if not sk_rows.empty else 0
@@ -589,11 +665,11 @@ def _build_team_stats(
 
     recent_games = (
         _records(games_df.sort_values("date", ascending=False))
-        if target_season != "all" and gp > 0
+        if (target_season != "all" or scope in ("beanpot", "postseason", "ncaa")) and gp > 0
         else []
     )
 
-    extras = _skater_log_extras(ds, target_season, scope, target_opponent)
+    extras = _skater_log_extras(ds, target_season, scope, target_opponent, location)
     fow = extras["total_fow"]
     fol = extras["total_fol"]
     faceoff_pct = round((fow / (fow + fol)) * 100.0, 1) if (fow + fol) > 0 else None
@@ -606,19 +682,26 @@ def _build_team_stats(
         t = int((sub_df["outcome"] == "T").sum())
         return f"{w}-{l}-{t}"
 
+    location_splits = {
+        "home": _wlt(unfiltered_loc_games[unfiltered_loc_games["location"] == "Home"]) if not unfiltered_loc_games.empty else "0-0-0",
+        "away": _wlt(unfiltered_loc_games[unfiltered_loc_games["location"] == "Away"]) if not unfiltered_loc_games.empty else "0-0-0",
+        "neutral": _wlt(unfiltered_loc_games[unfiltered_loc_games["location"] == "Neutral"]) if not unfiltered_loc_games.empty else "0-0-0",
+    }
+
     one_goal_df = games_df[(games_df["nu_goals"] - games_df["opp_goals"]).abs() == 1] if gp else games_df
     ot_df = games_df[games_df["is_overtime"] == 1] if gp else games_df
     so_df = games_df[games_df["is_shootout"] == 1] if gp else games_df
     so_losses = int((so_df["shootout_winner"] != "Northeastern").sum()) if not so_df.empty else 0
 
     goals_ev = ds.goals if target_season == "all" else ds.goals[ds.goals["season"] == target_season]
-    if scope == "conference":
-        goals_ev = goals_ev[goals_ev["opponent"].isin(HOCKEY_EAST_TEAMS)]
-    if target_opponent:
-        goals_ev = goals_ev[goals_ev["opponent"].str.lower() == target_opponent.lower()]
+    if valid_keys:
+        goals_ev = goals_ev[[(str(d), str(o)) in valid_keys for d, o in zip(goals_ev["date"], goals_ev["opponent"])]]
+    elif gp == 0:
+        goals_ev = goals_ev.iloc[0:0]
 
     scoring_first_record = "0-0-0"
     goals_by_period: list[dict[str, Any]] = []
+    goals_by_minute: list[dict[str, Any]] = []
     if not goals_ev.empty:
         period_order = {"1st": 1, "2nd": 2, "3rd": 3, "OT": 4, "1OT": 4, "2OT": 5, "3OT": 6}
         g_sorted = goals_ev.assign(_pord=goals_ev["period"].map(lambda x: period_order.get(str(x).strip(), 99)))
@@ -648,11 +731,42 @@ def _build_team_stats(
                     "opp_goals": int((per_sub["team"] != "Northeastern").sum()),
                 })
 
+        # 5-minute scoring timing buckets across regulation (0-5, 5-10, 10-15, 15-20 per period) + OT
+        bucket_defs = [
+            ("1st", 0, 300, "1st 0-5m"),
+            ("1st", 300, 600, "1st 5-10m"),
+            ("1st", 600, 900, "1st 10-15m"),
+            ("1st", 900, 1201, "1st 15-20m"),
+            ("2nd", 0, 300, "2nd 0-5m"),
+            ("2nd", 300, 600, "2nd 5-10m"),
+            ("2nd", 600, 900, "2nd 10-15m"),
+            ("2nd", 900, 1201, "2nd 15-20m"),
+            ("3rd", 0, 300, "3rd 0-5m"),
+            ("3rd", 300, 600, "3rd 5-10m"),
+            ("3rd", 600, 900, "3rd 10-15m"),
+            ("3rd", 900, 1201, "3rd 15-20m"),
+        ]
+        for per_name, t_min, t_max, label in bucket_defs:
+            b_sub = goals_ev[(goals_ev["period"] == per_name) & (goals_ev["time_seconds"] >= t_min) & (goals_ev["time_seconds"] < t_max)]
+            goals_by_minute.append({
+                "label": label,
+                "period": per_name,
+                "nu_goals": int((b_sub["team"] == "Northeastern").sum()),
+                "opp_goals": int((b_sub["team"] != "Northeastern").sum()),
+            })
+        ot_sub = goals_ev[goals_ev["period"].isin(["OT", "1OT", "2OT", "3OT"])]
+        goals_by_minute.append({
+            "label": "OT",
+            "period": "OT",
+            "nu_goals": int((ot_sub["team"] == "Northeastern").sum()),
+            "opp_goals": int((ot_sub["team"] != "Northeastern").sum()),
+        })
+
     so_ev = ds.shootouts if target_season == "all" else ds.shootouts[ds.shootouts["season"] == target_season]
-    if scope == "conference":
-        so_ev = so_ev[so_ev["opponent"].isin(HOCKEY_EAST_TEAMS)]
-    if target_opponent:
-        so_ev = so_ev[so_ev["opponent"].str.lower() == target_opponent.lower()]
+    if valid_keys:
+        so_ev = so_ev[[(str(d), str(o)) in valid_keys for d, o in zip(so_ev["date"], so_ev["opponent"])]]
+    elif gp == 0:
+        so_ev = so_ev.iloc[0:0]
     nu_so_ev = so_ev[so_ev["shooter_team"] == "Northeastern"] if not so_ev.empty else so_ev
     shootout_attempts = int(len(nu_so_ev))
     shootout_made = int((nu_so_ev["result"] == "MADE").sum()) if shootout_attempts > 0 else 0
@@ -671,10 +785,19 @@ def _build_team_stats(
         "one_goal_record": _wlt(one_goal_df),
         "ot_record": _wlt(ot_df),
         "scoring_first_record": scoring_first_record,
+        "location_splits": location_splits,
+        "pp_goals": pp_goals,
+        "pp_opps": pp_opps,
+        "pp_pct": pp_pct,
+        "opp_pp_goals": opp_pp_goals,
+        "opp_pp_opps": opp_pp_opps,
+        "pk_kills": pk_kills,
+        "pk_pct": pk_pct,
         "shootout_attempts": shootout_attempts,
         "shootout_made": shootout_made,
         "shootout_pct": shootout_pct,
         "goals_by_period": goals_by_period,
+        "goals_by_minute": goals_by_minute,
         "goals_for": goals_for,
         "goals_against": goals_against,
         "goal_diff": goal_diff,
@@ -704,18 +827,18 @@ def _build_team_stats(
 @app.get("/api/leaders")
 def get_leaders(
     season: str | None = Query(default=None),
-    scope: str = Query(default="all", pattern="^(all|conference)$"),
+    scope: str = Query(default="all", pattern="^(all|conference|beanpot|postseason|ncaa)$"),
+    location: str = Query(default="all", pattern="^(all|Home|Away|Neutral|home|away|neutral)$"),
     opponent: str | None = Query(default=None),
     limit: int = Query(default=35, ge=1, le=100),
 ) -> dict[str, Any]:
     ds = _require_datasets()
     target_season = season or (ds.available_seasons[0] if ds.available_seasons else "")
     target_opponent = opponent.strip() if opponent and opponent.strip() else None
+    norm_loc = location.capitalize() if location and location.lower() in ("home", "away", "neutral") else "all"
 
-    season_games = ds.games if target_season == "all" else ds.games[ds.games["season"] == target_season]
+    season_games = _filter_games_by_criteria(ds.games, target_season, scope, None, norm_loc)
     season_opponents = sorted(o for o in season_games["opponent"].dropna().unique() if o)
-    if scope == "conference":
-        season_opponents = [o for o in season_opponents if o in HOCKEY_EAST_TEAMS]
 
     stats_url = ""
     season_rows = ds.season_stats if target_season == "all" else ds.season_stats[ds.season_stats["season"] == target_season]
@@ -723,10 +846,23 @@ def get_leaders(
         urls = [u for u in season_rows["stats_url"].unique() if u]
         stats_url = urls[0] if urls else ""
 
-    # Case 1: Specific opponent selected -> aggregate from game-by-game logs
-    if target_opponent:
+    use_game_logs = (
+        target_opponent is not None
+        or norm_loc != "all"
+        or scope in ("beanpot", "postseason", "ncaa")
+    )
+
+    # Case 1: Specific opponent, venue split, or tournament filter selected -> aggregate from game-by-game logs
+    if use_game_logs:
+        filtered_games = _filter_games_by_criteria(ds.games, target_season, scope, target_opponent, norm_loc)
+        valid_keys = set(zip(filtered_games["date"].astype(str), filtered_games["opponent"].astype(str)))
+
         sk_df = ds.skaters if target_season == "all" else ds.skaters[ds.skaters["season"] == target_season]
-        sk_df = sk_df[(sk_df["opponent"].str.lower() == target_opponent.lower()) & (sk_df["position"] != "G")]
+        sk_df = sk_df[sk_df["position"] != "G"]
+        if valid_keys:
+            sk_df = sk_df[[(str(d), str(o)) in valid_keys for d, o in zip(sk_df["date"], sk_df["opponent"])]]
+        else:
+            sk_df = sk_df.iloc[0:0]
 
         roster_df = ds.rosters if target_season == "all" else ds.rosters[ds.rosters["season"] == target_season]
         jersey_map = (
@@ -736,6 +872,17 @@ def get_leaders(
             if not roster_df.empty
             else {}
         )
+
+        # Count PPG, SHG, OTG from goal_events for these filtered games
+        g_ev = ds.goals if target_season == "all" else ds.goals[ds.goals["season"] == target_season]
+        if valid_keys:
+            g_ev = g_ev[[(str(d), str(o)) in valid_keys for d, o in zip(g_ev["date"], g_ev["opponent"])]]
+        else:
+            g_ev = g_ev.iloc[0:0]
+        nu_g_ev = g_ev[g_ev["team"] == "Northeastern"] if not g_ev.empty else g_ev
+        ppg_map = nu_g_ev[nu_g_ev["strength"] == "PP"].groupby("scorer").size().to_dict() if not nu_g_ev.empty else {}
+        shg_map = nu_g_ev[nu_g_ev["strength"] == "SH"].groupby("scorer").size().to_dict() if not nu_g_ev.empty else {}
+        otg_map = nu_g_ev[nu_g_ev["period"].isin(["OT", "1OT", "2OT", "3OT"])].groupby("scorer").size().to_dict() if not nu_g_ev.empty else {}
 
         skaters_list: list[dict[str, Any]] = []
         if not sk_df.empty:
@@ -766,6 +913,9 @@ def get_leaders(
                 .sort_values(["points", "goals", "gp"], ascending=[False, False, True])
                 .head(limit)
             )
+            grouped["ppg"] = grouped["player_name"].map(lambda n: int(ppg_map.get(n, 0)))
+            grouped["shg"] = grouped["player_name"].map(lambda n: int(shg_map.get(n, 0)))
+            grouped["otg"] = grouped["player_name"].map(lambda n: int(otg_map.get(n, 0)))
             grouped["shot_pct"] = grouped.apply(
                 lambda r: round((r["goals"] / r["shots"]) * 100.0, 1) if r["shots"] > 0 else 0.0, axis=1
             )
@@ -779,7 +929,10 @@ def get_leaders(
             skaters_list = _records(grouped)
 
         gl_df = ds.goalies if target_season == "all" else ds.goalies[ds.goalies["season"] == target_season]
-        gl_df = gl_df[gl_df["opponent"].str.lower() == target_opponent.lower()]
+        if valid_keys:
+            gl_df = gl_df[[(str(d), str(o)) in valid_keys for d, o in zip(gl_df["date"], gl_df["opponent"])]]
+        else:
+            gl_df = gl_df.iloc[0:0]
 
         goalies_list: list[dict[str, Any]] = []
         if not gl_df.empty:
@@ -817,16 +970,17 @@ def get_leaders(
         return {
             "season": target_season,
             "scope": scope,
+            "location": norm_loc,
             "opponent": target_opponent,
             "opponents": season_opponents,
             "stats_url": stats_url,
-            "team_stats": _build_team_stats(ds, target_season, scope, target_opponent),
+            "team_stats": _build_team_stats(ds, target_season, scope, target_opponent, norm_loc),
             "skaters": skaters_list,
             "goalies": goalies_list,
         }
 
-    # Case 2: All opponents -> use cumulative season stats (All or Hockey East Conference)
-    extras = _skater_log_extras(ds, target_season, scope, None)
+    # Case 2: All opponents & all venues -> use cumulative season stats (All or Hockey East Conference)
+    extras = _skater_log_extras(ds, target_season, scope, None, norm_loc)
     mgg_map = extras["mgg_map"]
     htg_map = extras["htg_map"]
     mpg_map = extras["mpg_map"]
@@ -897,10 +1051,11 @@ def get_leaders(
         return {
             "season": target_season,
             "scope": scope,
+            "location": norm_loc,
             "opponent": None,
             "opponents": season_opponents,
             "stats_url": "",
-            "team_stats": _build_team_stats(ds, target_season, scope, None),
+            "team_stats": _build_team_stats(ds, target_season, scope, None, norm_loc),
             "skaters": _records(skaters),
             "goalies": _records(goalies),
         }
@@ -970,10 +1125,11 @@ def get_leaders(
     return {
         "season": target_season,
         "scope": scope,
+        "location": norm_loc,
         "opponent": None,
         "opponents": season_opponents,
         "stats_url": stats_url,
-        "team_stats": _build_team_stats(ds, target_season, scope, None),
+        "team_stats": _build_team_stats(ds, target_season, scope, None, norm_loc),
         "skaters": _records(skaters_norm),
         "goalies": _records(goalies_norm),
     }
@@ -1821,6 +1977,13 @@ _ALLOWED_IMAGE_HOSTS = {
 _IMAGE_PROXY_CACHE: dict[str, tuple[bytes, str]] = {}
 _IMAGE_PROXY_LOCK = threading.Lock()
 
+try:
+    import io
+    from PIL import Image, ImageOps
+    _PIL_AVAILABLE = True
+except Exception:
+    _PIL_AVAILABLE = False
+
 
 def _fetch_proxied_image(url: str) -> tuple[bytes, str]:
     with _IMAGE_PROXY_LOCK:
@@ -1840,20 +2003,88 @@ def _fetch_proxied_image(url: str) -> tuple[bytes, str]:
     if not ctype.startswith("image/"):
         raise HTTPException(status_code=502, detail="Upstream resource is not an image.")
     with _IMAGE_PROXY_LOCK:
-        if len(_IMAGE_PROXY_CACHE) >= 600:
+        if len(_IMAGE_PROXY_CACHE) >= 1800:
             _IMAGE_PROXY_CACHE.clear()
         _IMAGE_PROXY_CACHE[url] = (data, ctype)
     return data, ctype
 
 
+def _fetch_and_resize_proxied_image(
+    url: str,
+    w: int | None = None,
+    h: int | None = None,
+) -> tuple[bytes, str]:
+    if not w and not h:
+        return _fetch_proxied_image(url)
+    cache_key = f"{url}|w={w or 0}|h={h or 0}"
+    with _IMAGE_PROXY_LOCK:
+        cached = _IMAGE_PROXY_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    raw_data, raw_ctype = _fetch_proxied_image(url)
+    if not _PIL_AVAILABLE or "svg" in raw_ctype.lower():
+        return raw_data, raw_ctype
+
+    try:
+        with Image.open(io.BytesIO(raw_data)) as src_im:
+            im = ImageOps.exif_transpose(src_im)
+            has_alpha = im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info)
+            im = im.convert("RGBA" if has_alpha else "RGB")
+            src_w, src_h = im.size
+            if src_w <= 0 or src_h <= 0:
+                return raw_data, raw_ctype
+
+            if w and h:
+                target_ratio = w / h
+                src_ratio = src_w / src_h
+                if src_ratio > target_ratio:
+                    crop_w = max(1, round(src_h * target_ratio))
+                    left = max(0, (src_w - crop_w) // 2)
+                    im = im.crop((left, 0, left + crop_w, src_h))
+                elif src_ratio < target_ratio:
+                    crop_h = max(1, round(src_w / target_ratio))
+                    im = im.crop((0, 0, src_w, min(src_h, crop_h)))
+                target_size = (w, h)
+            elif w:
+                target_size = (w, max(1, round(src_h * (w / src_w))))
+            else:
+                target_size = (max(1, round(src_w * (h / src_h))), h)
+
+            if im.size != target_size:
+                im = im.resize(target_size, Image.Resampling.LANCZOS)
+
+            buf = io.BytesIO()
+            try:
+                im.save(buf, format="WEBP", lossless=True, quality=100)
+                out_ctype = "image/webp"
+            except Exception:
+                buf = io.BytesIO()
+                im.save(buf, format="PNG", optimize=True)
+                out_ctype = "image/png"
+            out_data = buf.getvalue()
+    except Exception:
+        return raw_data, raw_ctype
+
+    with _IMAGE_PROXY_LOCK:
+        if len(_IMAGE_PROXY_CACHE) >= 1800:
+            _IMAGE_PROXY_CACHE.clear()
+        _IMAGE_PROXY_CACHE[cache_key] = (out_data, out_ctype)
+    return out_data, out_ctype
+
+
 @app.get("/api/image-proxy")
-async def image_proxy(url: str = Query(..., min_length=10)) -> Response:
+async def image_proxy(
+    url: str = Query(..., min_length=10),
+    w: int | None = Query(None, ge=16, le=600),
+    h: int | None = Query(None, ge=16, le=600),
+) -> Response:
     parsed = urllib.parse.urlparse(url.strip())
     host = (parsed.hostname or "").lower()
     if parsed.scheme != "https" or host not in _ALLOWED_IMAGE_HOSTS:
         raise HTTPException(status_code=400, detail="Unsupported image host.")
     try:
-        data, ctype = await run_in_threadpool(_fetch_proxied_image, url.strip())
+        data, ctype = await run_in_threadpool(_fetch_and_resize_proxied_image, url.strip(), w, h)
     except HTTPException:
         raise
     except Exception:
@@ -1863,6 +2094,669 @@ async def image_proxy(url: str = Query(..., min_length=10)) -> Response:
         media_type=ctype,
         headers={"Cache-Control": "public, max-age=86400"},
     )
+
+
+_RECORDS_BASE_CACHE: dict[str, Any] = {}
+_RECORDS_BASE_LOCK = threading.Lock()
+
+
+def _get_cached_static_records(ds: HockeyDatasets) -> dict[str, Any]:
+    v = getattr(ds, "dataset_version", None) or getattr(state, "dataset_version", None) or "default"
+    with _RECORDS_BASE_LOCK:
+        if _RECORDS_BASE_CACHE.get("version") == v and "data" in _RECORDS_BASE_CACHE:
+            return _RECORDS_BASE_CACHE["data"]
+
+    # 1. Single-Game Records
+    sk = ds.skaters[ds.skaters["position"] != "G"].copy()
+    most_points_game = _records(
+        sk.sort_values(["points", "goals", "date"], ascending=[False, False, False])
+        .head(15)[["date", "season", "player_name", "position", "opponent", "goals", "assists", "points", "nu_goals", "opp_goals"]]
+    )
+    most_goals_game = _records(
+        sk.sort_values(["goals", "points", "date"], ascending=[False, False, False])
+        .head(15)[["date", "season", "player_name", "position", "opponent", "goals", "assists", "points", "nu_goals", "opp_goals"]]
+    )
+    most_assists_game = _records(
+        sk.sort_values(["assists", "points", "date"], ascending=[False, False, False])
+        .head(15)[["date", "season", "player_name", "position", "opponent", "goals", "assists", "points", "nu_goals", "opp_goals"]]
+    )
+    gl = ds.goalies.copy()
+    most_saves_game = _records(
+        gl.sort_values(["saves", "date"], ascending=[False, False])
+        .head(15)[["date", "season", "goalie_name", "opponent", "saves", "goals_against", "save_pct", "decision", "nu_goals", "opp_goals"]]
+    )
+
+    # Fastest goals from opening faceoff (1st period, team == Northeastern)
+    nu_goals = ds.goals[ds.goals["team"] == "Northeastern"].copy()
+    p1_goals = nu_goals[(nu_goals["period"] == "1st") & (nu_goals["time_seconds"] > 0)].sort_values("time_seconds", ascending=True).head(12)
+    fastest_opening_goals = _records(
+        p1_goals[["date", "season", "scorer", "primary_assist", "secondary_assist", "opponent", "time", "time_seconds", "strength"]]
+    )
+
+    # Fastest 2 goals by same player in a single game
+    period_offset = {"1st": 0, "2nd": 1200, "3rd": 2400, "OT": 3600, "1OT": 3600, "2OT": 4800, "3OT": 6000}
+    nu_g_abs = nu_goals.copy()
+    nu_g_abs["_abs_sec"] = nu_g_abs.apply(
+        lambda r: period_offset.get(str(r.get("period", "")).strip(), 3600) + float(r.get("time_seconds", 0) or 0),
+        axis=1,
+    )
+    nu_g_abs = nu_g_abs.sort_values(["date", "opponent", "scorer", "_abs_sec"])
+    fastest_two_list: list[dict[str, Any]] = []
+    for (d_val, opp_val, sc_val), grp in nu_g_abs.groupby(["date", "opponent", "scorer"]):
+        if not sc_val or len(grp) < 2:
+            continue
+        rows = grp.to_dict(orient="records")
+        for i in range(len(rows) - 1):
+            diff = rows[i + 1]["_abs_sec"] - rows[i]["_abs_sec"]
+            if 0 < diff <= 600:
+                mins = int(diff) // 60
+                secs = int(round(diff - mins * 60))
+                fastest_two_list.append({
+                    "date": str(d_val),
+                    "season": str(rows[i].get("season", "")),
+                    "player_name": str(sc_val),
+                    "opponent": str(opp_val),
+                    "span_seconds": round(float(diff), 1),
+                    "span_display": f"{mins}:{secs:02d}",
+                    "goal1_time": f"{rows[i]['period']} {rows[i]['time']}",
+                    "goal2_time": f"{rows[i + 1]['period']} {rows[i + 1]['time']}",
+                })
+    fastest_two_list.sort(key=lambda x: x["span_seconds"])
+    fastest_two_goals = fastest_two_list[:12]
+
+    # 2. Player & Team Streaks
+    sk_sorted = sk.sort_values("date")
+    point_streaks: list[dict[str, Any]] = []
+    goal_streaks: list[dict[str, Any]] = []
+    for pname, grp in sk_sorted.groupby("player_name"):
+        if not pname or len(grp) < 4:
+            continue
+        # Point streak
+        cur_len, cur_pts, cur_g, cur_a = 0, 0, 0, 0
+        cur_start, cur_end, cur_sea = "", "", ""
+        for r in grp.itertuples():
+            pts = int(getattr(r, "points", 0) or 0)
+            gls = int(getattr(r, "goals", 0) or 0)
+            ast = int(getattr(r, "assists", 0) or 0)
+            dt = str(getattr(r, "date", ""))
+            sea = str(getattr(r, "season", ""))
+            if pts > 0:
+                if cur_len == 0:
+                    cur_start = dt
+                    cur_sea = sea
+                cur_len += 1
+                cur_pts += pts
+                cur_g += gls
+                cur_a += ast
+                cur_end = dt
+            else:
+                if cur_len >= 6:
+                    point_streaks.append({
+                        "player_name": str(pname),
+                        "season": cur_sea,
+                        "streak_games": cur_len,
+                        "goals": cur_g,
+                        "assists": cur_a,
+                        "points": cur_pts,
+                        "start_date": cur_start,
+                        "end_date": cur_end,
+                    })
+                cur_len, cur_pts, cur_g, cur_a = 0, 0, 0, 0
+        if cur_len >= 6:
+            point_streaks.append({
+                "player_name": str(pname),
+                "season": cur_sea,
+                "streak_games": cur_len,
+                "goals": cur_g,
+                "assists": cur_a,
+                "points": cur_pts,
+                "start_date": cur_start,
+                "end_date": cur_end,
+            })
+
+        # Goal streak
+        cur_len, cur_g = 0, 0
+        cur_start, cur_end, cur_sea = "", "", ""
+        for r in grp.itertuples():
+            gls = int(getattr(r, "goals", 0) or 0)
+            dt = str(getattr(r, "date", ""))
+            sea = str(getattr(r, "season", ""))
+            if gls > 0:
+                if cur_len == 0:
+                    cur_start = dt
+                    cur_sea = sea
+                cur_len += 1
+                cur_g += gls
+                cur_end = dt
+            else:
+                if cur_len >= 4:
+                    goal_streaks.append({
+                        "player_name": str(pname),
+                        "season": cur_sea,
+                        "streak_games": cur_len,
+                        "goals": cur_g,
+                        "start_date": cur_start,
+                        "end_date": cur_end,
+                    })
+                cur_len, cur_g = 0, 0
+        if cur_len >= 4:
+            goal_streaks.append({
+                "player_name": str(pname),
+                "season": cur_sea,
+                "streak_games": cur_len,
+                "goals": cur_g,
+                "start_date": cur_start,
+                "end_date": cur_end,
+            })
+
+    point_streaks.sort(key=lambda x: (-x["streak_games"], -x["points"], x["end_date"]))
+    goal_streaks.sort(key=lambda x: (-x["streak_games"], -x["goals"], x["end_date"]))
+
+    # Team Win & Unbeaten streaks
+    gm_sorted = ds.games.sort_values("date")
+    win_streaks: list[dict[str, Any]] = []
+    unbeaten_streaks: list[dict[str, Any]] = []
+    w_len, w_start, w_end, w_sea = 0, "", "", ""
+    u_len, u_w, u_t, u_start, u_end, u_sea = 0, 0, 0, "", "", ""
+    for r in gm_sorted.itertuples():
+        out = str(getattr(r, "outcome", ""))
+        dt = str(getattr(r, "date", ""))
+        sea = str(getattr(r, "season", ""))
+        if out == "W":
+            if w_len == 0:
+                w_start, w_sea = dt, sea
+            w_len += 1
+            w_end = dt
+        else:
+            if w_len >= 5:
+                win_streaks.append({"streak_games": w_len, "season": w_sea, "start_date": w_start, "end_date": w_end})
+            w_len = 0
+
+        if out in ("W", "T"):
+            if u_len == 0:
+                u_start, u_sea = dt, sea
+            u_len += 1
+            if out == "W":
+                u_w += 1
+            else:
+                u_t += 1
+            u_end = dt
+        else:
+            if u_len >= 6:
+                unbeaten_streaks.append({
+                    "streak_games": u_len,
+                    "record": f"{u_w}-{0}-{u_t}",
+                    "season": u_sea,
+                    "start_date": u_start,
+                    "end_date": u_end,
+                })
+            u_len, u_w, u_t = 0, 0, 0
+    if w_len >= 5:
+        win_streaks.append({"streak_games": w_len, "season": w_sea, "start_date": w_start, "end_date": w_end})
+    if u_len >= 6:
+        unbeaten_streaks.append({
+            "streak_games": u_len,
+            "record": f"{u_w}-{0}-{u_t}",
+            "season": u_sea,
+            "start_date": u_start,
+            "end_date": u_end,
+        })
+    win_streaks.sort(key=lambda x: (-x["streak_games"], x["end_date"]))
+    unbeaten_streaks.sort(key=lambda x: (-x["streak_games"], x["end_date"]))
+
+    # 3. Active Milestone Watch
+    # Pick latest season that has active games/stats (plus current roster players)
+    stats_seasons = sorted(ds.season_stats[ds.season_stats["gp"] > 0]["season"].unique(), reverse=True)
+    active_season = stats_seasons[0] if stats_seasons else (ds.available_seasons[0] if ds.available_seasons else "")
+    latest_roster_season = ds.available_seasons[0] if ds.available_seasons else active_season
+    active_names = set(
+        ds.rosters[ds.rosters["season"].isin([active_season, latest_roster_season])]["player_name"].dropna().unique()
+    ) | set(
+        ds.season_stats[ds.season_stats["season"] == active_season]["player_name"].dropna().unique()
+    )
+
+    career_df = ds.season_stats[ds.season_stats["player_name"].isin(active_names)].copy()
+    milestones: list[dict[str, Any]] = []
+    if not career_df.empty:
+        sk_c = (
+            career_df.groupby("player_name", as_index=False)
+            .agg(
+                position=("position", "last"),
+                class_year=("class_year", "last"),
+                jersey_number=("jersey_number", "last"),
+                gp=("gp", "sum"),
+                goals=("goals", "sum"),
+                assists=("assists", "sum"),
+                points=("points", "sum"),
+                goalie_gp=("goalie_gp", "sum"),
+                wins=("wins", "sum"),
+                saves=("saves", "sum"),
+            )
+        )
+        thresholds = [
+            ("Points", "points", [25, 50, 75, 100, 125, 150], 12),
+            ("Goals", "goals", [15, 25, 40, 50, 75], 6),
+            ("Assists", "assists", [25, 50, 75, 100], 8),
+            ("Games Played", "gp", [50, 100, 125, 150], 12),
+            ("Goalie Wins", "wins", [15, 25, 40, 50, 60], 5),
+            ("Career Saves", "saves", [500, 1000, 1500, 2000, 2500], 220),
+        ]
+        for r in sk_c.to_dict(orient="records"):
+            for label, col, t_list, max_gap in thresholds:
+                val = int(r.get(col, 0) or 0)
+                if val <= 0:
+                    continue
+                for target in t_list:
+                    needed = target - val
+                    if 0 < needed <= max_gap:
+                        milestones.append({
+                            "player_name": str(r["player_name"]),
+                            "position": str(r.get("position", "")),
+                            "class_year": str(r.get("class_year", "")),
+                            "jersey_number": str(r.get("jersey_number", "")),
+                            "category": label,
+                            "current": val,
+                            "target": target,
+                            "needed": needed,
+                            "progress_pct": round((val / target) * 100.0, 1),
+                        })
+                        break
+    milestones.sort(key=lambda x: (-x["progress_pct"], x["needed"], x["player_name"]))
+
+    # 4. Clutch & Late-Game Leaders
+    ot_goals_ev = nu_goals[nu_goals["period"].isin(["OT", "1OT", "2OT", "3OT"])]
+    ot_leaders_df = (
+        ot_goals_ev.groupby("scorer", as_index=False)
+        .agg(ot_goals=("date", "count"), gwg=("is_gwg", "sum"))
+        .rename(columns={"scorer": "player_name"})
+        .sort_values(["ot_goals", "gwg"], ascending=[False, False])
+        .head(15)
+    ) if not ot_goals_ev.empty else pd.DataFrame()
+
+    p3_gwg_ev = nu_goals[(nu_goals["period"] == "3rd") & (nu_goals["is_gwg"] == 1)]
+    p3_gwg_df = (
+        p3_gwg_ev.groupby("scorer", as_index=False)
+        .agg(third_period_gwg=("date", "count"))
+        .rename(columns={"scorer": "player_name"})
+        .sort_values("third_period_gwg", ascending=False)
+        .head(15)
+    ) if not p3_gwg_ev.empty else pd.DataFrame()
+
+    # Final 5 minutes of regulation (3rd period, time_seconds >= 900) or OT tying/go-ahead goals
+    late_clutch_ev = nu_goals[
+        ((nu_goals["period"] == "3rd") & (nu_goals["time_seconds"] >= 900) & (nu_goals["nu_score_after"] >= nu_goals["opp_score_after"]) & ((nu_goals["nu_score_after"] - nu_goals["opp_score_after"]) <= 1))
+        | (nu_goals["period"].isin(["OT", "1OT", "2OT", "3OT"]))
+    ]
+    late_clutch_df = (
+        late_clutch_ev.groupby("scorer", as_index=False)
+        .agg(
+            clutch_goals=("date", "count"),
+            gwg=("is_gwg", "sum"),
+        )
+        .rename(columns={"scorer": "player_name"})
+        .sort_values(["clutch_goals", "gwg"], ascending=[False, False])
+        .head(15)
+    ) if not late_clutch_ev.empty else pd.DataFrame()
+
+    nu_so = ds.shootouts[ds.shootouts["shooter_team"] == "Northeastern"].copy()
+    so_leaders_list: list[dict[str, Any]] = []
+    if not nu_so.empty:
+        nu_so["_made"] = (nu_so["result"] == "MADE").astype(int)
+        so_grp = (
+            nu_so.groupby("shooter_name", as_index=False)
+            .agg(
+                attempts=("round", "count"),
+                made=("_made", "sum"),
+                winners=("is_shootout_winner", "sum"),
+            )
+            .rename(columns={"shooter_name": "player_name"})
+        )
+        so_grp = so_grp[so_grp["made"] > 0]
+        so_grp["pct"] = so_grp.apply(lambda r: round((r["made"] / r["attempts"]) * 100.0, 1) if r["attempts"] > 0 else 0.0, axis=1)
+        so_grp = so_grp.sort_values(["made", "winners", "pct"], ascending=[False, False, False]).head(15)
+        so_leaders_list = _records(so_grp)
+
+    data = {
+        "single_game_records": {
+            "most_points": most_points_game,
+            "most_goals": most_goals_game,
+            "most_assists": most_assists_game,
+            "most_saves": most_saves_game,
+            "fastest_opening_goals": fastest_opening_goals,
+            "fastest_two_goals": fastest_two_goals,
+        },
+        "streaks": {
+            "point_streaks": point_streaks[:15],
+            "goal_streaks": goal_streaks[:15],
+            "team_win_streaks": win_streaks[:10],
+            "team_unbeaten_streaks": unbeaten_streaks[:10],
+        },
+        "milestones": {
+            "active_season": active_season,
+            "items": milestones[:18],
+        },
+        "clutch_leaders": {
+            "ot_goals": _records(ot_leaders_df),
+            "third_period_gwg": _records(p3_gwg_df),
+            "late_clutch_goals": _records(late_clutch_df),
+            "shootout_leaders": so_leaders_list,
+        },
+    }
+    with _RECORDS_BASE_LOCK:
+        _RECORDS_BASE_CACHE["version"] = v
+        _RECORDS_BASE_CACHE["data"] = data
+    return data
+
+
+def _build_chemistry_data(ds: HockeyDatasets, season: str = "all", strength: str = "all") -> dict[str, Any]:
+    nu_goals = ds.goals[ds.goals["team"] == "Northeastern"].copy()
+    if season and season != "all":
+        nu_goals = nu_goals[nu_goals["season"] == season]
+    if strength and strength.lower() != "all":
+        st_up = strength.upper()
+        if st_up == "EV":
+            nu_goals = nu_goals[~nu_goals["strength"].isin(["PP", "SH"])]
+        else:
+            nu_goals = nu_goals[nu_goals["strength"] == st_up]
+
+    duos_map: dict[tuple[str, str], dict[str, Any]] = {}
+    trios_map: dict[tuple[str, str, str], dict[str, Any]] = {}
+
+    for r in nu_goals.itertuples():
+        sc = str(getattr(r, "scorer", "") or "").strip()
+        a1 = str(getattr(r, "primary_assist", "") or "").strip()
+        a2 = str(getattr(r, "secondary_assist", "") or "").strip()
+        st = str(getattr(r, "strength", "EV") or "EV").strip()
+        gwg = int(getattr(r, "is_gwg", 0) or 0)
+        if not sc:
+            continue
+
+        for idx, ast in enumerate([a1, a2]):
+            if not ast or ast == sc:
+                continue
+            pair = tuple(sorted([sc, ast]))
+            entry = duos_map.setdefault(pair, {
+                "player_a": pair[0],
+                "player_b": pair[1],
+                "total_goals": 0,
+                "primary_connections": 0,
+                "secondary_connections": 0,
+                "pp_goals": 0,
+                "gwg": 0,
+                "a_to_b": 0,
+                "b_to_a": 0,
+            })
+            entry["total_goals"] += 1
+            if idx == 0:
+                entry["primary_connections"] += 1
+            else:
+                entry["secondary_connections"] += 1
+            if st == "PP":
+                entry["pp_goals"] += 1
+            if gwg:
+                entry["gwg"] += 1
+            if ast == pair[0]:
+                entry["a_to_b"] += 1
+            else:
+                entry["b_to_a"] += 1
+
+        if a1 and a2 and len({sc, a1, a2}) == 3:
+            trio = tuple(sorted([sc, a1, a2]))
+            t_entry = trios_map.setdefault(trio, {
+                "players": f"{trio[0]} · {trio[1]} · {trio[2]}",
+                "player_1": trio[0],
+                "player_2": trio[1],
+                "player_3": trio[2],
+                "total_goals": 0,
+                "pp_goals": 0,
+                "ev_goals": 0,
+                "gwg": 0,
+            })
+            t_entry["total_goals"] += 1
+            if st == "PP":
+                t_entry["pp_goals"] += 1
+            else:
+                t_entry["ev_goals"] += 1
+            if gwg:
+                t_entry["gwg"] += 1
+
+    top_duos = sorted(
+        duos_map.values(),
+        key=lambda x: (-x["total_goals"], -x["primary_connections"], x["player_a"]),
+    )[:25]
+    for d in top_duos:
+        d["breakdown"] = f"{d['player_a']}→{d['player_b']} ({d['a_to_b']}) · {d['player_b']}→{d['player_a']} ({d['b_to_a']})"
+
+    top_trios = sorted(
+        trios_map.values(),
+        key=lambda x: (-x["total_goals"], -x["ev_goals"], x["players"]),
+    )[:20]
+
+    return {
+        "season": season,
+        "strength": strength,
+        "top_duos": top_duos,
+        "top_trios": top_trios,
+    }
+
+
+def _build_on_this_day(ds: HockeyDatasets, mmdd: str | None = None) -> dict[str, Any]:
+    games = ds.games.copy()
+    if games.empty:
+        return {"requested_mmdd": mmdd or "", "resolved_mmdd": "", "games": [], "highlights": [], "available_dates": []}
+
+    games["mmdd"] = games["date"].astype(str).str.slice(5, 10)
+    avail_dates = sorted(games["mmdd"].dropna().unique())
+    today_mmdd = datetime.now().strftime("%m-%d")
+    req_mmdd = (mmdd or "").strip()
+    if not re.match(r"^\d{2}-\d{2}$", req_mmdd):
+        req_mmdd = today_mmdd
+
+    resolved_mmdd = req_mmdd
+    if resolved_mmdd not in avail_dates and avail_dates:
+        # Pick the closest historical hockey date (prefer same or next date on calendar, wrapping around)
+        after = [d for d in avail_dates if d >= resolved_mmdd]
+        resolved_mmdd = after[0] if after else avail_dates[-1]
+
+    day_games = games[games["mmdd"] == resolved_mmdd].sort_values("date", ascending=False)
+    wins = int((day_games["outcome"] == "W").sum())
+    losses = int((day_games["outcome"] == "L").sum())
+    ties = int((day_games["outcome"] == "T").sum())
+
+    day_dates = set(day_games["date"].astype(str))
+    sk_day = ds.skaters[ds.skaters["date"].isin(day_dates)]
+    gl_day = ds.goalies[ds.goalies["date"].isin(day_dates)]
+    g_day = ds.goals[(ds.goals["date"].isin(day_dates)) & (ds.goals["team"] == "Northeastern")]
+
+    highlights: list[dict[str, Any]] = []
+    # Hat tricks & 4+ point performances
+    for r in sk_day[(sk_day["goals"] >= 3) | (sk_day["points"] >= 4)].sort_values(["goals", "points"], ascending=[False, False]).itertuples():
+        gls = int(getattr(r, "goals", 0) or 0)
+        ast = int(getattr(r, "assists", 0) or 0)
+        pts = int(getattr(r, "points", 0) or 0)
+        dt = str(getattr(r, "date", ""))
+        opp = str(getattr(r, "opponent", ""))
+        pname = str(getattr(r, "player_name", ""))
+        badge = "Hat Trick" if gls >= 3 else f"{pts}-Point Game"
+        highlights.append({
+            "type": badge,
+            "date": dt,
+            "season": str(getattr(r, "season", "")),
+            "opponent": opp,
+            "player_name": pname,
+            "headline": f"{pname}: {gls}G, {ast}A ({pts} PTS) vs. {opp}",
+        })
+
+    # OT game-winners
+    for r in g_day[(g_day["period"].isin(["OT", "1OT", "2OT", "3OT"])) & (g_day["is_gwg"] == 1)].itertuples():
+        dt = str(getattr(r, "date", ""))
+        opp = str(getattr(r, "opponent", ""))
+        sc = str(getattr(r, "scorer", ""))
+        tm = str(getattr(r, "time", ""))
+        prd = str(getattr(r, "period", "OT"))
+        highlights.append({
+            "type": "OT Winner",
+            "date": dt,
+            "season": str(getattr(r, "season", "")),
+            "opponent": opp,
+            "player_name": sc,
+            "headline": f"{sc} scored the {prd} winner at {tm} vs. {opp}",
+        })
+
+    # Shutouts & 40+ save performances
+    for r in gl_day[(gl_day["shutouts"] > 0) | ((gl_day["saves"] >= 40) & (gl_day["decision"] == "W"))].sort_values("saves", ascending=False).itertuples():
+        dt = str(getattr(r, "date", ""))
+        opp = str(getattr(r, "opponent", ""))
+        gname = str(getattr(r, "goalie_name", ""))
+        sv = int(getattr(r, "saves", 0) or 0)
+        sho = int(getattr(r, "shutouts", 0) or 0)
+        badge = "Shutout" if sho > 0 else "40+ Save Win"
+        highlights.append({
+            "type": badge,
+            "date": dt,
+            "season": str(getattr(r, "season", "")),
+            "opponent": opp,
+            "player_name": gname,
+            "headline": f"{gname} posted a {sv}-save {'shutout' if sho > 0 else 'victory'} vs. {opp}",
+        })
+
+    return {
+        "requested_mmdd": req_mmdd,
+        "resolved_mmdd": resolved_mmdd,
+        "record": f"{wins}-{losses}-{ties}",
+        "games_count": int(len(day_games)),
+        "games": _records(day_games.drop(columns=["mmdd"])),
+        "highlights": highlights[:12],
+        "available_dates": avail_dates,
+    }
+
+
+@app.get("/api/records")
+def get_program_records(
+    position: str = Query(default="all", pattern="^(all|F|D|G|f|d|g)$"),
+    class_year: str = Query(default="all"),
+    chemistry_season: str = Query(default="all"),
+    chemistry_strength: str = Query(default="all", pattern="^(all|EV|PP|SH|ev|pp|sh)$"),
+    mmdd: str | None = Query(default=None),
+    limit: int = Query(default=25, ge=5, le=100),
+) -> dict[str, Any]:
+    ds = _require_datasets()
+    pos_filter = position.upper() if position and position.lower() in ("f", "d", "g") else "all"
+    cls_filter = class_year.strip() if class_year and class_year.strip().lower() != "all" else "all"
+
+    df = ds.season_stats.copy()
+    sk_df = df[(df["gp"] > 0) & (df["position"] != "G")].copy()
+    if pos_filter in ("F", "D"):
+        sk_df = sk_df[sk_df["position"] == pos_filter]
+    if cls_filter != "all":
+        sk_df = sk_df[sk_df["class_year"].str.lower() == cls_filter.lower()]
+
+    # Single-season skaters
+    ss_sk = sk_df.sort_values(["points", "goals", "gp"], ascending=[False, False, True]).head(limit)
+    single_season_skaters = _records(
+        ss_sk[[
+            "season", "player_name", "position", "class_year", "captain_role",
+            "gp", "goals", "assists", "points", "ppg", "shg", "gwg", "otg", "shots", "shot_pct", "plus_minus", "pim",
+        ]]
+    )
+
+    # Career skaters (filtered by position and optional class_year slice)
+    career_sk_list: list[dict[str, Any]] = []
+    if not sk_df.empty:
+        c_sk = (
+            sk_df.groupby("player_name", as_index=False)
+            .agg(
+                position=("position", "last"),
+                seasons=("season", "nunique"),
+                first_season=("season", "min"),
+                last_season=("season", "max"),
+                gp=("gp", "sum"),
+                goals=("goals", "sum"),
+                assists=("assists", "sum"),
+                points=("points", "sum"),
+                ppg=("ppg", "sum"),
+                shg=("shg", "sum"),
+                gwg=("gwg", "sum"),
+                otg=("otg", "sum"),
+                shots=("shots", "sum"),
+                plus_minus=("plus_minus", "sum"),
+                pim=("pim", "sum"),
+            )
+        )
+        c_sk["pts_per_gp"] = c_sk.apply(lambda r: round(r["points"] / r["gp"], 2) if r["gp"] > 0 else 0.0, axis=1)
+        c_sk["span"] = c_sk.apply(
+            lambda r: r["first_season"] if r["first_season"] == r["last_season"] else f"{r['first_season']}–{r['last_season'][-2:]}",
+            axis=1,
+        )
+        c_sk = c_sk.sort_values(["points", "goals", "gp"], ascending=[False, False, True]).head(limit)
+        career_sk_list = _records(c_sk)
+
+    # Single-season & Career Goalies
+    gl_df = df[df["goalie_gp"] > 0].copy()
+    if cls_filter != "all":
+        gl_df = gl_df[gl_df["class_year"].str.lower() == cls_filter.lower()]
+
+    ss_gl = gl_df[gl_df["goalie_gp"] >= 10].sort_values(["wins", "save_pct", "shutouts"], ascending=[False, False, False]).head(limit)
+    single_season_goalies = _records(
+        ss_gl[[
+            "season", "player_name", "class_year", "goalie_gp", "goalie_gs",
+            "wins", "losses", "ties", "saves", "ga", "gaa", "save_pct", "shutouts",
+        ]]
+    )
+
+    career_gl_list: list[dict[str, Any]] = []
+    if not gl_df.empty:
+        c_gl = (
+            gl_df.groupby("player_name", as_index=False)
+            .agg(
+                seasons=("season", "nunique"),
+                first_season=("season", "min"),
+                last_season=("season", "max"),
+                goalie_gp=("goalie_gp", "sum"),
+                goalie_gs=("goalie_gs", "sum"),
+                wins=("wins", "sum"),
+                losses=("losses", "sum"),
+                ties=("ties", "sum"),
+                saves=("saves", "sum"),
+                ga=("ga", "sum"),
+                shutouts=("shutouts", "sum"),
+                gaa=("gaa", "mean"),
+            )
+        )
+        c_gl["save_pct"] = c_gl.apply(
+            lambda r: round(r["saves"] / (r["saves"] + r["ga"]), 3) if (r["saves"] + r["ga"]) > 0 else 0.0,
+            axis=1,
+        )
+        c_gl["gaa"] = c_gl["gaa"].round(2)
+        c_gl["span"] = c_gl.apply(
+            lambda r: r["first_season"] if r["first_season"] == r["last_season"] else f"{r['first_season']}–{r['last_season'][-2:]}",
+            axis=1,
+        )
+        c_gl = c_gl[c_gl["goalie_gp"] >= 10].sort_values(["wins", "save_pct", "shutouts"], ascending=[False, False, False]).head(limit)
+        career_gl_list = _records(c_gl)
+
+    static_rec = _get_cached_static_records(ds)
+    chemistry_data = _build_chemistry_data(ds, chemistry_season, chemistry_strength)
+    otd_data = _build_on_this_day(ds, mmdd)
+
+    return {
+        "filters": {
+            "position": pos_filter,
+            "class_year": cls_filter,
+            "chemistry_season": chemistry_season,
+            "chemistry_strength": chemistry_strength,
+        },
+        "career_skaters": career_sk_list,
+        "single_season_skaters": single_season_skaters,
+        "career_goalies": career_gl_list,
+        "single_season_goalies": single_season_goalies,
+        "single_game_records": static_rec["single_game_records"],
+        "streaks": static_rec["streaks"],
+        "milestones": static_rec["milestones"],
+        "clutch_leaders": static_rec["clutch_leaders"],
+        "chemistry": chemistry_data,
+        "on_this_day": otd_data,
+    }
 
 
 FRONTEND_DIST_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"

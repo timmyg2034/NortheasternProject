@@ -506,12 +506,15 @@ def parse_modern_boxscore(soup, url, html):
                         p_mins = 2
 
                     tr_low = team_raw.lower()
-                    is_nu = (
-                        "northeastern" in tr_low
-                        or "nu" in tr_low
-                        or "neu" in tr_low
-                        or (not tr_low and p_name.lower() in nu_player_names)
-                    )
+                    p_low = p_name.lower()
+                    if p_low and p_low not in ("team", "bench", "none", "unknown"):
+                        is_nu = p_low in nu_player_names
+                    else:
+                        is_nu = (
+                            "northeastern" in tr_low
+                            or "nu" in tr_low
+                            or "neu" in tr_low
+                        )
                     team = "Northeastern" if is_nu else opponent
 
                     penalty_events.append({
@@ -2484,10 +2487,82 @@ async def run_pipeline():
     rosters_csv = "northeastern_rosters.csv"
     season_stats_csv = "northeastern_season_stats.csv"
 
+    # Build canonical Northeastern player set across rosters, season stats, skaters, and goalies
+    nu_players_all = set()
+    for r in all_rosters:
+        if r.get("player_name"):
+            nu_players_all.add(normalize_player_key(r["player_name"]))
+    for r in all_season_stats:
+        if r.get("player_name"):
+            nu_players_all.add(normalize_player_key(r["player_name"]))
+    for r in all_skaters:
+        if r.get("player_name"):
+            nu_players_all.add(normalize_player_key(r["player_name"]))
+    for r in all_goalies:
+        if r.get("goalie_name"):
+            nu_players_all.add(normalize_player_key(r["goalie_name"]))
+
+    for p in all_penalties:
+        p_key = normalize_player_key(p.get("player_name", ""))
+        if p_key and p_key not in ("team", "bench", "none", "unknown"):
+            if p_key in nu_players_all:
+                p["team"] = "Northeastern"
+            elif p.get("team") == "Northeastern" and p.get("opponent"):
+                p["team"] = p["opponent"]
+
+    # Preserve existing verified locations from northeastern_game_results.csv if present
+    existing_locations = {}
+    if Path(games_csv).exists():
+        try:
+            with open(games_csv, "r", encoding="utf-8") as f:
+                for row in csv.DictReader(f):
+                    if row.get("date") and row.get("location"):
+                        existing_locations[row["date"]] = row["location"]
+        except Exception:
+            pass
+
+    goals_by_game = {}
+    for g in all_goals:
+        goals_by_game.setdefault((g.get("date", ""), g.get("opponent", "")), []).append(g)
+    pens_by_game = {}
+    for p in all_penalties:
+        pens_by_game.setdefault((p.get("date", ""), p.get("opponent", "")), []).append(p)
+
     valid_games = [g for g in all_games if g.get("date") and g.get("opponent") != "Unknown"]
     if valid_games:
         for r in valid_games:
-            r["season"] = date_to_season(r.get("date", ""))
+            d = r.get("date", "")
+            opp = r.get("opponent", "")
+            r["season"] = date_to_season(d)
+            if not r.get("location") and d in existing_locations:
+                r["location"] = existing_locations[d]
+            elif d in existing_locations and r.get("location") in ("", "Home"):
+                r["location"] = existing_locations[d]
+
+            g_list = goals_by_game.get((d, opp), [])
+            p_list = pens_by_game.get((d, opp), [])
+            nu_ppg = sum(1 for x in g_list if x.get("team") == "Northeastern" and x.get("strength") == "PP")
+            opp_ppg = sum(1 for x in g_list if x.get("team") != "Northeastern" and x.get("strength") == "PP")
+            by_time = {}
+            for p in p_list:
+                pim = safe_int(p.get("penalty_minutes"), 0)
+                inf = str(p.get("infraction") or "").lower()
+                if pim not in (2, 4, 5) or "misconduct" in inf:
+                    continue
+                tkey = (p.get("period", ""), p.get("time", ""))
+                side = "NU" if p.get("team") == "Northeastern" else "OPP"
+                by_time.setdefault(tkey, {"NU": 0, "OPP": 0})
+                by_time[tkey][side] += (2 if (pim == 4 and nu_ppg > 1) else 1)
+            nu_ppo, opp_ppo = 0, 0
+            for counts in by_time.values():
+                cancel = min(counts["NU"], counts["OPP"])
+                opp_ppo += counts["NU"] - cancel
+                nu_ppo += counts["OPP"] - cancel
+            r["nu_pp_goals"] = max(0, nu_ppg)
+            r["nu_pp_opps"] = max(nu_ppo, nu_ppg)
+            r["opp_pp_goals"] = max(0, opp_ppg)
+            r["opp_pp_opps"] = max(opp_ppo, opp_ppg)
+
         valid_games.sort(key=lambda x: x.get("date", ""))
         gm_keys = ["date", "season", "opponent", "location", "nu_goals", "opp_goals", "outcome", "overtime_status", "is_overtime", "is_shootout", "shootout_winner", "is_shutout", "shutout_team", "nu_pp_goals", "nu_pp_opps", "opp_pp_goals", "opp_pp_opps", "boxscore_url"]
         with open(games_csv, "w", newline="", encoding="utf-8") as f:

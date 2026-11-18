@@ -140,10 +140,21 @@ function resolveOpponentLogo(name) {
   return alias ? OPPONENT_LOGOS[alias] || "" : "";
 }
 
-function proxyImageUrl(url) {
+function proxyImageUrl(url, width, height) {
   if (!url) return "";
   if (url.startsWith("/") || url.startsWith("data:") || url.startsWith("blob:")) return url;
-  return `${API_BASE}/api/image-proxy?url=${encodeURIComponent(url)}`;
+  const params = new URLSearchParams({ url });
+  if (width) params.set("w", String(width));
+  if (height) params.set("h", String(height));
+  return `${API_BASE}/api/image-proxy?${params.toString()}`;
+}
+
+function proxyImageSrcSet(url, width, height) {
+  if (!url || !width) return undefined;
+  if (url.startsWith("/") || url.startsWith("data:") || url.startsWith("blob:")) return undefined;
+  return [1, 2, 3]
+    .map((dpr) => `${proxyImageUrl(url, width * dpr, height ? height * dpr : undefined)} ${dpr}x`)
+    .join(", ");
 }
 
 function OpponentLogo({ name, large = false }) {
@@ -192,11 +203,271 @@ function formatFaceoffs(won, lost) {
   return `${w}-${w + l}`;
 }
 
+function BookIcon() {
+  return (
+    <svg className="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+    </svg>
+  );
+}
+
+function ShareIcon() {
+  return (
+    <svg className="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" style={{ width: 15, height: 15 }}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 1 1 0-2.684m0 2.684 6.632 3.316m-6.632-6 6.632-3.316m0 0a3 3 0 1 0 5.367-2.684 3 3 0 0 0-5.367 2.684Zm0 9.316a3 3 0 1 0 5.368 2.684 3 3 0 0 0-5.368-2.684Z" />
+    </svg>
+  );
+}
+
+function PlayerFormSparkline({ logs, isGoalie, mode = "cumulative" }) {
+  const chrono = useMemo(() => {
+    if (!logs || logs.length < 2) return [];
+    return [...logs].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+  }, [logs]);
+
+  if (chrono.length < 2) return null;
+
+  const points = [];
+  let cumPts = 0;
+  let cumGoals = 0;
+  let cumSaves = 0;
+  for (let i = 0; i < chrono.length; i += 1) {
+    const g = chrono[i];
+    if (isGoalie) {
+      const sv = Number(g.saves || 0);
+      cumSaves += sv;
+      const winStart = Math.max(0, i - 4);
+      const slice = chrono.slice(winStart, i + 1);
+      const rSv = slice.reduce((acc, x) => acc + Number(x.saves || 0), 0);
+      const rGa = slice.reduce((acc, x) => acc + Number(x.goals_against || 0), 0);
+      const rollSvPct = rSv + rGa > 0 ? rSv / (rSv + rGa) : 0;
+      points.push({
+        idx: i + 1,
+        date: g.date,
+        opponent: g.opponent,
+        primary: mode === "rolling" ? Number((rollSvPct * 100).toFixed(1)) : cumSaves,
+        secondary: sv,
+      });
+    } else {
+      const pts = Number(g.points || 0);
+      const gls = Number(g.goals || 0);
+      cumPts += pts;
+      cumGoals += gls;
+      const winStart = Math.max(0, i - 4);
+      const slice = chrono.slice(winStart, i + 1);
+      const rollPts = slice.reduce((acc, x) => acc + Number(x.points || 0), 0) / slice.length;
+      const rollGoals = slice.reduce((acc, x) => acc + Number(x.goals || 0), 0) / slice.length;
+      points.push({
+        idx: i + 1,
+        date: g.date,
+        opponent: g.opponent,
+        primary: mode === "rolling" ? Number(rollPts.toFixed(2)) : cumPts,
+        secondary: mode === "rolling" ? Number(rollGoals.toFixed(2)) : cumGoals,
+      });
+    }
+  }
+
+  const w = 640;
+  const h = 155;
+  const padL = 36;
+  const padR = 16;
+  const padT = 16;
+  const padB = 26;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const maxVal = Math.max(1, ...points.map((p) => Math.max(p.primary, p.secondary || 0)));
+  const minVal = isGoalie && mode === "rolling" ? Math.max(0, Math.min(...points.map((p) => p.primary)) - 2) : 0;
+  const span = Math.max(1, maxVal - minVal);
+
+  const toX = (i) => padL + (points.length > 1 ? (i / (points.length - 1)) * plotW : plotW / 2);
+  const toY = (v) => padT + plotH - ((v - minVal) / span) * plotH;
+
+  const primaryPath = points.map((p, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(p.primary).toFixed(1)}`).join(" ");
+  const areaPath = `${primaryPath} L${toX(points.length - 1).toFixed(1)},${(padT + plotH).toFixed(1)} L${toX(0).toFixed(1)},${(padT + plotH).toFixed(1)} Z`;
+  const secondaryPath = !isGoalie
+    ? points.map((p, i) => `${i === 0 ? "M" : "L"}${toX(i).toFixed(1)},${toY(p.secondary).toFixed(1)}`).join(" ")
+    : "";
+
+  return (
+    <div className="sparkline-wrap">
+      <svg viewBox={`0 0 ${w} ${h}`} className="sparkline-svg" role="img" aria-label="Player performance trend chart">
+        <defs>
+          <linearGradient id="nuSparkGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#d41b2c" stopOpacity="0.32" />
+            <stop offset="100%" stopColor="#d41b2c" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        {[0, 0.5, 1].map((t) => {
+          const y = padT + plotH * (1 - t);
+          const val = minVal + span * t;
+          return (
+            <g key={t}>
+              <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+              <text x={padL - 6} y={y + 4} textAnchor="end" fill="#9ca3af" fontSize="10">
+                {isGoalie && mode === "rolling" ? `${val.toFixed(0)}%` : Math.round(val)}
+              </text>
+            </g>
+          );
+        })}
+        <path d={areaPath} fill="url(#nuSparkGrad)" />
+        {!isGoalie && secondaryPath && (
+          <path d={secondaryPath} fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeDasharray="4 3" />
+        )}
+        <path d={primaryPath} fill="none" stroke="#ef4444" strokeWidth="2.4" />
+        {points.length <= 45 &&
+          points.map((p, i) => (
+            <circle key={p.date + i} cx={toX(i)} cy={toY(p.primary)} r="2.8" fill="#ef4444">
+              <title>{`Game ${p.idx} (${p.date} vs. ${p.opponent}): ${p.primary}`}</title>
+            </circle>
+          ))}
+        <text x={padL} y={h - 6} fill="#9ca3af" fontSize="10">
+          {points[0]?.date}
+        </text>
+        <text x={w - padR} y={h - 6} textAnchor="end" fill="#9ca3af" fontSize="10">
+          {points[points.length - 1]?.date} ({points.length} GP)
+        </text>
+      </svg>
+      <div className="sparkline-legend">
+        <span className="legend-item">
+          <span className="legend-dot" style={{ background: "#ef4444" }} />
+          {isGoalie
+            ? mode === "rolling"
+              ? "5-Game Rolling SV%"
+              : "Cumulative Saves"
+            : mode === "rolling"
+              ? "5-Game Rolling PTS/GP"
+              : "Cumulative Points"}
+        </span>
+        {!isGoalie && (
+          <span className="legend-item">
+            <span className="legend-dot" style={{ background: "#f59e0b" }} />
+            {mode === "rolling" ? "5-Game Rolling G/GP" : "Cumulative Goals"}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CompareFormChart({ pA, pB }) {
+  if (!pA?.game_logs?.length || !pB?.game_logs?.length) return null;
+  if (pA.is_goalie !== pB.is_goalie) return null;
+  const isGoalie = Boolean(pA.is_goalie);
+
+  const buildSeries = (logs) => {
+    const chrono = [...logs].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+    let cum = 0;
+    return chrono.map((g, i) => {
+      cum += isGoalie ? Number(g.saves || 0) : Number(g.points || 0);
+      return { gp: i + 1, val: cum };
+    });
+  };
+
+  const sA = buildSeries(pA.game_logs);
+  const sB = buildSeries(pB.game_logs);
+  if (sA.length < 2 && sB.length < 2) return null;
+
+  const maxGP = Math.max(2, sA.length, sB.length);
+  const maxVal = Math.max(1, sA[sA.length - 1]?.val || 0, sB[sB.length - 1]?.val || 0);
+  const w = 640;
+  const h = 165;
+  const padL = 38;
+  const padR = 18;
+  const padT = 16;
+  const padB = 26;
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const toX = (gp) => padL + ((gp - 1) / (maxGP - 1)) * plotW;
+  const toY = (v) => padT + plotH - (v / maxVal) * plotH;
+
+  const pathA = sA.map((pt, i) => `${i === 0 ? "M" : "L"}${toX(pt.gp).toFixed(1)},${toY(pt.val).toFixed(1)}`).join(" ");
+  const pathB = sB.map((pt, i) => `${i === 0 ? "M" : "L"}${toX(pt.gp).toFixed(1)},${toY(pt.val).toFixed(1)}`).join(" ");
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h3>Career Trajectory by Games Played ({isGoalie ? "Cumulative Saves" : "Cumulative Points"})</h3>
+        <span className="muted">Aligned by career game number (1 to {maxGP} GP)</span>
+      </div>
+      <div className="sparkline-wrap">
+        <svg viewBox={`0 0 ${w} ${h}`} className="sparkline-svg" role="img" aria-label="Career trajectory comparison chart">
+          {[0, 0.5, 1].map((t) => {
+            const y = padT + plotH * (1 - t);
+            return (
+              <g key={t}>
+                <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+                <text x={padL - 6} y={y + 4} textAnchor="end" fill="#9ca3af" fontSize="10">
+                  {Math.round(maxVal * t)}
+                </text>
+              </g>
+            );
+          })}
+          <path d={pathA} fill="none" stroke="#ef4444" strokeWidth="2.5" />
+          <path d={pathB} fill="none" stroke="#38bdf8" strokeWidth="2.5" />
+          <text x={padL} y={h - 6} fill="#9ca3af" fontSize="10">Game 1</text>
+          <text x={w - padR} y={h - 6} textAnchor="end" fill="#9ca3af" fontSize="10">Game {maxGP}</text>
+        </svg>
+        <div className="sparkline-legend">
+          <span className="legend-item">
+            <span className="legend-dot" style={{ background: "#ef4444" }} />
+            {pA.bio.player_name} ({sA[sA.length - 1]?.val || 0} in {sA.length} GP)
+          </span>
+          <span className="legend-item">
+            <span className="legend-dot" style={{ background: "#38bdf8" }} />
+            {pB.bio.player_name} ({sB[sB.length - 1]?.val || 0} in {sB.length} GP)
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GoalsTimingChart({ buckets }) {
+  if (!buckets || buckets.length === 0) return null;
+  const maxVal = Math.max(1, ...buckets.map((b) => Math.max(b.nu_goals || 0, b.opp_goals || 0)));
+  return (
+    <div className="timing-chart-wrap" style={{ marginTop: 18 }}>
+      <div className="card-header" style={{ marginBottom: 8 }}>
+        <h3 style={{ margin: 0 }}>Scoring Timing Density (5-Minute Game Segments)</h3>
+        <div className="sparkline-legend" style={{ marginTop: 0 }}>
+          <span className="legend-item">
+            <span className="legend-dot" style={{ background: "#ef4444" }} />
+            Northeastern
+          </span>
+          <span className="legend-item">
+            <span className="legend-dot" style={{ background: "#64748b" }} />
+            Opponents
+          </span>
+        </div>
+      </div>
+      <div className="timing-bars-grid">
+        {buckets.map((b) => {
+          const nuH = Math.round(((b.nu_goals || 0) / maxVal) * 100);
+          const oppH = Math.round(((b.opp_goals || 0) / maxVal) * 100);
+          return (
+            <div key={b.label} className="timing-col" title={`${b.label}: NU ${b.nu_goals} – Opp ${b.opp_goals}`}>
+              <div className="timing-bars-pair">
+                <div className="timing-bar nu" style={{ height: `${Math.max(4, nuH)}%` }}>
+                  {b.nu_goals > 0 && <span className="timing-bar-val">{b.nu_goals}</span>}
+                </div>
+                <div className="timing-bar opp" style={{ height: `${Math.max(4, oppH)}%` }}>
+                  {b.opp_goals > 0 && <span className="timing-bar-val">{b.opp_goals}</span>}
+                </div>
+              </div>
+              <div className="timing-lbl">{b.label.replace("m", "")}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("tab");
-    return ["chat", "leaders", "roster", "rivalry"].includes(t) ? t : "chat";
+    return ["chat", "leaders", "records", "roster", "rivalry", "compare"].includes(t) ? t : "chat";
   });
   const [seasons, setSeasons] = useState([]);
   const [opponents, setOpponents] = useState([]);
@@ -280,8 +551,20 @@ export default function App() {
   const [leadersLoading, setLeadersLoading] = useState(false);
   const [leaderSort, setLeaderSort] = useState({ key: "points", dir: "desc" });
   const [leaderScope, setLeaderScope] = useState("all");
+  const [leaderLocation, setLeaderLocation] = useState("all");
   const [leaderOpponent, setLeaderOpponent] = useState("");
   const [statsView, setStatsView] = useState("players"); // "players" | "team"
+
+  // Records & History state
+  const [recordsData, setRecordsData] = useState(null);
+  const [recordsLoading, setRecordsLoading] = useState(false);
+  const [recordsSubTab, setRecordsSubTab] = useState("book"); // "book" | "milestones" | "chemistry" | "otd"
+  const [recordsLeaderboardMode, setRecordsLeaderboardMode] = useState("career"); // "career" | "single_season" | "single_game"
+  const [recordsPosition, setRecordsPosition] = useState("all");
+  const [recordsClassYear, setRecordsClassYear] = useState("all");
+  const [chemSeason, setChemSeason] = useState("all");
+  const [chemStrength, setChemStrength] = useState("all");
+  const [otdMmdd, setOtdMmdd] = useState("");
 
   // Roster state
   const [roster, setRoster] = useState(null);
@@ -306,6 +589,9 @@ export default function App() {
   const [playerScope, setPlayerScope] = useState("all");
   const [playerLogSeason, setPlayerLogSeason] = useState("all");
   const [playerOpponent, setPlayerOpponent] = useState("all");
+  const [playerChartMode, setPlayerChartMode] = useState("cumulative"); // "cumulative" | "rolling"
+  const [shareCopied, setShareCopied] = useState(false);
+  const [allGamesList, setAllGamesList] = useState([]);
   const [rivalryPage, setRivalryPage] = useState(1);
   const [penaltyView, setPenaltyView] = useState(null);
   const [penaltyData, setPenaltyData] = useState(null);
@@ -321,10 +607,22 @@ export default function App() {
   const [allPlayers, setAllPlayers] = useState([]);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState("");
-  const [compareAName, setCompareAName] = useState("");
-  const [compareBName, setCompareBName] = useState("");
-  const [compareAQuery, setCompareAQuery] = useState("");
-  const [compareBQuery, setCompareBQuery] = useState("");
+  const [compareAName, setCompareAName] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("compareA") || "";
+  });
+  const [compareBName, setCompareBName] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("compareB") || "";
+  });
+  const [compareAQuery, setCompareAQuery] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("compareA") || "";
+  });
+  const [compareBQuery, setCompareBQuery] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("compareB") || "";
+  });
   const [compareAFocus, setCompareAFocus] = useState(false);
   const [compareBFocus, setCompareBFocus] = useState(false);
   const [compareAData, setCompareAData] = useState(null);
@@ -357,7 +655,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (tab !== "compare" || allPlayers.length > 0 || playersLoading) return;
+    if (allPlayers.length > 0 || playersLoading) return;
     setPlayersLoading(true);
     setPlayersError("");
     fetch(`${API_BASE}/api/players`)
@@ -365,11 +663,19 @@ export default function App() {
       .then((d) => setAllPlayers(d.players || []))
       .catch((err) => setPlayersError(err.message || "Unable to load players"))
       .finally(() => setPlayersLoading(false));
-  }, [tab, allPlayers.length]);
+  }, [allPlayers.length]);
 
   useEffect(() => {
     const a = compareAName.trim();
     const b = compareBName.trim();
+    if (tab === "compare") {
+      const url = new URL(window.location.href);
+      if (a) url.searchParams.set("compareA", a);
+      else url.searchParams.delete("compareA");
+      if (b) url.searchParams.set("compareB", b);
+      else url.searchParams.delete("compareB");
+      window.history.replaceState({ tab, player: selectedPlayer, penaltyView }, "", url.toString());
+    }
     if (tab !== "compare") return;
     if (!a && !b) {
       setCompareAData(null);
@@ -431,6 +737,9 @@ export default function App() {
     setBoxscoreData(null);
     setBoxscoreLoading(true);
     setBoxscoreError("");
+    const url = new URL(window.location.href);
+    url.searchParams.set("boxscore", `${date}|${opponent}`);
+    window.history.replaceState({ tab, player: selectedPlayer, penaltyView }, "", url.toString());
     try {
       const params = new URLSearchParams({ date, opponent });
       const res = await fetch(`${API_BASE}/api/boxscore?${params.toString()}`);
@@ -448,6 +757,47 @@ export default function App() {
     setBoxscoreModal(null);
     setBoxscoreData(null);
     setBoxscoreError("");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("boxscore");
+    window.history.replaceState({ tab, player: selectedPlayer, penaltyView }, "", url.toString());
+  }
+
+  function handleCopyShareLink() {
+    const shareUrl = window.location.href;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setShareCopied(true);
+        window.setTimeout(() => setShareCopied(false), 2000);
+      }).catch(() => {});
+    }
+  }
+
+  function extractAnswerEntities(text) {
+    if (!text) return { players: [], games: [] };
+    const foundPlayers = [];
+    const seenP = new Set();
+    for (const p of allPlayers) {
+      const pname = p.player_name;
+      if (!pname || pname.length < 5 || seenP.has(pname)) continue;
+      if (text.includes(pname)) {
+        seenP.add(pname);
+        foundPlayers.push(pname);
+        if (foundPlayers.length >= 5) break;
+      }
+    }
+    const foundGames = [];
+    const seenG = new Set();
+    const dateMatches = text.match(/\b(1999|20[0-2]\d)-\d{2}-\d{2}\b/g) || [];
+    for (const dt of dateMatches) {
+      if (seenG.has(dt)) continue;
+      const gm = allGamesList.find((g) => g.date === dt);
+      if (gm && gm.opponent) {
+        seenG.add(dt);
+        foundGames.push({ date: dt, opponent: gm.opponent });
+        if (foundGames.length >= 4) break;
+      }
+    }
+    return { players: foundPlayers, games: foundGames };
   }
 
   async function loadPenaltyBreakdown(pv) {
@@ -482,6 +832,12 @@ export default function App() {
       "",
       window.location.href
     );
+    const initParams = new URLSearchParams(window.location.search);
+    const initBox = initParams.get("boxscore");
+    if (initBox && initBox.includes("|")) {
+      const [bDate, bOpp] = initBox.split("|");
+      if (bDate && bOpp) openBoxScore(bDate, bOpp);
+    }
 
     function handlePopState(e) {
       const state = e.state;
@@ -498,7 +854,7 @@ export default function App() {
       } else {
         const params = new URLSearchParams(window.location.search);
         const t = params.get("tab");
-        setTab(["chat", "leaders", "roster", "rivalry", "compare"].includes(t) ? t : "chat");
+        setTab(["chat", "leaders", "records", "roster", "rivalry", "compare"].includes(t) ? t : "chat");
         setSelectedPlayer(params.get("player") || null);
         setPenaltyView(null);
         setPenaltyData(null);
@@ -593,7 +949,34 @@ export default function App() {
         if (s.length > 0) setSelectedSeason(s[0]);
       })
       .catch(() => {});
+
+    fetch(`${API_BASE}/api/games?limit=300`)
+      .then((r) => r.json())
+      .then((data) => setAllGamesList(data.games || []))
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (tab !== "records") return;
+    setRecordsLoading(true);
+    const params = new URLSearchParams({
+      position: recordsPosition,
+      class_year: recordsClassYear,
+      chemistry_season: chemSeason,
+      chemistry_strength: chemStrength,
+      limit: "25",
+    });
+    if (otdMmdd) params.set("mmdd", otdMmdd);
+    fetch(`${API_BASE}/api/records?${params.toString()}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setRecordsData(data);
+        if (!otdMmdd && data?.on_this_day?.resolved_mmdd) {
+          setOtdMmdd(data.on_this_day.resolved_mmdd);
+        }
+      })
+      .finally(() => setRecordsLoading(false));
+  }, [tab, recordsPosition, recordsClassYear, chemSeason, chemStrength, otdMmdd]);
 
   useEffect(() => {
     if (!selectedSeason) return;
@@ -602,6 +985,7 @@ export default function App() {
       const params = new URLSearchParams({
         season: selectedSeason,
         scope: leaderScope,
+        location: leaderLocation,
         limit: "35",
       });
       if (leaderOpponent) {
@@ -628,7 +1012,7 @@ export default function App() {
         .then((data) => setRoster(data))
         .finally(() => setRosterLoading(false));
     }
-  }, [tab, selectedSeason, leaderScope, leaderOpponent, seasons]);
+  }, [tab, selectedSeason, leaderScope, leaderLocation, leaderOpponent, seasons]);
 
   useEffect(() => {
     if (tab !== "rivalry" || !selectedRival) return;
@@ -674,7 +1058,10 @@ export default function App() {
       return `User is viewing Player Profile for ${selectedPlayer}.`;
     }
     if (tab === "leaders") {
-      return `User is viewing ${selectedSeason === "all" ? "All-Time" : selectedSeason} Leaders (${leaderScope === "conference" ? "Hockey East" : "All Games"}${leaderOpponent ? `, vs. ${leaderOpponent}` : ""}).`;
+      return `User is viewing ${selectedSeason === "all" ? "All-Time" : selectedSeason} Leaders (${leaderScope}, Venue: ${leaderLocation}${leaderOpponent ? `, vs. ${leaderOpponent}` : ""}).`;
+    }
+    if (tab === "records") {
+      return `User is viewing Program Record Book & History (${recordsSubTab}).`;
     }
     if (tab === "roster") {
       return `User is viewing ${selectedSeason} Roster.`;
@@ -683,7 +1070,7 @@ export default function App() {
       return `User is viewing Opponent history vs. ${selectedRival}.`;
     }
     return null;
-  }, [selectedPlayer, tab, selectedSeason, leaderScope, leaderOpponent, selectedRival]);
+  }, [selectedPlayer, tab, selectedSeason, leaderScope, leaderLocation, leaderOpponent, selectedRival, recordsSubTab]);
 
   const sortedSkaters = useMemo(() => {
     if (!leaders?.skaters) return [];
@@ -911,15 +1298,27 @@ export default function App() {
               </p>
             </div>
           </div>
-          {health?.latest_game_date && (
-            <div className="header-pill">
-              <span className="header-pill-label">
-                <span className="live-dot" aria-hidden="true" />
-                Latest Game
-              </span>
-              <span className="header-pill-date">{health.latest_game_date}</span>
-            </div>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {health?.latest_game_date && (
+              <div className="header-pill">
+                <span className="header-pill-label">
+                  <span className="live-dot" aria-hidden="true" />
+                  Latest Game
+                </span>
+                <span className="header-pill-date">{health.latest_game_date}</span>
+              </div>
+            )}
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={handleCopyShareLink}
+              title="Copy a direct link to this current view"
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 12 }}
+            >
+              <ShareIcon />
+              <span>{shareCopied ? "Copied Link!" : "Share View"}</span>
+            </button>
+          </div>
         </header>
 
         <nav className="tab-bar" aria-label="Main navigation">
@@ -940,6 +1339,15 @@ export default function App() {
           >
             <TrophyIcon />
             <span>Stats</span>
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${!selectedPlayer && tab === "records" ? "active" : ""}`}
+            aria-current={!selectedPlayer && tab === "records" ? "page" : undefined}
+            onClick={() => navigateTab("records")}
+          >
+            <BookIcon />
+            <span>Records</span>
           </button>
           <button
             type="button"
@@ -1370,7 +1778,8 @@ export default function App() {
                   <div className="player-hero-left">
                     {playerData.bio.image_url ? (
                       <img
-                        src={proxyImageUrl(playerData.bio.image_url)}
+                        src={proxyImageUrl(playerData.bio.image_url, 80, 100)}
+                        srcSet={proxyImageSrcSet(playerData.bio.image_url, 80, 100)}
                         alt={playerData.bio.player_name}
                         className="player-avatar-lg"
                         onError={(e) => {
@@ -1748,22 +2157,49 @@ export default function App() {
 
                   return (
                     <div className="card">
-                      <div className="card-header">
+                      <div className="card-header" style={{ flexWrap: "wrap", gap: 10 }}>
                         <h2>Game Log ({visibleLogs.length} Games)</h2>
-                        <select
-                          aria-label="Filter game log by season"
-                          className="select-input"
-                          value={playerLogSeason}
-                          onChange={(e) => setPlayerLogSeason(e.target.value)}
-                        >
-                          <option value="all">All Seasons ({playerData.game_logs.length})</option>
-                          {logSeasons.map((s) => (
-                            <option key={s} value={s}>
-                              {s}
-                            </option>
-                          ))}
-                        </select>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          {visibleLogs.length >= 2 && (
+                            <div className="segmented" role="group" aria-label="Trend chart mode">
+                              <button
+                                type="button"
+                                className={`segmented-btn ${playerChartMode === "cumulative" ? "active" : ""}`}
+                                onClick={() => setPlayerChartMode("cumulative")}
+                              >
+                                Cumulative
+                              </button>
+                              <button
+                                type="button"
+                                className={`segmented-btn ${playerChartMode === "rolling" ? "active" : ""}`}
+                                onClick={() => setPlayerChartMode("rolling")}
+                              >
+                                5-Game Rolling
+                              </button>
+                            </div>
+                          )}
+                          <select
+                            aria-label="Filter game log by season"
+                            className="select-input"
+                            value={playerLogSeason}
+                            onChange={(e) => setPlayerLogSeason(e.target.value)}
+                          >
+                            <option value="all">All Seasons ({playerData.game_logs.length})</option>
+                            {logSeasons.map((s) => (
+                              <option key={s} value={s}>
+                                {s}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
+                      {visibleLogs.length >= 2 && (
+                        <PlayerFormSparkline
+                          logs={visibleLogs}
+                          isGoalie={Boolean(playerData.is_goalie)}
+                          mode={playerChartMode}
+                        />
+                      )}
                       <div className="table-wrap">
                         {playerData.is_goalie ? (
                           <table className="data-table">
@@ -2345,22 +2781,49 @@ export default function App() {
             )}
 
             <div className="messages" role="log" aria-live="polite" aria-relevant="additions">
-              {messages.map((m, idx) => (
-                <div key={idx} className={`msg-row ${m.role}`}>
-                  <div className={`msg ${m.role}`}>
-                    {m.role === "assistant" ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {m.content}
-                      </ReactMarkdown>
-                    ) : (
-                      m.content
+              {messages.map((m, idx) => {
+                const entities = m.role === "assistant" ? extractAnswerEntities(m.content) : null;
+                return (
+                  <div key={idx} className={`msg-row ${m.role}`}>
+                    <div className={`msg ${m.role}`}>
+                      {m.role === "assistant" ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {m.content}
+                        </ReactMarkdown>
+                      ) : (
+                        m.content
+                      )}
+                    </div>
+                    {m.role === "assistant" && entities && (entities.players.length > 0 || entities.games.length > 0) && (
+                      <div className="entity-chips-row">
+                        {entities.players.map((pName) => (
+                          <button
+                            key={pName}
+                            type="button"
+                            className="entity-chip"
+                            onClick={() => openPlayer(pName)}
+                          >
+                            👤 {pName} &rarr;
+                          </button>
+                        ))}
+                        {entities.games.map((g) => (
+                          <button
+                            key={`${g.date}-${g.opponent}`}
+                            type="button"
+                            className="entity-chip"
+                            onClick={() => openBoxScore(g.date, g.opponent)}
+                          >
+                            🏒 Box Score: {g.date} vs. {g.opponent} &rarr;
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {m.role === "assistant" && m.cached && (
+                      <span className="msg-meta">Instant cached answer</span>
                     )}
                   </div>
-                  {m.role === "assistant" && m.cached && (
-                    <span className="msg-meta">Instant cached answer</span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
               {chatLoading && (
                 <div className="msg-row assistant" role="status" aria-live="polite">
                   <div className="msg assistant">
@@ -2400,7 +2863,7 @@ export default function App() {
 
         {(tab === "leaders" || tab === "roster") && (
           <div className="controls-row">
-            <div className="controls-group">
+            <div className="controls-group" style={{ flexWrap: "wrap" }}>
               <label htmlFor="season-select" className="field-label">
                 Season
               </label>
@@ -2422,24 +2885,30 @@ export default function App() {
 
               {tab === "leaders" && (
                 <>
-                  <div className="segmented" role="group" aria-label="Game scope">
-                    <button
-                      type="button"
-                      className={`segmented-btn ${leaderScope === "all" ? "active" : ""}`}
-                      aria-pressed={leaderScope === "all"}
-                      onClick={() => setLeaderScope("all")}
-                    >
-                      All Games
-                    </button>
-                    <button
-                      type="button"
-                      className={`segmented-btn ${leaderScope === "conference" ? "active" : ""}`}
-                      aria-pressed={leaderScope === "conference"}
-                      onClick={() => setLeaderScope("conference")}
-                    >
-                      Hockey East
-                    </button>
-                  </div>
+                  <select
+                    aria-label="Filter by tournament or game scope"
+                    className="select-input"
+                    value={leaderScope}
+                    onChange={(e) => setLeaderScope(e.target.value)}
+                  >
+                    <option value="all">All Games</option>
+                    <option value="conference">Hockey East (Conf.)</option>
+                    <option value="beanpot">Beanpot Tournament</option>
+                    <option value="postseason">Hockey East Postseason</option>
+                    <option value="ncaa">NCAA Tournament</option>
+                  </select>
+
+                  <select
+                    aria-label="Filter by venue"
+                    className="select-input"
+                    value={leaderLocation}
+                    onChange={(e) => setLeaderLocation(e.target.value)}
+                  >
+                    <option value="all">All Venues</option>
+                    <option value="Home">Home (Matthews Arena)</option>
+                    <option value="Away">Away</option>
+                    <option value="Neutral">Neutral Site</option>
+                  </select>
 
                   <select
                     aria-label="Filter stats by opponent"
@@ -2531,15 +3000,31 @@ export default function App() {
                     ? `Team Stats vs. ${leaderOpponent}`
                     : leaderScope === "conference"
                       ? "Hockey East Team Stats"
-                      : "Team Stats"}
+                      : leaderScope === "beanpot"
+                        ? "Beanpot Tournament Stats"
+                        : leaderScope === "postseason"
+                          ? "Hockey East Postseason Stats"
+                          : leaderScope === "ncaa"
+                            ? "NCAA Tournament Stats"
+                            : "Team Stats"}
                 </span>
               </h2>
               <span className="muted">
-                {leaderOpponent
-                  ? `Filtered to games vs. ${leaderOpponent}`
-                  : leaderScope === "conference"
-                    ? "Hockey East conference games"
-                    : "All games"}
+                {[
+                  leaderOpponent ? `vs. ${leaderOpponent}` : null,
+                  leaderLocation !== "all" ? `${leaderLocation} Venue` : null,
+                  leaderScope === "conference"
+                    ? "Hockey East games"
+                    : leaderScope === "beanpot"
+                      ? "Beanpot games"
+                      : leaderScope === "postseason"
+                        ? "HE Postseason"
+                        : leaderScope === "ncaa"
+                          ? "NCAA Tournament"
+                          : "All games",
+                ]
+                  .filter(Boolean)
+                  .join(" • ")}
               </span>
             </div>
             {leadersLoading && <p className="muted">Loading team stats...</p>}
@@ -2586,10 +3071,33 @@ export default function App() {
                       <div className="val">{ts.saves > 0 ? ts.saves : "N/A"}</div>
                       <div className="lbl">{savePctStr ? `Saves (${savePctStr} SV%)` : "Saves"}</div>
                     </div>
-                    {ts.ppg !== null && (
+                    {ts.pp_pct !== null && ts.pp_pct !== undefined ? (
                       <div className="stat-box">
-                        <div className="val">{`${ts.ppg} / ${ts.shg}`}</div>
-                        <div className="lbl">PPG / SHG</div>
+                        <div className="val">{`${ts.pp_pct}%`}</div>
+                        <div className="lbl">{`Power Play (${ts.pp_goals}/${ts.pp_opps}, ${ts.shg || 0} SHG)`}</div>
+                      </div>
+                    ) : (
+                      ts.ppg !== null && (
+                        <div className="stat-box">
+                          <div className="val">{`${ts.ppg} / ${ts.shg}`}</div>
+                          <div className="lbl">PPG / SHG</div>
+                        </div>
+                      )
+                    )}
+                    {ts.pk_pct !== null && ts.pk_pct !== undefined && (
+                      <div className="stat-box">
+                        <div className="val">{`${ts.pk_pct}%`}</div>
+                        <div className="lbl">{`Penalty Kill (${ts.pk_kills}/${ts.opp_pp_opps})`}</div>
+                      </div>
+                    )}
+                    {ts.location_splits && (
+                      <div className="stat-box">
+                        <div className="val" style={{ fontSize: 15 }}>
+                          {`${ts.location_splits.home} / ${ts.location_splits.away}`}
+                        </div>
+                        <div className="lbl">
+                          {`Home / Away (${ts.location_splits.neutral} Neutral)`}
+                        </div>
                       </div>
                     )}
                     <button
@@ -2700,6 +3208,10 @@ export default function App() {
                         </table>
                       </div>
                     </>
+                  )}
+
+                  {ts.goals_by_minute?.length > 0 && (
+                    <GoalsTimingChart buckets={ts.goals_by_minute} />
                   )}
 
                   {selectedSeason === "all" && ts.season_breakdown?.length > 0 && (
@@ -2873,7 +3385,8 @@ export default function App() {
                           <span className="roster-player-cell">
                             {p.image_url && (
                               <img
-                                src={proxyImageUrl(p.image_url)}
+                                src={proxyImageUrl(p.image_url, 32, 32)}
+                                srcSet={proxyImageSrcSet(p.image_url, 32, 32)}
                                 alt=""
                                 className="player-avatar-sm"
                                 loading="lazy"
@@ -3013,7 +3526,8 @@ export default function App() {
                       <span className="roster-player-cell">
                         {p.image_url && (
                           <img
-                            src={proxyImageUrl(p.image_url)}
+                            src={proxyImageUrl(p.image_url, 32, 32)}
+                            srcSet={proxyImageSrcSet(p.image_url, 32, 32)}
                             alt=""
                             className="player-avatar-sm"
                             loading="lazy"
@@ -3597,10 +4111,10 @@ export default function App() {
                   <div className="card" style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     {bio.image_url ? (
                       <img
-                        src={proxyImageUrl(bio.image_url)}
+                        src={proxyImageUrl(bio.image_url, 60, 76)}
+                        srcSet={proxyImageSrcSet(bio.image_url, 60, 76)}
                         alt={bio.player_name}
-                        className="player-avatar-lg"
-                        style={{ width: 64, height: 64 }}
+                        className="player-avatar-md"
                         onError={(e) => {
                           e.currentTarget.style.display = "none";
                         }}
@@ -3945,7 +4459,945 @@ export default function App() {
                       </div>
                     </div>
                   )}
+
+                  {!mixedPositions && pA && pB && (
+                    <CompareFormChart pA={pA} pB={pB} />
+                  )}
                 </>
+              );
+            })()}
+          </section>
+        )}
+
+        {tab === "records" && (
+          <section style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="controls-row" style={{ flexWrap: "wrap", gap: 10 }}>
+              <div className="segmented" role="group" aria-label="Records and History sections">
+                <button
+                  type="button"
+                  className={`segmented-btn ${recordsSubTab === "recordbook" ? "active" : ""}`}
+                  onClick={() => setRecordsSubTab("recordbook")}
+                >
+                  Record Book
+                </button>
+                <button
+                  type="button"
+                  className={`segmented-btn ${recordsSubTab === "milestones" ? "active" : ""}`}
+                  onClick={() => setRecordsSubTab("milestones")}
+                >
+                  Milestones &amp; Clutch
+                </button>
+                <button
+                  type="button"
+                  className={`segmented-btn ${recordsSubTab === "chemistry" ? "active" : ""}`}
+                  onClick={() => setRecordsSubTab("chemistry")}
+                >
+                  Chemistry &amp; Lines
+                </button>
+                <button
+                  type="button"
+                  className={`segmented-btn ${recordsSubTab === "onthisday" ? "active" : ""}`}
+                  onClick={() => setRecordsSubTab("onthisday")}
+                >
+                  On This Day
+                </button>
+              </div>
+            </div>
+
+            {recordsLoading && !recordsData && (
+              <div className="card">
+                <p className="muted">Loading Northeastern Record Book &amp; Archives...</p>
+              </div>
+            )}
+
+            {recordsData && recordsSubTab === "recordbook" && (() => {
+              const isSeasonMode = recordsLeaderboardMode === "season";
+              const posFilter = recordsPosition;
+              const classFilter = recordsClassYear;
+
+              const matchPos = (posVal) => {
+                if (posFilter === "all") return true;
+                return (posVal || "").toUpperCase() === posFilter.toUpperCase();
+              };
+              const matchClass = (cls) => {
+                if (classFilter === "all") return true;
+                return (cls || "").toLowerCase() === classFilter.toLowerCase();
+              };
+
+              const rawSkaters = isSeasonMode
+                ? (recordsData.single_season_skaters || [])
+                : (recordsData.career_skaters || []);
+              const filteredSkaters = rawSkaters
+                .filter((r) => matchPos(r.position_group || r.position) && (!isSeasonMode || matchClass(r.class_year)))
+                .slice(0, 50);
+
+              const rawGoalies = isSeasonMode
+                ? (recordsData.single_season_goalies || [])
+                : (recordsData.career_goalies || []);
+              const filteredGoalies = rawGoalies
+                .filter((r) => !isSeasonMode || matchClass(r.class_year))
+                .slice(0, 35);
+
+              const sgr = recordsData.single_game_records || {};
+              const streaks = recordsData.streaks || {};
+
+              return (
+                <>
+                  <div className="card">
+                    <div className="card-header" style={{ flexWrap: "wrap", gap: 12 }}>
+                      <div>
+                        <h2>Program Leaderboards (1999&ndash;Present)</h2>
+                        <span className="muted">
+                          {isSeasonMode
+                            ? "All-time single-season benchmarks — filterable by position & class year"
+                            : "All-time career totals across the modern Huskies archive"}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                        <div className="segmented" role="group" aria-label="Leaderboard timeframe">
+                          <button
+                            type="button"
+                            className={`segmented-btn ${recordsLeaderboardMode === "career" ? "active" : ""}`}
+                            onClick={() => setRecordsLeaderboardMode("career")}
+                          >
+                            Career Leaders
+                          </button>
+                          <button
+                            type="button"
+                            className={`segmented-btn ${recordsLeaderboardMode === "season" ? "active" : ""}`}
+                            onClick={() => setRecordsLeaderboardMode("season")}
+                          >
+                            Single-Season
+                          </button>
+                        </div>
+
+                        <select
+                          aria-label="Filter leaderboard by position"
+                          className="select-input"
+                          value={recordsPosition}
+                          onChange={(e) => setRecordsPosition(e.target.value)}
+                        >
+                          <option value="all">All Positions</option>
+                          <option value="F">Forwards (F)</option>
+                          <option value="D">Defensemen (D)</option>
+                          <option value="G">Goalies Only (G)</option>
+                        </select>
+
+                        {isSeasonMode && (
+                          <select
+                            aria-label="Filter single-season records by class year"
+                            className="select-input"
+                            value={recordsClassYear}
+                            onChange={(e) => setRecordsClassYear(e.target.value)}
+                          >
+                            <option value="all">All Class Years</option>
+                            <option value="Fr.">Freshmen (Fr.)</option>
+                            <option value="So.">Sophomores (So.)</option>
+                            <option value="Jr.">Juniors (Jr.)</option>
+                            <option value="Sr.">Seniors (Sr.)</option>
+                            <option value="Gr.">Graduates (Gr.)</option>
+                          </select>
+                        )}
+                      </div>
+                    </div>
+
+                    {recordsPosition !== "G" && (
+                      <div className="table-wrap" style={{ marginBottom: 18 }}>
+                        <h3 style={{ margin: "6px 0 10px 0", fontSize: 14 }}>
+                          {isSeasonMode ? "Single-Season Skater Leaders" : "Career Skater Leaders"}
+                        </h3>
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>Player</th>
+                              <th>Pos</th>
+                              {isSeasonMode ? (
+                                <>
+                                  <th>Season</th>
+                                  <th>Class</th>
+                                </>
+                              ) : (
+                                <th>Seasons</th>
+                              )}
+                              <th>GP</th>
+                              <th>G</th>
+                              <th>A</th>
+                              <th>PTS</th>
+                              <th>PTS/G</th>
+                              <th>PPG</th>
+                              <th>SHG</th>
+                              <th>GWG</th>
+                              <th>SOG</th>
+                              <th>+/-</th>
+                              <th>PIM</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredSkaters.map((sk, idx) => {
+                              const ptsPerGp = sk.pts_per_gp ?? (sk.gp > 0 ? sk.points / sk.gp : 0);
+                              return (
+                                <tr key={`${sk.player_name}-${sk.season || idx}`}>
+                                  <td>{idx + 1}</td>
+                                  <td>
+                                    <button
+                                      type="button"
+                                      className="link-btn"
+                                      onClick={() => openPlayer(sk.player_name)}
+                                    >
+                                      {sk.player_name}
+                                    </button>
+                                  </td>
+                                  <td>{sk.position || sk.position_group}</td>
+                                  {isSeasonMode ? (
+                                    <>
+                                      <td>{sk.season}</td>
+                                      <td>{sk.class_year || "-"}</td>
+                                    </>
+                                  ) : (
+                                    <td className="muted" style={{ fontSize: 12 }}>
+                                      {sk.span || (sk.first_season === sk.last_season
+                                        ? sk.first_season
+                                        : `${sk.first_season}–${String(sk.last_season || "").slice(-2)}`)}
+                                    </td>
+                                  )}
+                                  <td>{sk.gp}</td>
+                                  <td>{sk.goals}</td>
+                                  <td>{sk.assists}</td>
+                                  <td><strong>{sk.points}</strong></td>
+                                  <td>{Number(ptsPerGp || 0).toFixed(2)}</td>
+                                  <td>{sk.ppg}</td>
+                                  <td>{sk.shg}</td>
+                                  <td>{sk.gwg}</td>
+                                  <td>{sk.shots}</td>
+                                  <td>{sk.plus_minus > 0 ? `+${sk.plus_minus}` : sk.plus_minus}</td>
+                                  <td>{sk.pim}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {(recordsPosition === "all" || recordsPosition === "G") && (
+                      <div className="table-wrap">
+                        <h3 style={{ margin: "6px 0 10px 0", fontSize: 14 }}>
+                          {isSeasonMode ? "Single-Season Goalie Leaders" : "Career Goalie Leaders"}
+                        </h3>
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>Goalie</th>
+                              {isSeasonMode ? (
+                                <>
+                                  <th>Season</th>
+                                  <th>Class</th>
+                                </>
+                              ) : (
+                                <th>Seasons</th>
+                              )}
+                              <th>GP</th>
+                              <th>W-L-T</th>
+                              <th>SV%</th>
+                              <th>GAA</th>
+                              <th>SV</th>
+                              <th>GA</th>
+                              <th>SO</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filteredGoalies.map((gl, idx) => (
+                              <tr key={`${gl.player_name}-${gl.season || idx}`}>
+                                <td>{idx + 1}</td>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="link-btn"
+                                    onClick={() => openPlayer(gl.player_name)}
+                                  >
+                                    {gl.player_name}
+                                  </button>
+                                </td>
+                                {isSeasonMode ? (
+                                  <>
+                                    <td>{gl.season}</td>
+                                    <td>{gl.class_year || "-"}</td>
+                                  </>
+                                ) : (
+                                  <td className="muted" style={{ fontSize: 12 }}>
+                                    {gl.span || (gl.first_season === gl.last_season
+                                      ? gl.first_season
+                                      : `${gl.first_season}–${String(gl.last_season || "").slice(-2)}`)}
+                                  </td>
+                                )}
+                                <td>{gl.gp ?? gl.goalie_gp}</td>
+                                <td>{`${gl.wins}-${gl.losses}-${gl.ties}`}</td>
+                                <td><strong>{Number(gl.save_pct || 0).toFixed(3)}</strong></td>
+                                <td>{Number(gl.gaa || 0).toFixed(2)}</td>
+                                <td>{gl.saves}</td>
+                                <td>{gl.ga}</td>
+                                <td><strong>{gl.shutouts}</strong></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="records-grid-2col">
+                    <div className="card">
+                      <div className="card-header">
+                        <h2>Single-Game Points &amp; Goals Records</h2>
+                        <span className="muted">Click any date to open Box Score</span>
+                      </div>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Player</th>
+                              <th>PTS (G-A)</th>
+                              <th>Opponent</th>
+                              <th>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(sgr.most_points || []).slice(0, 10).map((r, i) => (
+                              <tr key={`pts-${i}`}>
+                                <td>
+                                  <button type="button" className="link-btn" onClick={() => openPlayer(r.player_name)}>
+                                    {r.player_name}
+                                  </button>
+                                </td>
+                                <td><strong>{r.points}</strong> ({r.goals}G, {r.assists}A)</td>
+                                <td>{r.opponent}</td>
+                                <td>
+                                  <button type="button" className="link-btn" onClick={() => openBoxScore(r.date, r.opponent)}>
+                                    {r.date}
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="card">
+                      <div className="card-header">
+                        <h2>Single-Game Goalie Save Records</h2>
+                        <span className="muted">Most saves in a single game</span>
+                      </div>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Goalie</th>
+                              <th>SV (GA)</th>
+                              <th>Opponent</th>
+                              <th>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(sgr.most_saves || []).slice(0, 10).map((r, i) => {
+                              const gName = r.player_name || r.goalie_name;
+                              const gaVal = r.ga ?? r.goals_against ?? 0;
+                              return (
+                                <tr key={`sv-${i}`}>
+                                  <td>
+                                    <button type="button" className="link-btn" onClick={() => openPlayer(gName)}>
+                                      {gName}
+                                    </button>
+                                  </td>
+                                  <td><strong>{r.saves}</strong> ({gaVal} GA)</td>
+                                  <td>{r.opponent}</td>
+                                  <td>
+                                    <button type="button" className="link-btn" onClick={() => openBoxScore(r.date, r.opponent)}>
+                                      {r.date}
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="card">
+                      <div className="card-header">
+                        <h2>Fastest Goals &amp; Rapid-Fire Braces</h2>
+                        <span className="muted">From opening faceoff &amp; fastest 2 goals by one player</span>
+                      </div>
+                      <h3 style={{ fontSize: 13, margin: "4px 0 6px 0" }}>Fastest Goal From Opening Faceoff</h3>
+                      <div className="table-wrap" style={{ marginBottom: 14 }}>
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Player</th>
+                              <th>Time (P1)</th>
+                              <th>Opponent</th>
+                              <th>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(sgr.fastest_opening_goals || []).slice(0, 6).map((r, i) => {
+                              const pName = r.player_name || r.scorer;
+                              const secs = r.seconds ?? r.time_seconds;
+                              return (
+                                <tr key={`fo-${i}`}>
+                                  <td>
+                                    <button type="button" className="link-btn" onClick={() => openPlayer(pName)}>
+                                      {pName}
+                                    </button>
+                                  </td>
+                                  <td><strong>{r.time}</strong> ({secs}s)</td>
+                                  <td>{r.opponent}</td>
+                                  <td>
+                                    <button type="button" className="link-btn" onClick={() => openBoxScore(r.date, r.opponent)}>
+                                      {r.date}
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <h3 style={{ fontSize: 13, margin: "4px 0 6px 0" }}>Fastest 2 Goals by Same Player</h3>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Player</th>
+                              <th>Span</th>
+                              <th>Opponent</th>
+                              <th>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(sgr.fastest_two_goals || []).slice(0, 6).map((r, i) => (
+                              <tr key={`f2-${i}`}>
+                                <td>
+                                  <button type="button" className="link-btn" onClick={() => openPlayer(r.player_name)}>
+                                    {r.player_name}
+                                  </button>
+                                </td>
+                                <td><strong>{r.span_display}</strong></td>
+                                <td>{r.opponent}</td>
+                                <td>
+                                  <button type="button" className="link-btn" onClick={() => openBoxScore(r.date, r.opponent)}>
+                                    {r.date}
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="card">
+                      <div className="card-header">
+                        <h2>Longest Player &amp; Team Streaks</h2>
+                        <span className="muted">Consecutive games</span>
+                      </div>
+                      <h3 style={{ fontSize: 13, margin: "4px 0 6px 0" }}>Longest Player Point Streaks</h3>
+                      <div className="table-wrap" style={{ marginBottom: 14 }}>
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Player</th>
+                              <th>Games</th>
+                              <th>Totals</th>
+                              <th>Span</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(streaks.point_streaks || []).slice(0, 7).map((r, i) => (
+                              <tr key={`ps-${i}`}>
+                                <td>
+                                  <button type="button" className="link-btn" onClick={() => openPlayer(r.player_name)}>
+                                    {r.player_name}
+                                  </button>
+                                </td>
+                                <td><strong>{r.length ?? r.streak_games} GP</strong></td>
+                                <td>{r.goals}G, {r.assists}A ({r.points} PTS)</td>
+                                <td className="muted" style={{ fontSize: 12 }}>{r.start_date} &rarr; {r.end_date}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <h3 style={{ fontSize: 13, margin: "4px 0 6px 0" }}>Longest Team Win &amp; Unbeaten Streaks</h3>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Type</th>
+                              <th>Streak</th>
+                              <th>Record</th>
+                              <th>Span</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(streaks.team_win_streaks || []).slice(0, 4).map((r, i) => {
+                              const len = r.length ?? r.streak_games;
+                              return (
+                                <tr key={`tws-${i}`}>
+                                  <td>Win Streak</td>
+                                  <td><strong>{len} Wins</strong></td>
+                                  <td>{r.record || `${len}-0-0`}</td>
+                                  <td className="muted" style={{ fontSize: 12 }}>{r.start_date} &rarr; {r.end_date}</td>
+                                </tr>
+                              );
+                            })}
+                            {(streaks.team_unbeaten_streaks || []).slice(0, 4).map((r, i) => {
+                              const len = r.length ?? r.streak_games;
+                              return (
+                                <tr key={`tus-${i}`}>
+                                  <td>Unbeaten</td>
+                                  <td><strong>{len} GP</strong></td>
+                                  <td>{r.record}</td>
+                                  <td className="muted" style={{ fontSize: 12 }}>{r.start_date} &rarr; {r.end_date}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+
+            {recordsData && recordsSubTab === "milestones" && (() => {
+              const ms = recordsData.milestones || { active_season: "", items: [] };
+              const cl = recordsData.clutch_leaders || {};
+              return (
+                <>
+                  <div className="card">
+                    <div className="card-header">
+                      <div>
+                        <h2>Active Roster Milestone Watch ({ms.active_season})</h2>
+                        <span className="muted">
+                          Current Huskies approaching major career GP, Points, Goals, Assists, Saves, or Wins benchmarks
+                        </span>
+                      </div>
+                    </div>
+                    {ms.items?.length > 0 ? (
+                      <div className="milestone-grid">
+                        {ms.items.map((item, idx) => {
+                          const pctVal = item.pct ?? item.progress_pct ?? 0;
+                          return (
+                            <div key={`${item.player_name}-${item.category}-${idx}`} className="milestone-card">
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                                <button
+                                  type="button"
+                                  className="link-btn"
+                                  style={{ fontWeight: 700, fontSize: 15 }}
+                                  onClick={() => openPlayer(item.player_name)}
+                                >
+                                  {item.player_name}
+                                </button>
+                                <span className="muted" style={{ fontSize: 12 }}>
+                                  {item.position} {item.class_year ? `• ${item.class_year}` : ""}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 13, marginTop: 4 }}>
+                                Needs <strong>{item.needed}</strong> more for <strong>{item.target} {item.category}</strong>
+                              </div>
+                              <div className="milestone-progress-track">
+                                <div
+                                  className="milestone-progress-fill"
+                                  style={{ width: `${Math.min(100, pctVal)}%` }}
+                                />
+                              </div>
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }} className="muted">
+                                <span>Current: {item.current}</span>
+                                <span>Target: {item.target} ({pctVal}%)</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="muted">No active roster milestones currently within threshold.</p>
+                    )}
+                  </div>
+
+                  <div className="records-grid-2col">
+                    <div className="card">
+                      <div className="card-header">
+                        <h2>Career Overtime Goal Leaders</h2>
+                        <span className="muted">Sudden-death OT goals (1999&ndash;Present)</span>
+                      </div>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>Player</th>
+                              <th>OT Goals</th>
+                              <th>OT GWGs</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(cl.ot_goals || []).map((r, i) => (
+                              <tr key={r.player_name}>
+                                <td>{i + 1}</td>
+                                <td>
+                                  <button type="button" className="link-btn" onClick={() => openPlayer(r.player_name)}>
+                                    {r.player_name}
+                                  </button>
+                                </td>
+                                <td><strong>{r.ot_goals}</strong></td>
+                                <td>{r.gwg ?? r.ot_goals}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="card">
+                      <div className="card-header">
+                        <h2>Late-Game Clutch Goal Leaders</h2>
+                        <span className="muted">Tying or go-ahead goals in final 5:00 of P3 or OT</span>
+                      </div>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>Player</th>
+                              <th>Clutch Goals</th>
+                              <th>GWGs</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(cl.late_clutch_goals || []).map((r, i) => (
+                              <tr key={r.player_name}>
+                                <td>{i + 1}</td>
+                                <td>
+                                  <button type="button" className="link-btn" onClick={() => openPlayer(r.player_name)}>
+                                    {r.player_name}
+                                  </button>
+                                </td>
+                                <td><strong>{r.late_clutch_goals ?? r.clutch_goals}</strong></td>
+                                <td>{r.gwg ?? "-"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="card">
+                      <div className="card-header">
+                        <h2>3rd-Period Game-Winning Goals</h2>
+                        <span className="muted">Career regulation GWGs scored in Period 3</span>
+                      </div>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>Player</th>
+                              <th>P3 GWGs</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(cl.third_period_gwg || []).map((r, i) => (
+                              <tr key={r.player_name}>
+                                <td>{i + 1}</td>
+                                <td>
+                                  <button type="button" className="link-btn" onClick={() => openPlayer(r.player_name)}>
+                                    {r.player_name}
+                                  </button>
+                                </td>
+                                <td><strong>{r.third_period_gwg}</strong></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="card">
+                      <div className="card-header">
+                        <h2>Shootout Conversion Leaders</h2>
+                        <span className="muted">Official Hockey East &amp; tournament shootouts</span>
+                      </div>
+                      <div className="table-wrap">
+                        <table className="data-table">
+                          <thead>
+                            <tr>
+                              <th>Player</th>
+                              <th>Made / Att</th>
+                              <th>SO %</th>
+                              <th>SO Winners</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(cl.shootout_leaders || []).map((r) => (
+                              <tr key={r.player_name}>
+                                <td>
+                                  <button type="button" className="link-btn" onClick={() => openPlayer(r.player_name)}>
+                                    {r.player_name}
+                                  </button>
+                                </td>
+                                <td><strong>{r.made} / {r.attempts}</strong></td>
+                                <td>{r.pct}%</td>
+                                <td>{r.winners}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+
+            {recordsData && recordsSubTab === "chemistry" && (() => {
+              const chem = recordsData.chemistry || { top_duos: [], top_trios: [] };
+              return (
+                <>
+                  <div className="card">
+                    <div className="card-header" style={{ flexWrap: "wrap", gap: 12 }}>
+                      <div>
+                        <h2>Team-Wide Scoring Chemistry &amp; Line Combinations</h2>
+                        <span className="muted">
+                          Most prolific Goal + Assist duos and Goal + Primary + Secondary Assist trios
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                        <select
+                          aria-label="Filter chemistry by season"
+                          className="select-input"
+                          value={chemSeason}
+                          onChange={(e) => setChemSeason(e.target.value)}
+                        >
+                          <option value="all">All Seasons (1999&ndash;Present)</option>
+                          {seasons.map((s) => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                        <div className="segmented" role="group" aria-label="Strength filter">
+                          {[
+                            { id: "all", label: "All Strengths" },
+                            { id: "EV", label: "Even Strength" },
+                            { id: "PP", label: "Power Play" },
+                            { id: "SH", label: "Short-Handed" },
+                          ].map((st) => (
+                            <button
+                              key={st.id}
+                              type="button"
+                              className={`segmented-btn ${chemStrength === st.id ? "active" : ""}`}
+                              onClick={() => setChemStrength(st.id)}
+                            >
+                              {st.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="records-grid-2col">
+                      <div>
+                        <h3 style={{ margin: "4px 0 10px 0", fontSize: 15 }}>Top Scoring Duos (Goal + Assist)</h3>
+                        <div className="table-wrap">
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>Duo</th>
+                                <th>Total</th>
+                                <th>Primary / Sec</th>
+                                <th>Directional Split</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(chem.top_duos || []).map((d, i) => (
+                                <tr key={`${d.player_a}-${d.player_b}`}>
+                                  <td>{i + 1}</td>
+                                  <td>
+                                    <button type="button" className="link-btn" onClick={() => openPlayer(d.player_a)}>
+                                      {d.player_a}
+                                    </button>
+                                    {" + "}
+                                    <button type="button" className="link-btn" onClick={() => openPlayer(d.player_b)}>
+                                      {d.player_b}
+                                    </button>
+                                  </td>
+                                  <td><strong>{d.total_connections ?? d.total_goals}</strong></td>
+                                  <td>{d.primary_connections} A1 / {d.secondary_connections} A2</td>
+                                  <td className="muted" style={{ fontSize: 12 }}>
+                                    {d.a_to_b}x ({d.player_a.split(" ").slice(-1)[0]}&rarr;{d.player_b.split(" ").slice(-1)[0]}) &bull;{" "}
+                                    {d.b_to_a}x ({d.player_b.split(" ").slice(-1)[0]}&rarr;{d.player_a.split(" ").slice(-1)[0]})
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 style={{ margin: "4px 0 10px 0", fontSize: 15 }}>Top Scoring Trios (Goal + A1 + A2)</h3>
+                        <div className="table-wrap">
+                          <table className="data-table">
+                            <thead>
+                              <tr>
+                                <th>#</th>
+                                <th>Trio Combination</th>
+                                <th>Goals Together</th>
+                                <th>EV / PP</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(chem.top_trios || []).map((t, i) => {
+                                const trioPlayers = Array.isArray(t.players)
+                                  ? t.players
+                                  : [t.player_1, t.player_2, t.player_3].filter(Boolean);
+                                return (
+                                  <tr key={trioPlayers.join("-") || i}>
+                                    <td>{i + 1}</td>
+                                    <td>
+                                      {trioPlayers.map((pName, pIdx) => (
+                                        <React.Fragment key={pName}>
+                                          {pIdx > 0 ? " + " : ""}
+                                          <button type="button" className="link-btn" onClick={() => openPlayer(pName)}>
+                                            {pName}
+                                          </button>
+                                        </React.Fragment>
+                                      ))}
+                                    </td>
+                                    <td><strong>{t.total_goals_together ?? t.total_goals}</strong></td>
+                                    <td className="muted" style={{ fontSize: 12 }}>
+                                      {t.ev_goals ?? 0} EV / {t.pp_goals ?? 0} PP
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+
+            {recordsData && recordsSubTab === "onthisday" && (() => {
+              const otd = recordsData.on_this_day || {};
+              return (
+                <div className="card">
+                  <div className="card-header" style={{ flexWrap: "wrap", gap: 12 }}>
+                    <div>
+                      <h2>
+                        On This Day in DogHouse History ({otd.resolved_mmdd || "Today"})
+                      </h2>
+                      <span className="muted">
+                        All-Time Record on {otd.resolved_mmdd}: <strong>{otd.record || "0-0-0"}</strong> ({otd.games_count || 0} Games)
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <label htmlFor="otd-select" className="field-label">Date (MM-DD):</label>
+                      <select
+                        id="otd-select"
+                        className="select-input"
+                        value={otdMmdd || otd.resolved_mmdd || ""}
+                        onChange={(e) => setOtdMmdd(e.target.value)}
+                      >
+                        {(otd.available_dates || []).map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {otd.highlights?.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <h3 style={{ margin: "4px 0 8px 0", fontSize: 14 }}>Memorable Moments on {otd.resolved_mmdd}</h3>
+                      <div className="milestone-grid">
+                        {otd.highlights.map((h, i) => (
+                          <div key={i} className="milestone-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 8 }}>
+                            <div style={{ fontSize: 13 }}>
+                              <span style={{ color: "var(--nu-red)", fontWeight: 700, marginRight: 6 }}>
+                                [{h.type}]
+                              </span>
+                              {h.text || h.headline} ({h.date})
+                            </div>
+                            <div style={{ display: "flex", gap: 10 }}>
+                              {h.player_name && (
+                                <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => openPlayer(h.player_name)}>
+                                  Player Profile &rarr;
+                                </button>
+                              )}
+                              <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => openBoxScore(h.date, h.opponent)}>
+                                View Box Score &rarr;
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Season</th>
+                          <th>Opponent</th>
+                          <th>Venue</th>
+                          <th>Tournament / Type</th>
+                          <th>Result</th>
+                          <th>Score</th>
+                          <th>Box Score</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(otd.games || []).map((g) => (
+                          <tr key={`${g.date}-${g.opponent}`}>
+                            <td><strong>{g.date}</strong></td>
+                            <td>{g.season}</td>
+                            <td>
+                              <span className="opp-with-logo">
+                                <OpponentLogo name={g.opponent} />
+                                <span>{g.opponent}</span>
+                              </span>
+                            </td>
+                            <td>{g.location}</td>
+                            <td>{g.game_type}</td>
+                            <td><OutcomeBadge outcome={g.outcome} /></td>
+                            <td>
+                              <strong>{`${g.nu_goals}-${g.opp_goals}`}</strong>
+                              {g.overtime_status ? ` (${g.overtime_status})` : ""}
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="link-btn"
+                                onClick={() => openBoxScore(g.date, g.opponent)}
+                              >
+                                Box Score
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               );
             })()}
           </section>
@@ -4001,11 +5453,15 @@ export default function App() {
             ? `Player: ${selectedPlayer} (${playerScope})`
             : tab === "leaders"
               ? `Stats (${statsView}) • Season: ${selectedSeason || "latest"} • Scope: ${leaderScope}${leaderOpponent ? ` • vs ${leaderOpponent}` : ""}`
-              : tab === "roster"
-                ? `Roster • Season: ${selectedSeason || "latest"} • View: ${rosterView}`
-                : tab === "rivalry"
-                  ? `Opponents • ${selectedRival} • ${rivalryScope === "season" ? seasons[0] || "This Season" : "All-Time"}`
-                  : "Ask Paws Chat"
+              : tab === "records"
+                ? `Records (${recordsSubTab})`
+                : tab === "compare"
+                  ? `Compare (${comparePlayerA} vs ${comparePlayerB})`
+                  : tab === "roster"
+                    ? `Roster • Season: ${selectedSeason || "latest"} • View: ${rosterView}`
+                    : tab === "rivalry"
+                      ? `Opponents • ${selectedRival} • ${rivalryScope === "season" ? seasons[0] || "This Season" : "All-Time"}`
+                      : "Ask Paws Chat"
         }
       />
 
@@ -4412,19 +5868,46 @@ export default function App() {
                     : "Ask any question about Northeastern hockey stats, games, or players."}
                 </p>
               )}
-              {messages.map((m, idx) => (
-                <div key={idx} className={`msg-row ${m.role}`}>
-                  <div className={`msg ${m.role}`}>
-                    {m.role === "assistant" ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {m.content}
-                      </ReactMarkdown>
-                    ) : (
-                      m.content
+              {messages.map((m, idx) => {
+                const entities = m.role === "assistant" ? extractAnswerEntities(m.content) : null;
+                return (
+                  <div key={idx} className={`msg-row ${m.role}`}>
+                    <div className={`msg ${m.role}`}>
+                      {m.role === "assistant" ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {m.content}
+                        </ReactMarkdown>
+                      ) : (
+                        m.content
+                      )}
+                    </div>
+                    {m.role === "assistant" && entities && (entities.players.length > 0 || entities.games.length > 0) && (
+                      <div className="entity-chips-row">
+                        {entities.players.map((pName) => (
+                          <button
+                            key={pName}
+                            type="button"
+                            className="entity-chip"
+                            onClick={() => openPlayer(pName)}
+                          >
+                            👤 {pName} &rarr;
+                          </button>
+                        ))}
+                        {entities.games.map((g) => (
+                          <button
+                            key={`${g.date}-${g.opponent}`}
+                            type="button"
+                            className="entity-chip"
+                            onClick={() => openBoxScore(g.date, g.opponent)}
+                          >
+                            🏒 {g.date} vs. {g.opponent} &rarr;
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {chatLoading && (
                 <div className="msg-row assistant" role="status" aria-live="polite">
                   <div className="msg assistant">

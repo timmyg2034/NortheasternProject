@@ -5,10 +5,13 @@ from __future__ import annotations
 import ast
 import contextlib
 import io
+import json
 import os
 import re
 import threading
 import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -43,10 +46,37 @@ SEASON_STATS_COLUMNS = [
 
 MODEL_LADDER = [
     "gemini-3.5-flash-lite",
+    "gemini-4-hydrogen",
+    "gemini-3.8-flash",
+    "gemini-3.6-flash",
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash-lite",
     "gemini-3-flash",
     "gemini-2.5-flash",
+    "gemma-4-31b-it",
+    "gemma-4-26b-a4b-it",
+]
+
+GROQ_MODEL_LADDER = [
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
+    "openai/gpt-oss-20b",
+]
+
+AXFORGE_MODEL_LADDER = [
+    "qwen3.8-27b",
+    "glm-5.3-flash",
+    "qwen3.8-flash-next",
+]
+
+NVIDIA_MODEL_LADDER = [
+    "nvidia/nemotron-3-ultra-550b-a55b",
+    "openai/gpt-oss-20b",
+]
+
+KILO_MODEL_LADDER = [
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "nvidia/nemotron-3.5-lightning:free",
 ]
 
 _OPPONENT_REPLACEMENTS = {
@@ -287,9 +317,13 @@ def load_datasets(data_dir: Path | str = ".") -> HockeyDatasets:
             games_df["shootout_winner"] = games_df["shootout_winner"].fillna("None").apply(
                 lambda x: clean_opponent_name(x) if x not in ["Northeastern", "None"] else x
             )
-        for col in ["nu_goals", "opp_goals", "is_overtime", "is_shootout", "is_shutout"]:
+        for col in ["nu_goals", "opp_goals", "is_overtime", "is_shootout", "is_shutout", "nu_pp_goals", "nu_pp_opps", "opp_pp_goals", "opp_pp_opps"]:
             if col in games_df.columns:
                 games_df[col] = pd.to_numeric(games_df[col], errors="coerce").fillna(0)
+        if "location" in games_df.columns:
+            games_df["location"] = games_df["location"].fillna("Home").astype(str).str.strip().replace("", "Home")
+        else:
+            games_df["location"] = "Home"
 
     # Clean shootout events
     if not shootouts_df.empty:
@@ -372,6 +406,31 @@ def load_datasets(data_dir: Path | str = ".") -> HockeyDatasets:
             df.sort_values("date", kind="mergesort", inplace=True)
             df.reset_index(drop=True, inplace=True)
 
+    if not games_df.empty:
+        def _classify_row_game_type(r: Any) -> str:
+            d_str = str(r.get("date", "")).strip()
+            opp_str = str(r.get("opponent", "")).strip()
+            if opp_str in ("Boston University", "Boston College", "Harvard"):
+                if d_str in ("2015-02-03", "2015-02-23"):
+                    return "Beanpot"
+                try:
+                    dt = datetime.strptime(d_str, "%Y-%m-%d")
+                    if dt.month == 2 and dt.weekday() == 0 and dt.day <= 15:
+                        return "Beanpot"
+                except Exception:
+                    pass
+            try:
+                dt = datetime.strptime(d_str, "%Y-%m-%d")
+                if dt.month == 3 and dt.day >= 22:
+                    return "NCAA Tournament"
+                if dt.month == 3 and 7 <= dt.day <= 21:
+                    return "Hockey East Tournament"
+            except Exception:
+                pass
+            return "Regular Season"
+
+        games_df["game_type"] = games_df.apply(_classify_row_game_type, axis=1)
+
     all_opponents = sorted(
         set(skater_df["opponent"].dropna().unique())
         | set(goalie_df["opponent"].dropna().unique())
@@ -399,24 +458,212 @@ def load_datasets(data_dir: Path | str = ".") -> HockeyDatasets:
     )
 
 
-def build_llm(api_key: str):
-    """Initialize Gemini LLM with the multi-model fallback ladder."""
-    primary = ChatGoogleGenerativeAI(
-        model=MODEL_LADDER[0],
-        google_api_key=api_key,
-        temperature=0,
-    )
-    fallbacks = [
-        ChatGoogleGenerativeAI(model=m, google_api_key=api_key, temperature=0)
-        for m in MODEL_LADDER[1:]
-    ]
-    return primary.with_fallbacks(fallbacks)
+@dataclass
+class _ChatResponse:
+    content: str
+
+
+class OpenAICompatibleChatModel:
+    """Lightweight client for OpenAI-compatible chat completion APIs (Groq, AxForge, NVIDIA NIM, Kilo Code)."""
+
+    def __init__(
+        self,
+        provider_name: str,
+        base_url: str,
+        model: str,
+        api_key: str = "",
+        temperature: float = 0.0,
+        timeout: float = 20.0,
+    ) -> None:
+        self.provider_name = provider_name
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+        self.api_key = api_key.strip()
+        self.temperature = temperature
+        self.timeout = timeout
+
+    def invoke(self, prompt: Any) -> _ChatResponse:
+        endpoint = f"{self.base_url}/chat/completions"
+        payload = json.dumps({
+            "model": self.model,
+            "messages": [{"role": "user", "content": str(prompt)}],
+            "temperature": self.temperature,
+        }).encode("utf-8")
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "NUHockeyStatsExplorer/1.0",
+        }
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        req = urllib.request.Request(endpoint, data=payload, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as err:
+            try:
+                err_body = err.read().decode("utf-8", errors="replace")[:500]
+            except Exception:
+                err_body = str(err)
+            raise RuntimeError(
+                f"{self.provider_name}/{self.model} HTTP {err.code}: {err_body}"
+            ) from err
+        except Exception as err:
+            raise RuntimeError(f"{self.provider_name}/{self.model} request failed: {err}") from err
+
+        data = json.loads(raw)
+        choices = data.get("choices") or []
+        if not choices:
+            raise RuntimeError(f"{self.provider_name}/{self.model} returned empty choices.")
+        message = choices[0].get("message") or {}
+        content = message.get("content") or ""
+        return _ChatResponse(content=str(content))
+
+
+class MultiProviderFallbackLLM:
+    """Ordered multi-provider LLM fallback chain with per-model rate-limit cooldown tracking."""
+
+    def __init__(self, models: list[tuple[str, Any]]) -> None:
+        if not models:
+            raise ValueError("At least one LLM provider/model must be configured.")
+        self._models = models
+        self._cooldown_until: dict[str, float] = {}
+        self._lock = threading.Lock()
+
+    def _set_cooldown(self, label: str, err: Exception) -> None:
+        msg_low = str(err).lower()
+        if any(k in msg_low for k in ("404", "not found", "deprecated", "decommissioned", "invalid model")):
+            cooldown_sec = 3600.0
+        else:
+            err_type, _ = classify_api_error(err)
+            if err_type == "daily":
+                cooldown_sec = 900.0
+            elif err_type == "per_minute":
+                cooldown_sec = 60.0
+            else:
+                cooldown_sec = 15.0
+        with self._lock:
+            self._cooldown_until[label] = time.time() + cooldown_sec
+
+    def invoke(self, prompt: Any) -> Any:
+        now = time.time()
+        with self._lock:
+            ready = [(lbl, m) for lbl, m in self._models if self._cooldown_until.get(lbl, 0.0) <= now]
+            cooling = [(lbl, m) for lbl, m in self._models if self._cooldown_until.get(lbl, 0.0) > now]
+
+        last_err: Exception | None = None
+        last_quota_err: Exception | None = None
+
+        for label, client in ready + cooling:
+            try:
+                return client.invoke(prompt)
+            except Exception as err:
+                self._set_cooldown(label, err)
+                last_err = err
+                err_type, _ = classify_api_error(err)
+                if err_type in ("per_minute", "daily"):
+                    last_quota_err = err
+
+        if last_quota_err is not None:
+            raise last_quota_err
+        if last_err is not None:
+            raise last_err
+        raise RuntimeError("No LLM models available.")
+
+
+def build_llm(
+    api_key: str = "",
+    groq_api_key: str | None = None,
+    axforge_api_key: str | None = None,
+    nvidia_api_key: str | None = None,
+    kilo_api_key: str | None = None,
+) -> MultiProviderFallbackLLM:
+    """Initialize multi-provider LLM fallback chain across Gemini, Groq, AxForge, NVIDIA NIM, and Kilo Code."""
+    models: list[tuple[str, Any]] = []
+
+    raw_gemini_keys = api_key or os.getenv("GEMINI_API_KEYS", "") or os.getenv("GEMINI_API_KEY", "")
+    gemini_keys = [k.strip() for k in raw_gemini_keys.split(",") if k.strip()]
+    for idx, gkey in enumerate(gemini_keys):
+        for m in MODEL_LADDER:
+            label = f"gemini[{idx}]:{m}"
+            models.append((
+                label,
+                ChatGoogleGenerativeAI(
+                    model=m,
+                    google_api_key=gkey,
+                    temperature=0,
+                ),
+            ))
+
+    g_key = (groq_api_key if groq_api_key is not None else os.getenv("GROQ_API_KEY", "")).strip()
+    if g_key:
+        for m in GROQ_MODEL_LADDER:
+            models.append((
+                f"groq:{m}",
+                OpenAICompatibleChatModel(
+                    provider_name="groq",
+                    base_url="https://api.groq.com/openai/v1",
+                    model=m,
+                    api_key=g_key,
+                    temperature=0.0,
+                ),
+            ))
+
+    ax_key = (axforge_api_key if axforge_api_key is not None else os.getenv("AXFORGE_API_KEY", "")).strip()
+    if ax_key:
+        for m in AXFORGE_MODEL_LADDER:
+            models.append((
+                f"axforge:{m}",
+                OpenAICompatibleChatModel(
+                    provider_name="axforge",
+                    base_url="https://api.axforge.ai/v1",
+                    model=m,
+                    api_key=ax_key,
+                    temperature=0.0,
+                ),
+            ))
+
+    nv_key = (nvidia_api_key if nvidia_api_key is not None else os.getenv("NVIDIA_API_KEY", "")).strip()
+    if nv_key:
+        for m in NVIDIA_MODEL_LADDER:
+            models.append((
+                f"nvidia:{m}",
+                OpenAICompatibleChatModel(
+                    provider_name="nvidia",
+                    base_url="https://integrate.api.nvidia.com/v1",
+                    model=m,
+                    api_key=nv_key,
+                    temperature=0.0,
+                ),
+            ))
+
+    k_key = (kilo_api_key if kilo_api_key is not None else os.getenv("KILO_API_KEY", "")).strip()
+    enable_kilo_free = os.getenv("ENABLE_KILO_FREE_FALLBACK", "").strip().lower() in ("1", "true", "yes")
+    if k_key or enable_kilo_free:
+        for m in KILO_MODEL_LADDER:
+            models.append((
+                f"kilo:{m}",
+                OpenAICompatibleChatModel(
+                    provider_name="kilo",
+                    base_url="https://api.kilo.ai/api/gateway",
+                    model=m,
+                    api_key=k_key,
+                    temperature=0.0,
+                ),
+            ))
+
+    return MultiProviderFallbackLLM(models)
+
+
+def _strip_thinking_blocks(text: str) -> str:
+    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE).strip()
 
 
 def message_to_text(msg: Any) -> str:
     content = msg.content if hasattr(msg, "content") else msg
     if isinstance(content, str):
-        return content
+        return _strip_thinking_blocks(content)
     if isinstance(content, list):
         parts = []
         for item in content:
@@ -429,8 +676,8 @@ def message_to_text(msg: Any) -> str:
                     parts.append(str(item["text"]))
             elif hasattr(item, "text"):
                 parts.append(str(item.text))
-        return "\n".join(parts).strip()
-    return str(content)
+        return _strip_thinking_blocks("\n".join(parts))
+    return _strip_thinking_blocks(str(content))
 
 
 def extract_python_code(text: Any) -> str:
@@ -652,12 +899,13 @@ def classify_api_error(err: Exception) -> tuple[str, str]:
 
 
 class ResponseCache:
-    """Thread-safe TTL cache for standalone (no-history) chat questions."""
+    """Thread-safe cache for standalone (no-history) chat questions, held until dataset updates."""
 
-    def __init__(self, ttl_seconds: int = 86400, max_entries: int = 1000) -> None:
+    def __init__(self, ttl_seconds: int | None = None, max_entries: int = 2000) -> None:
         self._ttl = ttl_seconds
         self._max_entries = max_entries
-        self._store: dict[str, tuple[float, str]] = {}
+        self._dataset_version: str = ""
+        self._store: dict[str, tuple[float | None, str]] = {}
         self._lock = threading.Lock()
 
     @staticmethod
@@ -666,6 +914,17 @@ class ResponseCache:
         p = re.sub(r"[?!.,;:]+$", "", p).strip()
         return re.sub(r"\s+", " ", p)
 
+    def sync_version(self, version: str) -> None:
+        """Clear cached responses if the underlying dataset version has changed."""
+        with self._lock:
+            if self._dataset_version and self._dataset_version != version:
+                self._store.clear()
+            self._dataset_version = version
+
+    def clear(self) -> None:
+        with self._lock:
+            self._store.clear()
+
     def get(self, question: str) -> str | None:
         key = self._normalize(question)
         with self._lock:
@@ -673,18 +932,24 @@ class ResponseCache:
             if not entry:
                 return None
             expires_at, answer = entry
-            if time.time() > expires_at:
+            if expires_at is not None and time.time() > expires_at:
                 self._store.pop(key, None)
                 return None
+            # Refresh LRU position
+            self._store.pop(key, None)
+            self._store[key] = (expires_at, answer)
             return answer
 
     def set(self, question: str, answer: str) -> None:
         key = self._normalize(question)
+        expires_at = (time.time() + self._ttl) if self._ttl is not None else None
         with self._lock:
-            if len(self._store) >= self._max_entries:
-                oldest_key = min(self._store, key=lambda k: self._store[k][0])
+            if key in self._store:
+                self._store.pop(key, None)
+            elif len(self._store) >= self._max_entries:
+                oldest_key = next(iter(self._store))
                 self._store.pop(oldest_key, None)
-            self._store[key] = (time.time() + self._ttl, answer)
+            self._store[key] = (expires_at, answer)
 
 
 
@@ -730,7 +995,11 @@ def answer_question(
         "   - `team`: 'Northeastern' for NU penalties, or the opponent school name for opponent penalties. ALWAYS filter `team == 'Northeastern'` unless the user explicitly asks about opponent penalties!\n"
         "   - `period`: Formatted as strings '1st', '2nd', '3rd', 'OT'.\n"
         "   - `infraction`: Standardized uppercase penalty infraction/type (e.g., 'ROUGHING', 'HOOKING', 'INTERFERENCE', 'TRIPPING', 'SLASHING', 'HOLDING', 'CROSS-CHECKING', 'HIGH STICKING', 'BOARDING', 'HITTING FROM BEHIND', 'GAME MISCONDUCT', '10-MINUTE MISCONDUCT', 'UNSPORTSMANLIKE CONDUCT').\n"
-        "5. `df5` (game outcomes, overtime, shutouts): columns = ['date', 'season', 'opponent', 'nu_goals', 'opp_goals', 'outcome', 'overtime_status', 'is_overtime', 'is_shootout', 'shootout_winner', 'is_shutout', 'shutout_team', 'boxscore_url']\n"
+        "5. `df5` (game outcomes, venue splits, tournaments, power play & penalty kill, overtime, shutouts): columns = ['date', 'season', 'opponent', 'location', 'game_type', 'nu_goals', 'opp_goals', 'outcome', 'overtime_status', 'is_overtime', 'is_shootout', 'shootout_winner', 'is_shutout', 'shutout_team', 'nu_pp_goals', 'nu_pp_opps', 'opp_pp_goals', 'opp_pp_opps', 'boxscore_url']\n"
+        "   - `location`: 'Home', 'Away', or 'Neutral' (verified across all 989 games! Use this for Home/Away/Neutral records and splits)\n"
+        "   - `game_type`: 'Regular Season', 'Beanpot', 'Hockey East Tournament', or 'NCAA Tournament'\n"
+        "   - `nu_pp_goals`, `nu_pp_opps`: Northeastern power-play goals and opportunities (Team PP% = `100 * nu_pp_goals.sum() / nu_pp_opps.sum()`)\n"
+        "   - `opp_pp_goals`, `opp_pp_opps`: Opponent power-play goals and opportunities (Team PK% = `100 * (opp_pp_opps.sum() - opp_pp_goals.sum()) / opp_pp_opps.sum()`)\n"
         "   - `outcome`: 'W' (win), 'L' (loss), 'T' (tie; note that NCAA officially records shootout games as 'T' in overall standings, so check `shootout_winner` to see who won a shootout)\n"
         "   - `overtime_status`: 'REG' (regulation), 'OT' (1st overtime), '2OT', '3OT', 'SO' (shootout)\n"
         "   - `is_overtime`: 1 if game reached overtime or shootout, 0 otherwise\n"
