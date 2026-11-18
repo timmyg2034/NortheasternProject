@@ -773,7 +773,7 @@ date,season,opponent,location,nu_goals,opp_goals,outcome,overtime_status,is_over
 2020-03-06,2019-20,Boston University,Home,0,3,L,REG,0,0,None,1,Boston University,0,1,0,1,https://nuhuskies.com/sports/mens-ice-hockey/stats/2019-20/boston-university/boxscore/9465
 2020-03-07,2019-20,Boston University,Away,2,1,W,REG,0,0,None,0,None,1,3,1,6,https://nuhuskies.com/sports/mens-ice-hockey/stats/2019-20/boston-university/boxscore/9466
 2020-12-12,2020-21,Merrimack,Home,8,2,W,REG,0,0,None,0,None,4,7,0,4,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10789
-2020-12-13,2020-21,Merrimack,Away,6,3,W,REG,0,0,None,0,None,2,6,2,7,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10790
+2020-12-13,2020-21,Merrimack,Away,6,3,W,REG,0,0,None,0,None,2,7,2,6,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10790
 2020-12-19,2020-21,Providence,Home,3,3,T,SO,1,1,Northeastern,0,None,0,2,1,2,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/providence/boxscore/10811
 2020-12-20,2020-21,Providence,Away,0,5,L,REG,0,0,None,1,Providence,0,5,2,5,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/providence/boxscore/10812
 2020-12-26,2020-21,Vermont,Away,4,1,W,REG,0,0,None,0,None,3,7,1,6,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/vermont/boxscore/10700
@@ -867,10 +867,10 @@ date,season,opponent,location,nu_goals,opp_goals,outcome,overtime_status,is_over
 2023-03-03,2022-23,UMass Lowell,Away,1,3,L,REG,0,0,None,0,None,0,0,0,1,https://nuhuskies.com/sports/mens-ice-hockey/stats/2022-23/umass-lowell/boxscore/11975
 2023-03-04,2022-23,UMass Lowell,Home,7,3,W,REG,0,0,None,0,None,1,4,1,5,https://nuhuskies.com/sports/mens-ice-hockey/stats/2022-23/umass-lowell/boxscore/11976
 2023-03-11,2022-23,[7] Providence,Home,1,2,L,OT,1,0,None,0,None,1,2,0,2,https://nuhuskies.com/sports/mens-ice-hockey/stats/2022-23/-7-providence/boxscore/12430
-2023-10-07,2023-24,Stonehill,Home,7,0,W,REG,0,0,None,1,Northeastern,3,6,0,3,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/stonehill/boxscore/12625
-2023-10-08,2023-24,#2/3 Quinnipiac (exh.),Home,2,2,T,SO,1,1,Northeastern,0,None,1,4,0,3,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-2-3-quinnipiac-exh-/boxscore/12626
+2023-10-07,2023-24,Stonehill,Home,7,0,W,REG,0,0,None,1,Northeastern,3,5,0,4,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/stonehill/boxscore/12625
+2023-10-08,2023-24,#2/3 Quinnipiac (exh.),Home,2,2,T,SO,1,1,Northeastern,0,None,1,2,0,3,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-2-3-quinnipiac-exh-/boxscore/12626
 2023-10-14,2023-24,Bentley,Home,5,2,W,REG,0,0,None,0,None,2,7,0,3,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/bentley/boxscore/12627
-2023-10-26,2023-24,New Hampshire,Away,1,4,L,REG,0,0,None,0,None,0,2,0,2,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/new-hampshire/boxscore/12628
+2023-10-26,2023-24,New Hampshire,Away,1,4,L,REG,0,0,None,0,None,0,1,0,3,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/new-hampshire/boxscore/12628
 2023-10-28,2023-24,#20 Merrimack,Home,1,4,L,REG,0,0,None,0,None,0,2,0,0,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-20-merrimack/boxscore/12629
 2023-11-03,2023-24,#18 UMass,Away,1,2,L,OT,1,0,None,0,None,0,2,0,2,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-18-umass/boxscore/12630
 2023-11-10,2023-24,#5/6 Providence,Away,1,2,L,OT,1,0,None,0,None,1,3,0,3,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-5-6-providence/boxscore/12631

@@ -9852,8 +9852,8 @@ date,season,opponent,period,time,team,player_name,penalty_minutes,infraction,box
 2020-12-13,2020-21,Merrimack,2nd,07:37,Merrimack,Conor Lovett,2,HOOKING,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10790
 2020-12-13,2020-21,Merrimack,2nd,09:39,Northeastern,Zach Solow,10,10-MINUTE MISCONDUCT,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10790
 2020-12-13,2020-21,Merrimack,2nd,16:06,Northeastern,Austin Goldstein,2,TRIPPING,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10790
-2020-12-13,2020-21,Merrimack,3rd,01:37,Northeastern,Gunnarwolf Fontaine,5,HITTING FROM BEHIND,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10790
-2020-12-13,2020-21,Merrimack,3rd,01:37,Northeastern,Gunnarwolf Fontaine,10,GAME MISCONDUCT,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10790
+2020-12-13,2020-21,Merrimack,3rd,01:37,Merrimack,Gunnarwolf Fontaine,5,HITTING FROM BEHIND,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10790
+2020-12-13,2020-21,Merrimack,3rd,01:37,Merrimack,Gunnarwolf Fontaine,10,GAME MISCONDUCT,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10790
 2020-12-13,2020-21,Merrimack,3rd,05:00,Merrimack,Ryan Nolan,2,ROUGHING,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10790
 2020-12-13,2020-21,Merrimack,3rd,07:51,Northeastern,Riley Hughes,2,INTERFERENCE,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/merrimack/boxscore/10790
 2020-12-19,2020-21,Providence,1st,18:43,Northeastern,Aidan McDonough,2,Slashing,https://nuhuskies.com/sports/mens-ice-hockey/stats/2020-21/providence/boxscore/10811
@@ -10609,14 +10609,14 @@ date,season,opponent,period,time,team,player_name,penalty_minutes,infraction,box
 2023-10-07,2023-24,Stonehill,2nd,16:10,Northeastern,Dylan Hryckowian,2,Slashing,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/stonehill/boxscore/12625
 2023-10-07,2023-24,Stonehill,2nd,16:10,Stonehill,Hunter Hastings,2,Roughing,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/stonehill/boxscore/12625
 2023-10-07,2023-24,Stonehill,2nd,18:09,Stonehill,William Tripp,2,Tripping,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/stonehill/boxscore/12625
-2023-10-07,2023-24,Stonehill,3rd,08:21,Stonehill,Cameron Gaudette,2,Boarding,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/stonehill/boxscore/12625
+2023-10-07,2023-24,Stonehill,3rd,08:21,Northeastern,Cameron Gaudette,2,Boarding,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/stonehill/boxscore/12625
 2023-10-07,2023-24,Stonehill,3rd,12:54,Stonehill,Conor Ronayne,2,Tripping,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/stonehill/boxscore/12625
 2023-10-08,2023-24,#2/3 Quinnipiac (exh.),1st,08:22,#2/3 Quinnipiac (exh.),Sam Lipkin,2,Slashing,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-2-3-quinnipiac-exh-/boxscore/12626
 2023-10-08,2023-24,#2/3 Quinnipiac (exh.),1st,10:26,#2/3 Quinnipiac (exh.),Mason Marcellus,2,Roughing,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-2-3-quinnipiac-exh-/boxscore/12626
 2023-10-08,2023-24,#2/3 Quinnipiac (exh.),1st,17:43,Northeastern,Hunter McDonald,2,Holding,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-2-3-quinnipiac-exh-/boxscore/12626
 2023-10-08,2023-24,#2/3 Quinnipiac (exh.),2nd,05:05,Northeastern,Liam Walsh,2,Cross Checking,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-2-3-quinnipiac-exh-/boxscore/12626
 2023-10-08,2023-24,#2/3 Quinnipiac (exh.),3rd,04:52,Northeastern,Cam Lund,2,Cross Checking,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-2-3-quinnipiac-exh-/boxscore/12626
-2023-10-08,2023-24,#2/3 Quinnipiac (exh.),3rd,07:18,#2/3 Quinnipiac (exh.),Matt Staudacher,2,Cross Checking,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-2-3-quinnipiac-exh-/boxscore/12626
+2023-10-08,2023-24,#2/3 Quinnipiac (exh.),3rd,07:18,Northeastern,Matt Staudacher,2,Cross Checking,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-2-3-quinnipiac-exh-/boxscore/12626
 2023-10-08,2023-24,#2/3 Quinnipiac (exh.),3rd,07:18,#2/3 Quinnipiac (exh.),Charles-Alexis Legault,2,Goaltender Interference,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-2-3-quinnipiac-exh-/boxscore/12626
 2023-10-14,2023-24,Bentley,1st,00:38,Northeastern,Cam Lund,2,High Sticking,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/bentley/boxscore/12627
 2023-10-14,2023-24,Bentley,1st,02:59,Bentley,Pat Lawn,2,Holding,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/bentley/boxscore/12627
@@ -10630,7 +10630,7 @@ date,season,opponent,period,time,team,player_name,penalty_minutes,infraction,box
 2023-10-14,2023-24,Bentley,3rd,13:08,Bentley,Pat Lawn,2,Hooking,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/bentley/boxscore/12627
 2023-10-26,2023-24,New Hampshire,1st,13:03,Northeastern,Pito Walton,2,Holding,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/new-hampshire/boxscore/12628
 2023-10-26,2023-24,New Hampshire,1st,15:19,New Hampshire,Nick Cafarelli,2,Roughing,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/new-hampshire/boxscore/12628
-2023-10-26,2023-24,New Hampshire,2nd,00:36,New Hampshire,Matt Staudacher,2,Holding,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/new-hampshire/boxscore/12628
+2023-10-26,2023-24,New Hampshire,2nd,00:36,Northeastern,Matt Staudacher,2,Holding,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/new-hampshire/boxscore/12628
 2023-10-26,2023-24,New Hampshire,3rd,11:53,Northeastern,Liam Walsh,2,Hooking,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/new-hampshire/boxscore/12628
 2023-10-28,2023-24,#20 Merrimack,2nd,03:58,#20 Merrimack,Matt Copponi,2,Hooking,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-20-merrimack/boxscore/12629
 2023-10-28,2023-24,#20 Merrimack,2nd,12:37,#20 Merrimack,Matt Copponi,2,Elbowing,https://nuhuskies.com/sports/mens-ice-hockey/stats/2023-24/-20-merrimack/boxscore/12629
