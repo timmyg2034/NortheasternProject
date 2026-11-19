@@ -91,6 +91,10 @@ def normalize_venue_name(raw_venue: str) -> str:
         "bentley arena": "Bentley Arena",
         "fenway park": "Fenway Park",
         "toscano family ice forum": "Toscano Family Ice Forum",
+        "peoplesbank arena": "PeoplesBank Arena",
+        "peoples bank arena": "PeoplesBank Arena",
+        "xl center": "XL Center",
+        "hartford civic center": "Hartford Civic Center",
     }
     low = v.lower()
     for k, canon in aliases.items():
@@ -264,6 +268,17 @@ def parse_modern_boxscore(soup, url, html):
                     if cand:
                         venue = cand
                         break
+    if venue.lower() in ("hartford, connecticut", "hartford, ct", "hartford"):
+        yr_m = re.search(r'(\d{4})$', date)
+        yr = int(yr_m.group(1)) if yr_m else 2026
+        mo_m = re.match(r'^(\d{1,2})/', date)
+        mo = int(mo_m.group(1)) if mo_m else 11
+        if yr > 2025 or (yr == 2025 and mo >= 6):
+            venue = "PeoplesBank Arena"
+        elif yr >= 2007:
+            venue = "XL Center"
+        else:
+            venue = "Hartford Civic Center"
 
     # Extract team power play stats (goals-opportunities) if present in a Power Plays table
     nu_pp_goals, nu_pp_opps = "", ""
