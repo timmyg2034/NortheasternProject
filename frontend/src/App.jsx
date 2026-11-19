@@ -28,13 +28,30 @@ const HOCKEY_EAST_SET = new Set([
   "Vermont",
 ]);
 
+function PawSvg({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="4.8" cy="11.6" r="1.8" />
+      <circle cx="8.8" cy="7.2" r="2" />
+      <circle cx="15.2" cy="7.2" r="2" />
+      <circle cx="19.2" cy="11.6" r="1.8" />
+      <path d="M12 11.5c-3.1 0-5.4 2.4-5.4 5 0 1.7 1.2 2.8 2.9 2.8.9 0 1.6-.3 2.5-.3s1.6.3 2.5.3c1.7 0 2.9-1.1 2.9-2.8 0-2.6-2.3-5-5.4-5Z" />
+    </svg>
+  );
+}
+
 function PawsIcon({ large = false }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  if (!large || imgFailed) {
+    return <PawSvg className={large ? "paws-icon-lg" : "tab-icon"} />;
+  }
   return (
     <img
       src="/paws_logo.png"
       alt=""
       aria-hidden="true"
-      className={large ? "paws-icon-lg" : "paws-icon"}
+      className="paws-icon-lg"
+      onError={() => setImgFailed(true)}
     />
   );
 }
