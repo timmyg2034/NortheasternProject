@@ -22,7 +22,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Walt Greeley (HU)"
   },
   {
     "edition": "2nd",
@@ -47,7 +48,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Bob Babine (BC)"
   },
   {
     "edition": "3rd",
@@ -72,7 +74,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Billy Cleary (HU)"
   },
   {
     "edition": "4th",
@@ -97,7 +100,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "James Tiernan (BC)"
   },
   {
     "edition": "5th",
@@ -122,7 +126,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Joe Celeta (BC)"
   },
   {
     "edition": "6th",
@@ -147,7 +152,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Bill Sullivan (BU)"
   },
   {
     "edition": "7th",
@@ -172,7 +178,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Jim Logue (BC)"
   },
   {
     "edition": "8th",
@@ -197,7 +204,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Bob Bland (HU)"
   },
   {
     "edition": "9th",
@@ -222,7 +230,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Tom Martin (BC)"
   },
   {
     "edition": "10th",
@@ -247,7 +256,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Gene Kinasewich (HU)"
   },
   {
     "edition": "11th",
@@ -272,7 +282,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Billy Hogan (BC)"
   },
   {
     "edition": "12th",
@@ -297,7 +308,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "John Cunniff (BC)"
   },
   {
     "edition": "13th",
@@ -322,7 +334,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "John Cunniff (BC)"
   },
   {
     "edition": "14th",
@@ -347,7 +360,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Tom Ross (BU)"
   },
   {
     "edition": "15th",
@@ -372,7 +386,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Herb Wakabayashi (BU)"
   },
   {
     "edition": "16th",
@@ -397,7 +412,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Jim McCann (BU)"
   },
   {
     "edition": "17th",
@@ -422,7 +438,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Joe Cavanagh (HU)"
   },
   {
     "edition": "18th",
@@ -447,7 +464,8 @@
       "overtime_status": "OT",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Mike Hyndman (BU)"
   },
   {
     "edition": "19th",
@@ -472,7 +490,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Steve Stirling (BU)"
   },
   {
     "edition": "20th",
@@ -497,7 +516,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Dan Brady (BU)"
   },
   {
     "edition": "21st",
@@ -522,7 +542,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Vic Stanfield (BU)"
   },
   {
     "edition": "22nd",
@@ -547,7 +568,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Randy Roth (HU)",
+    "eberly": "Ed Walsh (BU), .893"
   },
   {
     "edition": "23rd",
@@ -572,7 +595,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Vic Stanfield (BU)",
+    "eberly": "Brian Durocher (BU), .915"
   },
   {
     "edition": "24th",
@@ -597,7 +622,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Paul Skidmore (BC)",
+    "eberly": "Paul Skidmore (BC), .921"
   },
   {
     "edition": "25th",
@@ -622,7 +649,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Brian Petrovek (HU)",
+    "eberly": "Brian Petrovek (HU), .902"
   },
   {
     "edition": "26th",
@@ -647,7 +676,9 @@
       "overtime_status": "OT",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Jack O'Callahan (BU)",
+    "eberly": "Ed Arrington (NU), .879"
   },
   {
     "edition": "27th",
@@ -672,7 +703,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Daryl MacLeod (BU)",
+    "eberly": "Paul Skidmore (BC), .905"
   },
   {
     "edition": "28th",
@@ -697,7 +730,9 @@
       "overtime_status": "OT",
       "has_boxscore": false
     },
-    "finish": "Champion"
+    "finish": "Champion",
+    "mvp": "Dave Archambault (NU)",
+    "eberly": "George Demetroulakas (NU), .816"
   },
   {
     "edition": "29th",
@@ -722,7 +757,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Wade Lau (HU)",
+    "eberly": "Wade Lau (HU), .947"
   },
   {
     "edition": "30th",
@@ -747,7 +784,9 @@
       "overtime_status": "OT",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Tom O'Regan (BU)",
+    "eberly": "Bob O'Connor (BC), .930"
   },
   {
     "edition": "31st",
@@ -772,7 +811,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Bob Sweeney (BC)",
+    "eberly": "Bill Switaj (BC), .906"
   },
   {
     "edition": "32nd",
@@ -797,7 +838,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Champion"
+    "finish": "Champion",
+    "mvp": "Tim Marshall (NU)",
+    "eberly": "Tim Marshall (NU), .915"
   },
   {
     "edition": "33rd",
@@ -822,7 +865,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Champion"
+    "finish": "Champion",
+    "mvp": "Bruce Racine (NU)",
+    "eberly": "Bruce Racine (NU), .940"
   },
   {
     "edition": "34th",
@@ -847,7 +892,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Terry Taillefer (BU)",
+    "eberly": "Scott Gordon (BC), .895"
   },
   {
     "edition": "35th",
@@ -872,7 +919,9 @@
       "overtime_status": "OT",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Mike Kelfer (BU)",
+    "eberly": "Terry Taillefer (BU), .921"
   },
   {
     "edition": "36th",
@@ -897,7 +946,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Champion"
+    "finish": "Champion",
+    "mvp": "Bruce Racine (NU)",
+    "eberly": "Bruce Racine (NU), .943"
   },
   {
     "edition": "37th",
@@ -922,7 +973,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Lane MacDonald (HU)",
+    "eberly": "Rich Burchill (NU), .882"
   },
   {
     "edition": "38th",
@@ -947,7 +1000,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "David Tomlinson (BU)",
+    "eberly": "Scott Cashman (BU), .912"
   },
   {
     "edition": "39th",
@@ -972,7 +1027,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Tony Amonte (BU)",
+    "eberly": "Tom Cole (NU), .945"
   },
   {
     "edition": "40th",
@@ -997,7 +1054,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Mike Prendergast (BU)",
+    "eberly": "Scott Cashman (BU), .908"
   },
   {
     "edition": "41st",
@@ -1022,7 +1081,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Ted Drury (HU)",
+    "eberly": "Scott Cashman (BU), .872"
   },
   {
     "edition": "42nd",
@@ -1047,7 +1108,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Greg Taylor (BC)",
+    "eberly": "Greg Taylor (BC), .930"
   },
   {
     "edition": "43rd",
@@ -1072,7 +1135,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Ken Rausch (BU)",
+    "eberly": "Derek Herlofsky (BU), .944"
   },
   {
     "edition": "44th",
@@ -1097,7 +1162,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Chris Drury (BU)",
+    "eberly": "Tom Noble (BU), .912"
   },
   {
     "edition": "45th",
@@ -1122,7 +1189,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Bill Pierce (BU)",
+    "eberly": "Marc Robitaille (NU), .944"
   },
   {
     "edition": "46th",
@@ -1147,7 +1216,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Tom Poti (BU)",
+    "eberly": "Marc Robitaille (NU), .915"
   },
   {
     "edition": "47th",
@@ -1172,7 +1243,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Michel Larocque (BU)",
+    "eberly": "Michel Larocque (BU), .942"
   },
   {
     "edition": "48th",
@@ -1197,7 +1270,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Rick DiPietro (BU)",
+    "eberly": "Rick DiPietro (BU), .981"
   },
   {
     "edition": "49th",
@@ -1222,7 +1297,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Krys Kolanos (BC)",
+    "eberly": "Scott Clemmensen (BC), .900"
   },
   {
     "edition": "50th",
@@ -1247,7 +1324,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Justin Maiser (BU)",
+    "eberly": "Matti Kaltiainen (BC), .913"
   },
   {
     "edition": "51st",
@@ -1272,7 +1351,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Sean Fields (BU)",
+    "eberly": "Sean Fields (BU), .952"
   },
   {
     "edition": "52nd",
@@ -1297,7 +1378,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Sean Fields (BU)",
+    "eberly": "Sean Fields (BU), .955"
   },
   {
     "edition": "53rd",
@@ -1322,7 +1405,9 @@
       "overtime_status": "OT",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Chris Bourque (BU)",
+    "eberly": "Keni Gibson (NU), .942"
   },
   {
     "edition": "54th",
@@ -1347,7 +1432,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Peter MacArthur (BU)",
+    "eberly": "Cory Schneider (BC), .924"
   },
   {
     "edition": "55th",
@@ -1372,7 +1459,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "John Curry (BU)",
+    "eberly": "John Curry (BU), .985"
   },
   {
     "edition": "56th",
@@ -1397,7 +1486,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Brian Gibbons (BC)",
+    "eberly": "Brad Thiessen (NU), .897"
   },
   {
     "edition": "57th",
@@ -1422,7 +1513,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Nick Bonino (BU)",
+    "eberly": "Brad Thiessen (NU), .925"
   },
   {
     "edition": "58th",
@@ -1447,7 +1540,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "John Muse (BC)",
+    "eberly": "John Muse (BC), .955"
   },
   {
     "edition": "59th",
@@ -1472,7 +1567,9 @@
       "overtime_status": "OT",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Chris Kreider (BC)",
+    "eberly": "Chris Rawlings (NU), .920"
   },
   {
     "edition": "60th",
@@ -1497,7 +1594,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Johnny Gaudreau (BC)",
+    "eberly": "Kieran Millan (BU), .948"
   },
   {
     "edition": "61st",
@@ -1522,7 +1621,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Kevin Roy (NU)",
+    "eberly": "Parker Milner (BC), .907"
   },
   {
     "edition": "62nd",
@@ -1547,7 +1648,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Kevin Hayes (BC)",
+    "eberly": "Thatcher Demko (BC), .966"
   },
   {
     "edition": "63rd",
@@ -1572,7 +1675,9 @@
       "overtime_status": "OT",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Matt Grzelcyk (BU)",
+    "eberly": "Steve Michalek (HU), .926"
   },
   {
     "edition": "64th",
@@ -1597,7 +1702,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Sean Maguire (BU)",
+    "eberly": "Sean Maguire (BU), .970"
   },
   {
     "edition": "65th",
@@ -1622,7 +1729,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "3rd Place"
+    "finish": "3rd Place",
+    "mvp": "Nathan Krusko (HU)",
+    "eberly": "Jake Oettinger (BU), .913"
   },
   {
     "edition": "66th",
@@ -1647,7 +1756,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Champion"
+    "finish": "Champion",
+    "mvp": "Adam Gaudette (NU)",
+    "eberly": "Cayden Primeau (NU), .974"
   },
   {
     "edition": "67th",
@@ -1672,7 +1783,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Champion"
+    "finish": "Champion",
+    "mvp": "Cayden Primeau (NU)",
+    "eberly": "Cayden Primeau (NU), .952"
   },
   {
     "edition": "68th",
@@ -1697,7 +1810,9 @@
       "overtime_status": "2OT",
       "has_boxscore": false
     },
-    "finish": "Champion"
+    "finish": "Champion",
+    "mvp": "Zach Solow (NU)",
+    "eberly": "Craig Pantano (NU), .931"
   },
   {
     "edition": "69th",
@@ -1722,7 +1837,9 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "Runner-Up"
+    "finish": "Runner-Up",
+    "mvp": "Dylan Peterson (NU)",
+    "eberly": "TJ Semptimphelter (NU), .972"
   },
   {
     "edition": "70th",
@@ -1747,7 +1864,9 @@
       "overtime_status": "SO",
       "has_boxscore": false
     },
-    "finish": "Champion"
+    "finish": "Champion",
+    "mvp": "Devon Levi (NU)",
+    "eberly": "Devon Levi (NU), .956"
   },
   {
     "edition": "71st",
@@ -1772,7 +1891,9 @@
       "overtime_status": "OT",
       "has_boxscore": false
     },
-    "finish": "Champion"
+    "finish": "Champion",
+    "mvp": "Gunnarwolfe Fontaine (NU)",
+    "eberly": "Cameron Whitehead (NU), .915"
   },
   {
     "edition": "72nd",
@@ -1797,6 +1918,8 @@
       "overtime_status": "REG",
       "has_boxscore": false
     },
-    "finish": "4th Place"
+    "finish": "4th Place",
+    "mvp": "Cole Hutson (BU)",
+    "eberly": "Mikhail Yegorov (BU), .972"
   }
 ]

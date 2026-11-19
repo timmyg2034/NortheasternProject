@@ -3485,6 +3485,10 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
         h = hist_by_year.get(yr, {})
         t["edition"] = h.get("edition", f"{yr - 1953}th" if yr >= 2022 else "")
         t["champion"] = h.get("champion", "Northeastern" if t["finish"] == "Champion" else "")
+        if not t.get("mvp") and h.get("mvp"):
+            t["mvp"] = h["mvp"]
+        if not t.get("eberly") and h.get("eberly"):
+            t["eberly"] = h["eberly"]
         if t.get("semifinal"):
             t["semifinal"]["has_boxscore"] = True
         if t.get("round2"):
@@ -3503,8 +3507,8 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
                 "round2_label": h.get("round2_label", "Consolation"),
                 "round2": h.get("round2"),
                 "finish": h.get("finish", ""),
-                "mvp": awards.get("mvp", ""),
-                "eberly": awards.get("eberly", ""),
+                "mvp": awards.get("mvp") or h.get("mvp", ""),
+                "eberly": awards.get("eberly") or h.get("eberly", ""),
                 "note": awards.get("note", ""),
                 "has_boxscore": False,
             })

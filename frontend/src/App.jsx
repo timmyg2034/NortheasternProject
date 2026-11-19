@@ -6247,12 +6247,14 @@ export default function App() {
                                   </span>
                                 </td>
                                 <td className="muted" style={{ fontSize: 12 }}>
-                                  {t.mvp ? `MVP: ${t.mvp}` : ""}
-                                  {t.eberly ? `${t.mvp ? " • " : ""}Eberly: ${t.eberly}` : ""}
-                                  {t.note && !t.mvp ? t.note : ""}
-                                  {!t.mvp && !t.eberly && !t.note && t.champion && t.finish !== "Champion"
-                                    ? `Champion: ${t.champion}`
-                                    : ""}
+                                  {[
+                                    t.champion && t.finish !== "Champion" ? `Champion: ${t.champion}` : "",
+                                    t.mvp ? `MVP: ${t.mvp}` : "",
+                                    t.eberly ? `Eberly: ${t.eberly}` : "",
+                                    t.note && !t.mvp ? t.note : "",
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" • ")}
                                 </td>
                               </tr>
                             ))}
