@@ -1,0 +1,1802 @@
+[
+  {
+    "edition": "1st",
+    "year": 1952,
+    "champion": "Harvard",
+    "semifinal": {
+      "date": "1952-12-26",
+      "opponent": "Boston University",
+      "nu_goals": 1,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1952-12-27",
+      "opponent": "Boston College",
+      "nu_goals": 0,
+      "opp_goals": 2,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "2nd",
+    "year": 1954,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "1954-01-11",
+      "opponent": "Boston College",
+      "nu_goals": 5,
+      "opp_goals": 8,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1954-01-12",
+      "opponent": "Boston University",
+      "nu_goals": 3,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "3rd",
+    "year": 1955,
+    "champion": "Harvard",
+    "semifinal": {
+      "date": "1955-02-07",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 12,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1955-02-08",
+      "opponent": "Boston University",
+      "nu_goals": 3,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "4th",
+    "year": 1956,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "1956-02-06",
+      "opponent": "Boston College",
+      "nu_goals": 1,
+      "opp_goals": 7,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1956-02-08",
+      "opponent": "Boston University",
+      "nu_goals": 3,
+      "opp_goals": 9,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "5th",
+    "year": 1957,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "1957-02-01",
+      "opponent": "Boston College",
+      "nu_goals": 0,
+      "opp_goals": 6,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1957-02-05",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "6th",
+    "year": 1958,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1958-02-03",
+      "opponent": "Harvard",
+      "nu_goals": 5,
+      "opp_goals": 4,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "1958-02-10",
+      "opponent": "Boston University",
+      "nu_goals": 3,
+      "opp_goals": 9,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "7th",
+    "year": 1959,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "1959-02-02",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 7,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1959-02-09",
+      "opponent": "Harvard",
+      "nu_goals": 0,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "8th",
+    "year": 1960,
+    "champion": "Harvard",
+    "semifinal": {
+      "date": "1960-02-08",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1960-02-15",
+      "opponent": "Boston College",
+      "nu_goals": 6,
+      "opp_goals": 5,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "9th",
+    "year": 1961,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "1961-02-06",
+      "opponent": "Boston College",
+      "nu_goals": 1,
+      "opp_goals": 15,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1961-02-13",
+      "opponent": "Boston University",
+      "nu_goals": 6,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "10th",
+    "year": 1962,
+    "champion": "Harvard",
+    "semifinal": {
+      "date": "1962-02-05",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1962-02-12",
+      "opponent": "Boston College",
+      "nu_goals": 0,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "11th",
+    "year": 1963,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "1963-02-04",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1963-02-11",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "12th",
+    "year": 1964,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "1964-02-03",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 7,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1964-02-10",
+      "opponent": "Harvard",
+      "nu_goals": 5,
+      "opp_goals": 7,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "13th",
+    "year": 1965,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "1965-02-08",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "3OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1965-02-15",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "14th",
+    "year": 1966,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1966-02-07",
+      "opponent": "Harvard",
+      "nu_goals": 1,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1966-02-14",
+      "opponent": "Boston College",
+      "nu_goals": 3,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "15th",
+    "year": 1967,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1967-02-09",
+      "opponent": "Boston College",
+      "nu_goals": 6,
+      "opp_goals": 5,
+      "outcome": "W",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "1967-02-13",
+      "opponent": "Boston University",
+      "nu_goals": 0,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "16th",
+    "year": 1968,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1968-02-05",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 7,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1968-02-12",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 6,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "17th",
+    "year": 1969,
+    "champion": "Harvard",
+    "semifinal": {
+      "date": "1969-02-03",
+      "opponent": "Harvard",
+      "nu_goals": 4,
+      "opp_goals": 8,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1969-02-10",
+      "opponent": "Boston College",
+      "nu_goals": 3,
+      "opp_goals": 6,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "18th",
+    "year": 1970,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1970-02-02",
+      "opponent": "Boston College",
+      "nu_goals": 0,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1970-02-09",
+      "opponent": "Harvard",
+      "nu_goals": 4,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "19th",
+    "year": 1971,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1971-02-08",
+      "opponent": "Boston University",
+      "nu_goals": 2,
+      "opp_goals": 12,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1971-02-22",
+      "opponent": "Boston College",
+      "nu_goals": 2,
+      "opp_goals": 8,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "20th",
+    "year": 1972,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1972-02-07",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 8,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1972-02-14",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "21st",
+    "year": 1973,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1973-02-05",
+      "opponent": "Boston College",
+      "nu_goals": 8,
+      "opp_goals": 9,
+      "outcome": "L",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1973-02-12",
+      "opponent": "Harvard",
+      "nu_goals": 5,
+      "opp_goals": 8,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "22nd",
+    "year": 1974,
+    "champion": "Harvard",
+    "semifinal": {
+      "date": "1974-02-04",
+      "opponent": "Boston University",
+      "nu_goals": 1,
+      "opp_goals": 6,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1974-02-11",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 3,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "23rd",
+    "year": 1975,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1975-02-03",
+      "opponent": "Harvard",
+      "nu_goals": 0,
+      "opp_goals": 9,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1975-02-10",
+      "opponent": "Boston College",
+      "nu_goals": 5,
+      "opp_goals": 3,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "24th",
+    "year": 1976,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "1976-02-02",
+      "opponent": "Boston College",
+      "nu_goals": 3,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1976-02-09",
+      "opponent": "Harvard",
+      "nu_goals": 2,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "25th",
+    "year": 1977,
+    "champion": "Harvard",
+    "semifinal": {
+      "date": "1977-02-07",
+      "opponent": "Boston University",
+      "nu_goals": 5,
+      "opp_goals": 10,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1977-02-14",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 6,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "26th",
+    "year": 1978,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1978-02-06",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1978-03-01",
+      "opponent": "Boston College",
+      "nu_goals": 2,
+      "opp_goals": 3,
+      "outcome": "L",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "27th",
+    "year": 1979,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1979-02-05",
+      "opponent": "Boston College",
+      "nu_goals": 2,
+      "opp_goals": 7,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1979-02-12",
+      "opponent": "Harvard",
+      "nu_goals": 5,
+      "opp_goals": 4,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "28th",
+    "year": 1980,
+    "champion": "Northeastern",
+    "semifinal": {
+      "date": "1980-02-04",
+      "opponent": "Boston University",
+      "nu_goals": 6,
+      "opp_goals": 5,
+      "outcome": "W",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "1980-02-11",
+      "opponent": "Boston College",
+      "nu_goals": 5,
+      "opp_goals": 4,
+      "outcome": "W",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "finish": "Champion"
+  },
+  {
+    "edition": "29th",
+    "year": 1981,
+    "champion": "Harvard",
+    "semifinal": {
+      "date": "1981-02-02",
+      "opponent": "Harvard",
+      "nu_goals": 2,
+      "opp_goals": 10,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1981-02-09",
+      "opponent": "Boston University",
+      "nu_goals": 2,
+      "opp_goals": 9,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "30th",
+    "year": 1982,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1982-02-01",
+      "opponent": "Boston College",
+      "nu_goals": 2,
+      "opp_goals": 3,
+      "outcome": "L",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1982-02-08",
+      "opponent": "Harvard",
+      "nu_goals": 6,
+      "opp_goals": 5,
+      "outcome": "W",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "31st",
+    "year": 1983,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "1983-02-08",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 3,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "1983-02-14",
+      "opponent": "Boston College",
+      "nu_goals": 2,
+      "opp_goals": 8,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "32nd",
+    "year": 1984,
+    "champion": "Northeastern",
+    "semifinal": {
+      "date": "1984-02-06",
+      "opponent": "Harvard",
+      "nu_goals": 7,
+      "opp_goals": 3,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "1984-02-13",
+      "opponent": "Boston University",
+      "nu_goals": 5,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Champion"
+  },
+  {
+    "edition": "33rd",
+    "year": 1985,
+    "champion": "Northeastern",
+    "semifinal": {
+      "date": "1985-02-04",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "1985-02-11",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Champion"
+  },
+  {
+    "edition": "34th",
+    "year": 1986,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1986-02-03",
+      "opponent": "Boston University",
+      "nu_goals": 5,
+      "opp_goals": 8,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1986-02-10",
+      "opponent": "Harvard",
+      "nu_goals": 1,
+      "opp_goals": 7,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "35th",
+    "year": 1987,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1987-02-02",
+      "opponent": "Harvard",
+      "nu_goals": 5,
+      "opp_goals": 4,
+      "outcome": "W",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "1987-02-09",
+      "opponent": "Boston University",
+      "nu_goals": 3,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "36th",
+    "year": 1988,
+    "champion": "Northeastern",
+    "semifinal": {
+      "date": "1988-02-01",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 0,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "1988-02-08",
+      "opponent": "Boston University",
+      "nu_goals": 6,
+      "opp_goals": 3,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Champion"
+  },
+  {
+    "edition": "37th",
+    "year": 1989,
+    "champion": "Harvard",
+    "semifinal": {
+      "date": "1989-02-06",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1989-02-13",
+      "opponent": "Boston College",
+      "nu_goals": 1,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "38th",
+    "year": 1990,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1990-02-05",
+      "opponent": "Harvard",
+      "nu_goals": 4,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1990-02-12",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 8,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "39th",
+    "year": 1991,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1991-02-04",
+      "opponent": "Boston College",
+      "nu_goals": 3,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1991-02-11",
+      "opponent": "Harvard",
+      "nu_goals": 5,
+      "opp_goals": 0,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "40th",
+    "year": 1992,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1992-02-03",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1992-02-10",
+      "opponent": "Boston College",
+      "nu_goals": 3,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "41st",
+    "year": 1993,
+    "champion": "Harvard",
+    "semifinal": {
+      "date": "1993-02-01",
+      "opponent": "Harvard",
+      "nu_goals": 5,
+      "opp_goals": 7,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1993-02-08",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 3,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "42nd",
+    "year": 1994,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "1994-02-07",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "2OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1994-02-14",
+      "opponent": "Boston University",
+      "nu_goals": 0,
+      "opp_goals": 8,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "43rd",
+    "year": 1995,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1995-02-06",
+      "opponent": "Boston University",
+      "nu_goals": 2,
+      "opp_goals": 6,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1995-02-13",
+      "opponent": "Harvard",
+      "nu_goals": 4,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "44th",
+    "year": 1996,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1996-02-05",
+      "opponent": "Harvard",
+      "nu_goals": 4,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "1996-02-12",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 11,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "45th",
+    "year": 1997,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1997-02-03",
+      "opponent": "Boston College",
+      "nu_goals": 1,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1997-02-10",
+      "opponent": "Harvard",
+      "nu_goals": 2,
+      "opp_goals": 0,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "46th",
+    "year": 1998,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1998-02-02",
+      "opponent": "Boston University",
+      "nu_goals": 1,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "1998-02-09",
+      "opponent": "Boston College",
+      "nu_goals": 1,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "47th",
+    "year": 1999,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "1999-02-01",
+      "opponent": "Harvard",
+      "nu_goals": 4,
+      "opp_goals": 3,
+      "outcome": "W",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "1999-02-08",
+      "opponent": "Boston University",
+      "nu_goals": 2,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "48th",
+    "year": 2000,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "2000-02-07",
+      "opponent": "Boston College",
+      "nu_goals": 0,
+      "opp_goals": 6,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2000-02-14",
+      "opponent": "Harvard",
+      "nu_goals": 1,
+      "opp_goals": 3,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "49th",
+    "year": 2001,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "2001-02-05",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 6,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2001-02-12",
+      "opponent": "Harvard",
+      "nu_goals": 8,
+      "opp_goals": 7,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "50th",
+    "year": 2002,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "2002-02-04",
+      "opponent": "Harvard",
+      "nu_goals": 5,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2002-02-11",
+      "opponent": "Boston University",
+      "nu_goals": 3,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "51st",
+    "year": 2003,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "2003-02-03",
+      "opponent": "Boston College",
+      "nu_goals": 2,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2003-02-10",
+      "opponent": "Harvard",
+      "nu_goals": 1,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "52nd",
+    "year": 2004,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "2004-02-02",
+      "opponent": "Boston University",
+      "nu_goals": 2,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2004-02-09",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "53rd",
+    "year": 2005,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "2005-02-07",
+      "opponent": "Harvard",
+      "nu_goals": 2,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "2OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2005-02-14",
+      "opponent": "Boston University",
+      "nu_goals": 2,
+      "opp_goals": 3,
+      "outcome": "L",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "54th",
+    "year": 2006,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "2006-02-06",
+      "opponent": "Boston College",
+      "nu_goals": 2,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2006-02-13",
+      "opponent": "Harvard",
+      "nu_goals": 0,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "55th",
+    "year": 2007,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "2007-02-05",
+      "opponent": "Boston University",
+      "nu_goals": 0,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2007-02-12",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "56th",
+    "year": 2008,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "2008-02-04",
+      "opponent": "Harvard",
+      "nu_goals": 1,
+      "opp_goals": 3,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2008-02-11",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "57th",
+    "year": 2009,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "2009-02-02",
+      "opponent": "Boston College",
+      "nu_goals": 6,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2009-02-09",
+      "opponent": "Boston University",
+      "nu_goals": 2,
+      "opp_goals": 5,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "58th",
+    "year": 2010,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "2010-02-01",
+      "opponent": "Boston University",
+      "nu_goals": 1,
+      "opp_goals": 2,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2010-02-08",
+      "opponent": "Harvard",
+      "nu_goals": 4,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "59th",
+    "year": 2011,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "2011-02-07",
+      "opponent": "Harvard",
+      "nu_goals": 4,
+      "opp_goals": 0,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2011-02-14",
+      "opponent": "Boston College",
+      "nu_goals": 6,
+      "opp_goals": 7,
+      "outcome": "L",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "60th",
+    "year": 2012,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "2012-02-06",
+      "opponent": "Boston College",
+      "nu_goals": 1,
+      "opp_goals": 7,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2012-02-13",
+      "opponent": "Harvard",
+      "nu_goals": 2,
+      "opp_goals": 3,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  },
+  {
+    "edition": "61st",
+    "year": 2013,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "2013-02-04",
+      "opponent": "Boston University",
+      "nu_goals": 3,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2013-02-11",
+      "opponent": "Boston College",
+      "nu_goals": 3,
+      "opp_goals": 6,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "62nd",
+    "year": 2014,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "2014-02-03",
+      "opponent": "Harvard",
+      "nu_goals": 6,
+      "opp_goals": 0,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2014-02-10",
+      "opponent": "Boston College",
+      "nu_goals": 1,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "63rd",
+    "year": 2015,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "2015-02-03",
+      "opponent": "Boston College",
+      "nu_goals": 3,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2015-02-23",
+      "opponent": "Boston University",
+      "nu_goals": 3,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "64th",
+    "year": 2016,
+    "champion": "Boston College",
+    "semifinal": {
+      "date": "2016-02-01",
+      "opponent": "Boston University",
+      "nu_goals": 1,
+      "opp_goals": 3,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2016-02-08",
+      "opponent": "Harvard",
+      "nu_goals": 5,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "65th",
+    "year": 2017,
+    "champion": "Harvard",
+    "semifinal": {
+      "date": "2017-02-06",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2017-02-13",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "3rd Place"
+  },
+  {
+    "edition": "66th",
+    "year": 2018,
+    "champion": "Northeastern",
+    "semifinal": {
+      "date": "2018-02-05",
+      "opponent": "Boston College",
+      "nu_goals": 3,
+      "opp_goals": 0,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2018-02-12",
+      "opponent": "Boston University",
+      "nu_goals": 5,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Champion"
+  },
+  {
+    "edition": "67th",
+    "year": 2019,
+    "champion": "Northeastern",
+    "semifinal": {
+      "date": "2019-02-04",
+      "opponent": "Boston University",
+      "nu_goals": 2,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2019-02-11",
+      "opponent": "Boston College",
+      "nu_goals": 4,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Champion"
+  },
+  {
+    "edition": "68th",
+    "year": 2020,
+    "champion": "Northeastern",
+    "semifinal": {
+      "date": "2020-02-03",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2020-02-10",
+      "opponent": "Boston University",
+      "nu_goals": 5,
+      "opp_goals": 4,
+      "outcome": "W",
+      "overtime_status": "2OT",
+      "has_boxscore": false
+    },
+    "finish": "Champion"
+  },
+  {
+    "edition": "69th",
+    "year": 2022,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "2022-02-07",
+      "opponent": "Boston College",
+      "nu_goals": 3,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2022-02-14",
+      "opponent": "Boston University",
+      "nu_goals": 0,
+      "opp_goals": 1,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "Runner-Up"
+  },
+  {
+    "edition": "70th",
+    "year": 2023,
+    "champion": "Northeastern",
+    "semifinal": {
+      "date": "2023-02-06",
+      "opponent": "Boston University",
+      "nu_goals": 3,
+      "opp_goals": 1,
+      "outcome": "W",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2023-02-13",
+      "opponent": "Harvard",
+      "nu_goals": 2,
+      "opp_goals": 2,
+      "outcome": "T",
+      "overtime_status": "SO",
+      "has_boxscore": false
+    },
+    "finish": "Champion"
+  },
+  {
+    "edition": "71st",
+    "year": 2024,
+    "champion": "Northeastern",
+    "semifinal": {
+      "date": "2024-02-05",
+      "opponent": "Harvard",
+      "nu_goals": 3,
+      "opp_goals": 2,
+      "outcome": "W",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "round2_label": "Championship",
+    "round2": {
+      "date": "2024-02-12",
+      "opponent": "Boston University",
+      "nu_goals": 4,
+      "opp_goals": 3,
+      "outcome": "W",
+      "overtime_status": "OT",
+      "has_boxscore": false
+    },
+    "finish": "Champion"
+  },
+  {
+    "edition": "72nd",
+    "year": 2025,
+    "champion": "Boston University",
+    "semifinal": {
+      "date": "2025-02-03",
+      "opponent": "Boston College",
+      "nu_goals": 2,
+      "opp_goals": 8,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "round2_label": "Consolation",
+    "round2": {
+      "date": "2025-02-12",
+      "opponent": "Harvard",
+      "nu_goals": 2,
+      "opp_goals": 4,
+      "outcome": "L",
+      "overtime_status": "REG",
+      "has_boxscore": false
+    },
+    "finish": "4th Place"
+  }
+]

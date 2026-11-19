@@ -3160,6 +3160,18 @@ _BEANPOT_CACHE: dict[str, Any] = {}
 _BEANPOT_LOCK = threading.Lock()
 
 
+_BEANPOT_HISTORY_PATH = Path(__file__).resolve().parent / "beanpot_history.json"
+
+
+def _load_beanpot_history_json() -> list[dict[str, Any]]:
+    try:
+        if _BEANPOT_HISTORY_PATH.is_file():
+            return json.loads(_BEANPOT_HISTORY_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return []
+
+
 def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
     v = getattr(ds, "dataset_version", None) or getattr(state, "dataset_version", None) or "default"
     with _BEANPOT_LOCK:
@@ -3464,6 +3476,40 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
 
     moments.sort(key=lambda x: x["date"], reverse=True)
 
+    # Merge 1952–present TD Garden history with box-score-era tournaments
+    hist_by_year = {int(h["year"]): h for h in _load_beanpot_history_json()}
+    box_years = set()
+    for t in tournaments:
+        yr = int(t["year"])
+        box_years.add(yr)
+        h = hist_by_year.get(yr, {})
+        t["edition"] = h.get("edition", f"{yr - 1953}th" if yr >= 2022 else "")
+        t["champion"] = h.get("champion", "Northeastern" if t["finish"] == "Champion" else "")
+        if t.get("semifinal"):
+            t["semifinal"]["has_boxscore"] = True
+        if t.get("round2"):
+            t["round2"]["has_boxscore"] = True
+
+    all_time_tournaments: list[dict[str, Any]] = list(tournaments)
+    for yr, h in hist_by_year.items():
+        if yr not in box_years:
+            awards = _BEANPOT_YEAR_AWARDS.get(yr, {})
+            all_time_tournaments.append({
+                "year": yr,
+                "edition": h.get("edition", ""),
+                "champion": h.get("champion", ""),
+                "season": f"{yr - 1}-{str(yr)[-2:]}",
+                "semifinal": h.get("semifinal"),
+                "round2_label": h.get("round2_label", "Consolation"),
+                "round2": h.get("round2"),
+                "finish": h.get("finish", ""),
+                "mvp": awards.get("mvp", ""),
+                "eberly": awards.get("eberly", ""),
+                "note": awards.get("note", ""),
+                "has_boxscore": False,
+            })
+    all_time_tournaments.sort(key=lambda x: x["year"], reverse=True)
+
     result = {
         "summary": {
             "era": "2000–2026 (Box-Score Era)",
@@ -3482,6 +3528,7 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
             "goals_against": ga_tot,
         },
         "tournaments": tournaments,
+        "all_time_tournaments": all_time_tournaments,
         "rivals": list(rival_stats.values()),
         "skater_leaders": skater_leaders,
         "goalie_leaders": goalie_leaders,

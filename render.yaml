@@ -3,7 +3,7 @@ services:
     name: nu-hockey-explorer
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt && npm --prefix frontend ci && npm --prefix frontend run build
+    buildCommand: (pip install --prefer-binary -r requirements.txt) & p1=$!; (npm --prefix frontend ci --no-audit --no-fund && npm --prefix frontend run build) & p2=$!; wait $p1 && wait $p2
     startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:

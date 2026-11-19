@@ -6159,11 +6159,16 @@ export default function App() {
                 )}
 
                 {beanpotSubTab === "history" && (() => {
-                  const filtered = (beanpotData.tournaments || []).filter((t) => {
-                    if (beanpotHistoryFilter === "titles") return t.finish === "Champion";
-                    if (beanpotHistoryFilter === "finals") return t.finish === "Champion" || t.finish === "Runner-Up";
-                    return true;
-                  });
+                  const boxTournaments = beanpotData.tournaments || [];
+                  const allTimeTournaments = beanpotData.all_time_tournaments || boxTournaments;
+                  const filtered =
+                    beanpotHistoryFilter === "all_time"
+                      ? allTimeTournaments
+                      : beanpotHistoryFilter === "titles"
+                        ? allTimeTournaments.filter((t) => t.finish === "Champion")
+                        : beanpotHistoryFilter === "finals"
+                          ? allTimeTournaments.filter((t) => t.finish === "Champion" || t.finish === "Runner-Up")
+                          : boxTournaments;
                   const renderGameCell = (g, labelPrefix) => {
                     if (!g) return <span className="muted">—</span>;
                     const otLabel = g.overtime_status && g.overtime_status !== "REG" ? ` (${g.overtime_status})` : "";
@@ -6176,13 +6181,15 @@ export default function App() {
                             {g.opponent} &bull; <OutcomeBadge outcome={g.outcome} /> <strong>{`${g.nu_goals}-${g.opp_goals}`}</strong>{otLabel}
                           </span>
                         </span>
-                        <button
-                          type="button"
-                          className="link-btn"
-                          onClick={() => openBoxScore(g.date, g.opponent)}
-                        >
-                          Box
-                        </button>
+                        {g.has_boxscore !== false && (
+                          <button
+                            type="button"
+                            className="link-btn"
+                            onClick={() => openBoxScore(g.date, g.opponent)}
+                          >
+                            Box
+                          </button>
+                        )}
                       </div>
                     );
                   };
@@ -6191,7 +6198,8 @@ export default function App() {
                       <div className="card-header">
                         <div className="segmented">
                           {[
-                            ["all", `All Tournaments (${(beanpotData.tournaments || []).length})`],
+                            ["all", `Box-Score Era (${boxTournaments.length})`],
+                            ["all_time", `All-Time 1952–2026 (${allTimeTournaments.length})`],
                             ["titles", "Championships"],
                             ["finals", "Finals Appearances"],
                           ].map(([k, lbl]) => (
@@ -6206,7 +6214,7 @@ export default function App() {
                           ))}
                         </div>
                         <span className="muted" style={{ fontSize: 12 }}>
-                          Note: The 2021 Beanpot was cancelled due to COVID-19.
+                          Note: No tournament in 1953; 2021 cancelled (COVID-19). Box scores available 2000–2026.
                         </span>
                       </div>
 
@@ -6218,13 +6226,16 @@ export default function App() {
                               <th>Semifinal (Round 1)</th>
                               <th>Round 2 (Final / Consolation)</th>
                               <th>Finish</th>
-                              <th>Awards / Notes</th>
+                              <th>Awards / Champion</th>
                             </tr>
                           </thead>
                           <tbody>
                             {filtered.map((t) => (
                               <tr key={t.year}>
-                                <td><strong>{t.year}</strong></td>
+                                <td>
+                                  <strong>{t.year}</strong>
+                                  {t.edition ? <span className="muted" style={{ fontSize: 11, marginLeft: 5 }}>({t.edition})</span> : null}
+                                </td>
                                 <td>{renderGameCell(t.semifinal, "")}</td>
                                 <td>{renderGameCell(t.round2, t.round2_label)}</td>
                                 <td>
@@ -6239,6 +6250,9 @@ export default function App() {
                                   {t.mvp ? `MVP: ${t.mvp}` : ""}
                                   {t.eberly ? `${t.mvp ? " • " : ""}Eberly: ${t.eberly}` : ""}
                                   {t.note && !t.mvp ? t.note : ""}
+                                  {!t.mvp && !t.eberly && !t.note && t.champion && t.finish !== "Champion"
+                                    ? `Champion: ${t.champion}`
+                                    : ""}
                                 </td>
                               </tr>
                             ))}
