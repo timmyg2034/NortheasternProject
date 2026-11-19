@@ -42,7 +42,7 @@ function PawSvg({ className }) {
 
 function PawsIcon({ large = false }) {
   const [imgFailed, setImgFailed] = useState(false);
-  if (!large || imgFailed) {
+  if (imgFailed) {
     return <PawSvg className={large ? "paws-icon-lg" : "tab-icon"} />;
   }
   return (
@@ -50,7 +50,7 @@ function PawsIcon({ large = false }) {
       src="/paws_logo.png"
       alt=""
       aria-hidden="true"
-      className="paws-icon-lg"
+      className={large ? "paws-icon-lg" : "paws-icon"}
       onError={() => setImgFailed(true)}
     />
   );
@@ -756,11 +756,23 @@ export default function App() {
   const [compareOpponent, setCompareOpponent] = useState("");
   const hasInAppHistory = useRef(false);
 
-  function filterPlayerMatches(query) {
+  function isPlayerGoalie(name, playerData) {
+    if (playerData && typeof playerData.is_goalie === "boolean") {
+      return playerData.is_goalie;
+    }
+    const target = (name || "").trim().toLowerCase();
+    if (!target) return null;
+    const found = allPlayers.find((p) => p.player_name.toLowerCase() === target);
+    return found ? found.position === "G" : null;
+  }
+
+  function filterPlayerMatches(query, roleFilter = null) {
     const q = query.trim().toLowerCase();
     if (!q) return [];
     const tokens = q.split(/\s+/).filter(Boolean);
     const matches = allPlayers.filter((p) => {
+      if (roleFilter === "goalie" && p.position !== "G") return false;
+      if (roleFilter === "skater" && p.position === "G") return false;
       const lower = p.player_name.toLowerCase();
       return tokens.every((t) => lower.includes(t));
     });
@@ -4192,11 +4204,16 @@ export default function App() {
               </div>
 
               {(() => {
+                const goalieA = isPlayerGoalie(compareAName, compareAData);
+                const goalieB = isPlayerGoalie(compareBName, compareBData);
+                const roleForA = goalieB === true ? "goalie" : goalieB === false ? "skater" : null;
+                const roleForB = goalieA === true ? "goalie" : goalieA === false ? "skater" : null;
+
                 const matchesA = compareAFocus && compareAQuery.trim() && compareAQuery.trim() !== compareAName
-                  ? filterPlayerMatches(compareAQuery)
+                  ? filterPlayerMatches(compareAQuery, roleForA)
                   : [];
                 const matchesB = compareBFocus && compareBQuery.trim() && compareBQuery.trim() !== compareBName
-                  ? filterPlayerMatches(compareBQuery)
+                  ? filterPlayerMatches(compareBQuery, roleForB)
                   : [];
 
                 return (
@@ -4211,7 +4228,13 @@ export default function App() {
                           className="text-input"
                           type="text"
                           autoComplete="off"
-                          placeholder="Search first or last name (e.g. Justin, Hryckowian)"
+                          placeholder={
+                            roleForA === "goalie"
+                              ? "Search goalies (e.g. Devon Levi, Cayden Primeau)"
+                              : roleForA === "skater"
+                                ? "Search skaters (e.g. Justin, Hryckowian)"
+                                : "Search first or last name (e.g. Justin, Hryckowian)"
+                          }
                           value={compareAQuery}
                           onFocus={() => setCompareAFocus(true)}
                           onBlur={() => setTimeout(() => setCompareAFocus(false), 150)}
@@ -4277,7 +4300,11 @@ export default function App() {
                                 ? "Loading player list..."
                                 : playersError
                                   ? playersError
-                                  : "No matching players found"}
+                                  : roleForA === "goalie"
+                                    ? "No matching goalies found"
+                                    : roleForA === "skater"
+                                      ? "No matching skaters found"
+                                      : "No matching players found"}
                             </div>
                           )}
                         </div>
@@ -4321,7 +4348,13 @@ export default function App() {
                           className="text-input"
                           type="text"
                           autoComplete="off"
-                          placeholder="Search first or last name (e.g. Aidan, McDonough)"
+                          placeholder={
+                            roleForB === "goalie"
+                              ? "Search goalies (e.g. Devon Levi, Cayden Primeau)"
+                              : roleForB === "skater"
+                                ? "Search skaters (e.g. Aidan, McDonough)"
+                                : "Search first or last name (e.g. Aidan, McDonough)"
+                          }
                           value={compareBQuery}
                           onFocus={() => setCompareBFocus(true)}
                           onBlur={() => setTimeout(() => setCompareBFocus(false), 150)}
@@ -4387,7 +4420,11 @@ export default function App() {
                                 ? "Loading player list..."
                                 : playersError
                                   ? playersError
-                                  : "No matching players found"}
+                                  : roleForB === "goalie"
+                                    ? "No matching goalies found"
+                                    : roleForB === "skater"
+                                      ? "No matching skaters found"
+                                      : "No matching players found"}
                             </div>
                           )}
                         </div>
