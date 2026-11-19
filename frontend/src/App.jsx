@@ -672,6 +672,8 @@ export default function App() {
   const [chemSeason, setChemSeason] = useState("all");
   const [chemStrength, setChemStrength] = useState("all");
   const [otdMmdd, setOtdMmdd] = useState("");
+  const [otdPickerOpen, setOtdPickerOpen] = useState(false);
+  const [otdPickerMonth, setOtdPickerMonth] = useState(null);
 
   // Beanpot Hub state
   const [beanpotData, setBeanpotData] = useState(null);
@@ -5888,38 +5890,141 @@ export default function App() {
                           : ""}
                       </span>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <label htmlFor="otd-select" className="field-label">Pick Date:</label>
-                      <input
-                        id="otd-select"
-                        type="date"
-                        className="select-input"
-                        min="2024-01-01"
-                        max="2024-12-31"
-                        value={
-                          (otdMmdd || otd.resolved_mmdd)
-                            ? `2024-${otdMmdd || otd.resolved_mmdd}`
-                            : ""
-                        }
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (val && val.length >= 10) {
-                            setOtdMmdd(val.slice(5, 10));
-                          } else {
-                            setOtdMmdd("");
-                          }
-                        }}
-                      />
-                      {otdMmdd && (
-                        <button
-                          type="button"
-                          className="btn-ghost"
-                          style={{ padding: "6px 10px", fontSize: 12 }}
-                          onClick={() => setOtdMmdd("")}
-                        >
-                          Today
-                        </button>
-                      )}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
+                      {(() => {
+                        const activeMmdd = otdMmdd || otd.resolved_mmdd || "01-01";
+                        const activeM = Number(activeMmdd.slice(0, 2)) || 1;
+                        const activeD = Number(activeMmdd.slice(3, 5)) || 1;
+                        const monthNames = [
+                          "January", "February", "March", "April", "May", "June",
+                          "July", "August", "September", "October", "November", "December",
+                        ];
+                        const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                        const daysInMonth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+                        const viewM = otdPickerMonth || activeM;
+                        const availSet = new Set(otd.available_dates || []);
+                        const mmStr = String(viewM).padStart(2, "0");
+                        const totalDays = daysInMonth[viewM - 1] || 31;
+                        return (
+                          <>
+                            <span className="field-label">Pick Date:</span>
+                            <button
+                              id="otd-select"
+                              type="button"
+                              className="select-input"
+                              style={{ display: "inline-flex", alignItems: "center", gap: 8, cursor: "pointer", minWidth: 118, justifyContent: "space-between" }}
+                              onClick={() => {
+                                setOtdPickerMonth(activeM);
+                                setOtdPickerOpen((prev) => !prev);
+                              }}
+                              aria-expanded={otdPickerOpen}
+                            >
+                              <span>{`${monthShort[activeM - 1]} ${activeD}`}</span>
+                              <span aria-hidden="true">📅</span>
+                            </button>
+                            {otdMmdd && (
+                              <button
+                                type="button"
+                                className="btn-ghost"
+                                style={{ padding: "6px 10px", fontSize: 12 }}
+                                onClick={() => {
+                                  setOtdMmdd("");
+                                  setOtdPickerOpen(false);
+                                }}
+                              >
+                                Today
+                              </button>
+                            )}
+                            {otdPickerOpen && (
+                              <>
+                                <div
+                                  style={{ position: "fixed", inset: 0, zIndex: 40 }}
+                                  onClick={() => setOtdPickerOpen(false)}
+                                />
+                                <div
+                                  className="card"
+                                  style={{
+                                    position: "absolute",
+                                    top: "calc(100% + 6px)",
+                                    right: 0,
+                                    zIndex: 50,
+                                    width: 268,
+                                    padding: 12,
+                                    boxShadow: "0 12px 32px rgba(0,0,0,0.28)",
+                                  }}
+                                >
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, marginBottom: 10 }}>
+                                    <button
+                                      type="button"
+                                      className="btn-ghost"
+                                      style={{ padding: "4px 8px", fontSize: 13 }}
+                                      onClick={() => setOtdPickerMonth(viewM === 1 ? 12 : viewM - 1)}
+                                      aria-label="Previous month"
+                                    >
+                                      &lsaquo;
+                                    </button>
+                                    <select
+                                      className="select-input"
+                                      style={{ padding: "4px 8px", fontSize: 13, flex: 1 }}
+                                      value={viewM}
+                                      onChange={(e) => setOtdPickerMonth(Number(e.target.value))}
+                                      aria-label="Select month"
+                                    >
+                                      {monthNames.map((mName, idx) => (
+                                        <option key={mName} value={idx + 1}>{mName}</option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      type="button"
+                                      className="btn-ghost"
+                                      style={{ padding: "4px 8px", fontSize: 13 }}
+                                      onClick={() => setOtdPickerMonth(viewM === 12 ? 1 : viewM + 1)}
+                                      aria-label="Next month"
+                                    >
+                                      &rsaquo;
+                                    </button>
+                                  </div>
+                                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+                                    {Array.from({ length: totalDays }, (_, i) => i + 1).map((dayNum) => {
+                                      const ddStr = String(dayNum).padStart(2, "0");
+                                      const key = `${mmStr}-${ddStr}`;
+                                      const isSelected = key === activeMmdd;
+                                      const hasGames = availSet.has(key);
+                                      return (
+                                        <button
+                                          key={key}
+                                          type="button"
+                                          onClick={() => {
+                                            setOtdMmdd(key);
+                                            setOtdPickerOpen(false);
+                                          }}
+                                          title={hasGames ? `${monthShort[viewM - 1]} ${dayNum} (has games)` : `${monthShort[viewM - 1]} ${dayNum} (no games)`}
+                                          style={{
+                                            padding: "6px 0",
+                                            borderRadius: 6,
+                                            border: isSelected ? "1px solid var(--nu-red)" : "1px solid transparent",
+                                            background: isSelected ? "var(--nu-red)" : "transparent",
+                                            color: isSelected ? "#fff" : "inherit",
+                                            fontWeight: hasGames ? 700 : 400,
+                                            opacity: isSelected || hasGames ? 1 : 0.4,
+                                            cursor: "pointer",
+                                            fontSize: 12,
+                                          }}
+                                        >
+                                          {dayNum}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="muted" style={{ fontSize: 11, marginTop: 8, textAlign: "center" }}>
+                                    Bold dates have historical games
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
