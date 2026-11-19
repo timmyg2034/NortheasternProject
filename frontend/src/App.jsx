@@ -681,6 +681,7 @@ export default function App() {
   const [beanpotHistoryFilter, setBeanpotHistoryFilter] = useState("all"); // "all" | "titles" | "finals"
   const [beanpotSkaterSort, setBeanpotSkaterSort] = useState({ key: "points", dir: "desc" });
   const [beanpotGoalieSort, setBeanpotGoalieSort] = useState({ key: "wins", dir: "desc" });
+  const [beanpotClipModal, setBeanpotClipModal] = useState(null);
 
   // Roster state
   const [roster, setRoster] = useState(null);
@@ -6464,13 +6465,25 @@ export default function App() {
                               <td><span className="pill">{m.type}</span></td>
                               <td>{m.headline}</td>
                               <td>
-                                <button
-                                  type="button"
-                                  className="link-btn"
-                                  onClick={() => openBoxScore(m.date, m.opponent)}
-                                >
-                                  View
-                                </button>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                  <button
+                                    type="button"
+                                    className="link-btn"
+                                    onClick={() => openBoxScore(m.date, m.opponent)}
+                                  >
+                                    View
+                                  </button>
+                                  {(m.video_id || m.video_url) && (
+                                    <button
+                                      type="button"
+                                      className="link-btn"
+                                      onClick={() => setBeanpotClipModal(m)}
+                                      title="Watch highlight clip"
+                                    >
+                                      ▶ Clip
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -6547,6 +6560,75 @@ export default function App() {
                       : "Ask Paws Chat"
         }
       />
+
+      {beanpotClipModal && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setBeanpotClipModal(null);
+          }}
+        >
+          <div
+            className="modal-card"
+            style={{ maxWidth: 820, width: "94vw" }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="beanpot-clip-modal-title"
+          >
+            <div className="modal-header">
+              <div style={{ minWidth: 0 }}>
+                <h2 id="beanpot-clip-modal-title" style={{ margin: 0, fontSize: 18 }}>
+                  {beanpotClipModal.type} &bull; {beanpotClipModal.date}
+                </h2>
+                <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>
+                  {beanpotClipModal.headline}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setBeanpotClipModal(null)}
+                aria-label="Close video clip"
+              >
+                ✕
+              </button>
+            </div>
+            {beanpotClipModal.video_id && (
+              <div style={{ position: "relative", paddingBottom: "56.25%", height: 0, overflow: "hidden", borderRadius: 10, background: "#000", marginTop: 12 }}>
+                <iframe
+                  title={beanpotClipModal.headline}
+                  src={`https://www.youtube.com/embed/${beanpotClipModal.video_id}?${[
+                    beanpotClipModal.clip_start != null ? `start=${beanpotClipModal.clip_start}` : "",
+                    beanpotClipModal.clip_end != null ? `end=${beanpotClipModal.clip_end}` : "",
+                    "autoplay=1",
+                    "rel=0",
+                  ].filter(Boolean).join("&")}`}
+                  style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: 0 }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, gap: 12, flexWrap: "wrap" }}>
+              <span className="muted" style={{ fontSize: 12 }}>
+                If playback is unavailable in the embed, open directly on YouTube.
+              </span>
+              {beanpotClipModal.video_url && (
+                <a
+                  href={beanpotClipModal.video_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-ghost"
+                  style={{ textDecoration: "none" }}
+                >
+                  Watch on YouTube ↗
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {boxscoreModal && (
         <div

@@ -3443,6 +3443,10 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
             "opponent": "Boston University",
             "player_name": "Jordan Harris",
             "headline": "Jordan Harris scored in 2OT (5-4) vs. Boston University to clinch the three-peat",
+            "video_url": "https://www.youtube.com/watch?v=9KsztqO2_jo&t=790s",
+            "video_id": "9KsztqO2_jo",
+            "clip_start": 790,
+            "clip_end": 814,
         })
     if "2023-02-13" in bp_dates:
         moments.append({

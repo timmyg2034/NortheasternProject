@@ -196,7 +196,7 @@ def date_to_season(date_str: str) -> str:
 
 @dataclass
 class HockeyDatasets:
-    """Container for all 8 cleaned Northeastern Men's Hockey DataFrames."""
+    """Container for all 9 cleaned Northeastern Men's Hockey DataFrames."""
 
     skaters: pd.DataFrame
     goalies: pd.DataFrame
@@ -206,6 +206,7 @@ class HockeyDatasets:
     shootouts: pd.DataFrame
     rosters: pd.DataFrame
     season_stats: pd.DataFrame
+    beanpot_history: pd.DataFrame
     all_opponents: list[str]
     available_seasons: list[str]
 
@@ -216,6 +217,137 @@ def _read_csv_if_exists(path: Path, default_columns: list[str] | None = None) ->
     if default_columns is not None:
         return pd.DataFrame(columns=default_columns)
     return pd.DataFrame()
+
+
+def _build_beanpot_history_df(root: Path, games_df: pd.DataFrame) -> pd.DataFrame:
+    """Build all-time Beanpot tournament history & awards DataFrame (1952–present)."""
+    school_map = {
+        "NU": "Northeastern",
+        "BU": "Boston University",
+        "BC": "Boston College",
+        "HU": "Harvard",
+    }
+    cols = [
+        "year", "edition", "season", "champion", "nu_finish",
+        "mvp", "mvp_player", "mvp_school",
+        "eberly", "eberly_player", "eberly_school", "eberly_save_pct",
+        "semi_date", "semi_opponent", "semi_nu_goals", "semi_opp_goals", "semi_outcome", "semi_ot",
+        "round2_label", "round2_date", "round2_opponent", "round2_nu_goals", "round2_opp_goals", "round2_outcome", "round2_ot",
+    ]
+    candidates = [
+        root / "backend" / "beanpot_history.json",
+        Path(__file__).resolve().parent / "beanpot_history.json",
+    ]
+    raw_list: list[dict[str, Any]] = []
+    for p in candidates:
+        if p.is_file():
+            try:
+                raw_list = json.loads(p.read_text(encoding="utf-8"))
+                break
+            except Exception:
+                pass
+
+    rows: list[dict[str, Any]] = []
+    seen_years: set[int] = set()
+    for h in raw_list:
+        yr = int(h["year"])
+        seen_years.add(yr)
+        mvp_str = str(h.get("mvp") or "")
+        mvp_player, mvp_school = "", ""
+        m_mvp = re.match(r'^(.+?)\s*\(([^)]+)\)$', mvp_str)
+        if m_mvp:
+            mvp_player = m_mvp.group(1).strip()
+            mvp_school = school_map.get(m_mvp.group(2).strip(), m_mvp.group(2).strip())
+
+        eb_str = str(h.get("eberly") or "")
+        eb_player, eb_school, eb_svp = "", "", None
+        m_eb = re.match(r'^(.+?)\s*\(([^)]+)\)(?:,\s*(\.?\d+(?:\.\d+)?))?$', eb_str)
+        if m_eb:
+            eb_player = m_eb.group(1).strip()
+            eb_school = school_map.get(m_eb.group(2).strip(), m_eb.group(2).strip())
+            if m_eb.group(3):
+                try:
+                    eb_svp = float(m_eb.group(3))
+                except ValueError:
+                    eb_svp = None
+
+        semi = h.get("semifinal") or {}
+        r2 = h.get("round2") or {}
+        rows.append({
+            "year": yr,
+            "edition": str(h.get("edition") or ""),
+            "season": f"{yr - 1}-{str(yr)[-2:]}",
+            "champion": str(h.get("champion") or ""),
+            "nu_finish": str(h.get("finish") or ""),
+            "mvp": mvp_str,
+            "mvp_player": mvp_player,
+            "mvp_school": mvp_school,
+            "eberly": eb_str,
+            "eberly_player": eb_player,
+            "eberly_school": eb_school,
+            "eberly_save_pct": eb_svp,
+            "semi_date": str(semi.get("date") or ""),
+            "semi_opponent": str(semi.get("opponent") or ""),
+            "semi_nu_goals": semi.get("nu_goals"),
+            "semi_opp_goals": semi.get("opp_goals"),
+            "semi_outcome": str(semi.get("outcome") or ""),
+            "semi_ot": str(semi.get("overtime_status") or ""),
+            "round2_label": str(h.get("round2_label") or ""),
+            "round2_date": str(r2.get("date") or ""),
+            "round2_opponent": str(r2.get("opponent") or ""),
+            "round2_nu_goals": r2.get("nu_goals"),
+            "round2_opp_goals": r2.get("opp_goals"),
+            "round2_outcome": str(r2.get("outcome") or ""),
+            "round2_ot": str(r2.get("overtime_status") or ""),
+        })
+
+    # Append any newer Beanpot years from games_df (e.g., 2026+)
+    if not games_df.empty and "game_type" in games_df.columns:
+        bp = games_df[games_df["game_type"] == "Beanpot"].copy()
+        if not bp.empty:
+            bp["year"] = bp["date"].astype(str).str.slice(0, 4).astype(int)
+            for yr, grp in bp.groupby("year"):
+                yr_int = int(yr)
+                if yr_int in seen_years:
+                    continue
+                grp_s = grp.sort_values("date")
+                g1 = grp_s.iloc[0].to_dict() if len(grp_s) >= 1 else {}
+                g2 = grp_s.iloc[1].to_dict() if len(grp_s) >= 2 else {}
+                adv = g1.get("outcome") == "W" or (g1.get("outcome") == "T" and g1.get("shootout_winner") == "Northeastern")
+                r2_lbl = "Championship" if adv else "Consolation"
+                r2_won = g2.get("outcome") == "W" or (g2.get("outcome") == "T" and g2.get("shootout_winner") == "Northeastern")
+                if not g2:
+                    fin = "Finalist (TBD)" if adv else "Consolation (TBD)"
+                elif r2_lbl == "Championship":
+                    fin = "Champion" if r2_won else "Runner-Up"
+                else:
+                    fin = "3rd Place" if r2_won else "4th Place"
+                rows.append({
+                    "year": yr_int,
+                    "edition": f"{yr_int - 1953}th" if yr_int >= 2022 else "",
+                    "season": str(g1.get("season") or f"{yr_int - 1}-{str(yr_int)[-2:]}"),
+                    "champion": "Northeastern" if fin == "Champion" else "",
+                    "nu_finish": fin,
+                    "mvp": "", "mvp_player": "", "mvp_school": "",
+                    "eberly": "", "eberly_player": "", "eberly_school": "", "eberly_save_pct": None,
+                    "semi_date": str(g1.get("date") or ""),
+                    "semi_opponent": str(g1.get("opponent") or ""),
+                    "semi_nu_goals": g1.get("nu_goals"),
+                    "semi_opp_goals": g1.get("opp_goals"),
+                    "semi_outcome": str(g1.get("outcome") or ""),
+                    "semi_ot": str(g1.get("overtime_status") or ""),
+                    "round2_label": r2_lbl,
+                    "round2_date": str(g2.get("date") or ""),
+                    "round2_opponent": str(g2.get("opponent") or ""),
+                    "round2_nu_goals": g2.get("nu_goals"),
+                    "round2_opp_goals": g2.get("opp_goals"),
+                    "round2_outcome": str(g2.get("outcome") or ""),
+                    "round2_ot": str(g2.get("overtime_status") or ""),
+                })
+
+    if not rows:
+        return pd.DataFrame(columns=cols)
+    return pd.DataFrame(rows, columns=cols).sort_values("year", ascending=False).reset_index(drop=True)
 
 
 def load_datasets(data_dir: Path | str = ".") -> HockeyDatasets:
@@ -452,6 +584,8 @@ def load_datasets(data_dir: Path | str = ".") -> HockeyDatasets:
             seasons_set.update(s for s in df["season"].dropna().unique() if s)
     available_seasons = sorted(seasons_set, reverse=True)
 
+    beanpot_history_df = _build_beanpot_history_df(root, games_df)
+
     return HockeyDatasets(
         skaters=skater_df,
         goalies=goalie_df,
@@ -461,6 +595,7 @@ def load_datasets(data_dir: Path | str = ".") -> HockeyDatasets:
         shootouts=shootouts_df,
         rosters=rosters_df,
         season_stats=season_stats_df,
+        beanpot_history=beanpot_history_df,
         all_opponents=all_opponents,
         available_seasons=available_seasons,
     )
@@ -989,6 +1124,7 @@ def run_python_code(code: str, datasets: HockeyDatasets) -> str:
             "df6": datasets.shootouts,
             "df7": datasets.rosters,
             "df8": datasets.season_stats,
+            "df9": datasets.beanpot_history,
         },
     )
 
@@ -1203,7 +1339,10 @@ def answer_question(
         "   - Overall skater columns: `gp`, `goals`, `assists`, `points`, `shots`, `shot_pct`, `plus_minus`, `ppg` (power-play goals), `shg` (shorthanded goals), `fg` (first goals), `gwg` (game-winning goals), `gtg` (game-tying goals), `otg` (overtime goals), `htg` (hat tricks), `uag` (unassisted goals), `penalties`, `pim`, `minor_penalties`, `major_penalties`, `other_penalties`, `blocked_shots`\n"
         "   - Hockey East Conference skater columns: `conf_gp`, `conf_goals`, `conf_assists`, `conf_points`, `conf_shots`, `conf_shot_pct`, `conf_plus_minus`, `conf_ppg`, `conf_shg`, `conf_fg`, `conf_gwg`, `conf_gtg`, `conf_otg`, `conf_htg`, `conf_uag`, `conf_penalties`, `conf_pim`, `conf_blocked_shots`\n"
         "   - Overall goalie columns: `goalie_gp`, `goalie_gs` (games started), `goalie_minutes`, `ga`, `gaa` (goals against average), `ppga`, `shga`, `enga`, `saves`, `save_pct`, `wins`, `losses`, `ties`, `shutouts`\n"
-        "   - Hockey East Conference goalie columns: `conf_goalie_gp`, `conf_goalie_gs`, `conf_goalie_minutes`, `conf_ga`, `conf_gaa`, `conf_saves`, `conf_save_pct`, `conf_wins`, `conf_losses`, `conf_ties`, `conf_shutouts`\n\n"
+        "   - Hockey East Conference goalie columns: `conf_goalie_gp`, `conf_goalie_gs`, `conf_goalie_minutes`, `conf_ga`, `conf_gaa`, `conf_saves`, `conf_save_pct`, `conf_wins`, `conf_losses`, `conf_ties`, `conf_shutouts`\n"
+        "9. `df9` (all-time Beanpot tournament history, champions, MVPs & Eberly Award winners, 1952–present): columns = ['year', 'edition', 'season', 'champion', 'nu_finish', 'mvp', 'mvp_player', 'mvp_school', 'eberly', 'eberly_player', 'eberly_school', 'eberly_save_pct', 'semi_date', 'semi_opponent', 'semi_nu_goals', 'semi_opp_goals', 'semi_outcome', 'semi_ot', 'round2_label', 'round2_date', 'round2_opponent', 'round2_nu_goals', 'round2_opp_goals', 'round2_outcome', 'round2_ot']\n"
+        "   - Use `df9` for ALL-TIME Beanpot questions (1952–present), Beanpot MVP winners (`mvp_player`, `mvp_school`), Eberly Award winners (`eberly_player`, `eberly_school`, `eberly_save_pct` — awarded since 1974 to the goalie with highest SV% playing both games), tournament `champion`, and Northeastern's `nu_finish` ('Champion', 'Runner-Up', '3rd Place', '4th Place').\n"
+        "   - Note: `df9` has tournament-level results and awards back to 1952 (no tournament in 1953; 2021 cancelled due to COVID-19). Per-player Beanpot box-score stats (goals, assists, saves in `df1`–`df2`) are only available from 2000 onward.\n\n"
         f"Valid standardized `opponent` names in the dataset: {datasets.all_opponents}\n\n"
         "Important conventions:\n"
         "- All player names are formatted as 'First Last' (e.g., 'Devon Levi', 'Adam Gaudette', 'Hunter McDonald', 'Aidan McDonough'). Always filter with `.str.contains(..., case=False, na=False)`.\n"
@@ -1307,15 +1446,15 @@ def answer_question(
         "- Provide a clear, accurate, and conversational answer based strictly on the computed result above, taking into account the conversation history. If the question was broader than `<page_context>` (e.g., team-wide, all-time/season leaders, or about another player), answer for the full dataset without forcing the page's player into the response.\n"
         "- SINGLE-YEAR SEASON CONVENTION (e.g. '2015'): Present results for the season STARTING in that year (e.g., 2015–16) first, then add a polite follow-up note offering the prior season (e.g., 2014–15).\n"
         "- STRICT ANTI-HALLUCINATION & FACTUAL GROUNDING RULE: Answer ONLY using facts present in 'Computed Result from Historical Dataset'. NEVER fabricate player names, jersey numbers, captaincy roles, tournament titles, or game results.\n"
-        "- If the computed result indicates an execution error, apologize politely and invite the user to clarify or rephrase. NEVER show raw Python errors or variable names like df1-df8.\n"
+        "- If the computed result indicates an execution error, apologize politely and invite the user to clarify or rephrase. NEVER show raw Python errors or variable names like df1-df9.\n"
         "- If a box score URL, roster URL, or season stats URL is available, provide it as a markdown link.\n"
         "- If asked about blocked shots or faceoffs prior to 2012–13, explain they were not officially recorded prior to 2012–13.\n"
-        "- If asked about game-by-game stats prior to October 1999, clarify archives begin in 1999–00.\n"
+        "- If asked about game-by-game stats prior to October 1999, clarify box-score archives begin in 1999–00 (while all-time Beanpot results, MVPs, and Eberly Award winners are available back to 1952).\n"
         "- UNAVAILABLE / UNTRACKED STAT DISCLAIMERS: If `UNAVAILABLE_STAT:` appears in the computed result (or the user asks about skater time on ice / TOI / shifts, hits, home/away/neutral venue splits, or team power-play/penalty-kill percentages when not populated in the dataset), clearly and honestly explain *why* it isn't available:\n"
         "  - **Skater TOI & Hits**: Standard NCAA / Sidearm Sports box scores do not consistently publish per-player ice time or hits across historical seasons, so those stats cannot be tracked here (note that goalie minutes *are* tracked).\n"
         "  - **Home / Away Splits & Team PP% / PK%**: If not yet populated in the dataset, explain that game venue (`Home`/`Away`/`Neutral`) and team power-play opportunity counts (`X-for-Y`) are not yet structured in the current dataset—while still sharing any related stats that *are* available (such as total power-play goals, shorthanded goals, or overall record).\n"
         "- If no records exist (`player_exists: False`, `opponent_exists: False`, or 0 matching games), state clearly that no records were found.\n"
-        "- NEVER mention internal variable names like `df1`–`df8`, `player_exists`, `opponent_exists`, pandas DataFrames, CSV files, or Python code, and NEVER output fenced code blocks.\n"
+        "- NEVER mention internal variable names like `df1`–`df9`, `player_exists`, `opponent_exists`, pandas DataFrames, CSV files, or Python code, and NEVER output fenced code blocks.\n"
         "- If the user is just saying hello or asking what you can do, greet them warmly and suggest a few example questions."
     )
     try:
