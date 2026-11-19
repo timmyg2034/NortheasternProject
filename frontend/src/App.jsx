@@ -203,6 +203,76 @@ function formatFaceoffs(won, lost) {
   return `${w}-${w + l}`;
 }
 
+const VALID_TABS = ["chat", "leaders", "records", "roster", "rivalry", "beanpot", "compare"];
+
+const TAB_LABELS = {
+  chat: "Ask Paws",
+  leaders: "Stats",
+  records: "Records",
+  roster: "Roster",
+  rivalry: "Opponents",
+  beanpot: "Beanpot",
+  compare: "Compare",
+};
+
+const SCOPE_LABELS = {
+  all: "All Games",
+  conference: "Hockey East",
+  beanpot: "Beanpot",
+  postseason: "Hockey East Postseason",
+  ncaa: "NCAA Tournament",
+};
+
+function safeExternalUrl(url) {
+  if (!url) return "";
+  try {
+    const parsed = new URL(String(url), window.location.origin);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function parseMinutesToFloat(val) {
+  const text = String(val || "").trim();
+  if (text.includes(":")) {
+    const [m, s] = text.split(":");
+    const mins = Number(m) || 0;
+    const secs = Number(s) || 0;
+    return mins + secs / 60;
+  }
+  return Number(text) || 0;
+}
+
+const MARKDOWN_COMPONENTS = {
+  a: ({ href, children, ...props }) => {
+    const safe = safeExternalUrl(href);
+    if (!safe) return <span>{children}</span>;
+    return (
+      <a href={safe} target="_blank" rel="noopener noreferrer" {...props}>
+        {children}
+      </a>
+    );
+  },
+};
+
+function BeanpotIcon() {
+  return (
+    <svg className="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="12" cy="9" r="5.5" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 13.8 7.5 21l4.5-2.2L16.5 21 15 13.8" />
+    </svg>
+  );
+}
+
+function CompareIcon() {
+  return (
+    <svg className="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7 4v16m0-16-3 3m3-3 3 3M17 20V4m0 16-3-3m3 3 3-3" />
+    </svg>
+  );
+}
+
 function BookIcon() {
   return (
     <svg className="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -275,9 +345,9 @@ function PlayerFormSparkline({ logs, isGoalie, mode = "cumulative" }) {
   const padB = 26;
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
-  const maxVal = Math.max(1, ...points.map((p) => Math.max(p.primary, p.secondary || 0)));
+  const maxVal = Math.max(!isGoalie && mode === "rolling" ? 0.5 : 1, ...points.map((p) => Math.max(p.primary, p.secondary || 0)));
   const minVal = isGoalie && mode === "rolling" ? Math.max(0, Math.min(...points.map((p) => p.primary)) - 2) : 0;
-  const span = Math.max(1, maxVal - minVal);
+  const span = Math.max(!isGoalie && mode === "rolling" ? 0.5 : 1, maxVal - minVal);
 
   const toX = (i) => padL + (points.length > 1 ? (i / (points.length - 1)) * plotW : plotW / 2);
   const toY = (v) => padT + plotH - ((v - minVal) / span) * plotH;
@@ -293,8 +363,8 @@ function PlayerFormSparkline({ logs, isGoalie, mode = "cumulative" }) {
       <svg viewBox={`0 0 ${w} ${h}`} className="sparkline-svg" role="img" aria-label="Player performance trend chart">
         <defs>
           <linearGradient id="nuSparkGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#d41b2c" stopOpacity="0.32" />
-            <stop offset="100%" stopColor="#d41b2c" stopOpacity="0.0" />
+            <stop offset="0%" stopColor="#c8102e" stopOpacity="0.32" />
+            <stop offset="100%" stopColor="#c8102e" stopOpacity="0.0" />
           </linearGradient>
         </defs>
         {[0, 0.5, 1].map((t) => {
@@ -302,34 +372,38 @@ function PlayerFormSparkline({ logs, isGoalie, mode = "cumulative" }) {
           const val = minVal + span * t;
           return (
             <g key={t}>
-              <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
-              <text x={padL - 6} y={y + 4} textAnchor="end" fill="#9ca3af" fontSize="10">
-                {isGoalie && mode === "rolling" ? `${val.toFixed(0)}%` : Math.round(val)}
+              <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="rgba(17,24,39,0.12)" strokeDasharray="3 3" />
+              <text x={padL - 6} y={y + 4} textAnchor="end" fill="#4b5563" fontSize="10">
+                {isGoalie && mode === "rolling"
+                  ? `${val.toFixed(0)}%`
+                  : !isGoalie && mode === "rolling"
+                    ? val.toFixed(1)
+                    : Math.round(val)}
               </text>
             </g>
           );
         })}
         <path d={areaPath} fill="url(#nuSparkGrad)" />
         {!isGoalie && secondaryPath && (
-          <path d={secondaryPath} fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeDasharray="4 3" />
+          <path d={secondaryPath} fill="none" stroke="#d97706" strokeWidth="1.8" strokeDasharray="4 3" />
         )}
-        <path d={primaryPath} fill="none" stroke="#ef4444" strokeWidth="2.4" />
+        <path d={primaryPath} fill="none" stroke="#c8102e" strokeWidth="2.4" />
         {points.length <= 45 &&
           points.map((p, i) => (
-            <circle key={p.date + i} cx={toX(i)} cy={toY(p.primary)} r="2.8" fill="#ef4444">
+            <circle key={p.date + i} cx={toX(i)} cy={toY(p.primary)} r="2.8" fill="#c8102e">
               <title>{`Game ${p.idx} (${p.date} vs. ${p.opponent}): ${p.primary}`}</title>
             </circle>
           ))}
-        <text x={padL} y={h - 6} fill="#9ca3af" fontSize="10">
+        <text x={padL} y={h - 6} fill="#4b5563" fontSize="10">
           {points[0]?.date}
         </text>
-        <text x={w - padR} y={h - 6} textAnchor="end" fill="#9ca3af" fontSize="10">
+        <text x={w - padR} y={h - 6} textAnchor="end" fill="#4b5563" fontSize="10">
           {points[points.length - 1]?.date} ({points.length} GP)
         </text>
       </svg>
       <div className="sparkline-legend">
         <span className="legend-item">
-          <span className="legend-dot" style={{ background: "#ef4444" }} />
+          <span className="legend-dot" style={{ background: "#c8102e" }} />
           {isGoalie
             ? mode === "rolling"
               ? "5-Game Rolling SV%"
@@ -340,7 +414,7 @@ function PlayerFormSparkline({ logs, isGoalie, mode = "cumulative" }) {
         </span>
         {!isGoalie && (
           <span className="legend-item">
-            <span className="legend-dot" style={{ background: "#f59e0b" }} />
+            <span className="legend-dot" style={{ background: "#d97706" }} />
             {mode === "rolling" ? "5-Game Rolling G/GP" : "Cumulative Goals"}
           </span>
         )}
@@ -395,25 +469,25 @@ function CompareFormChart({ pA, pB }) {
             const y = padT + plotH * (1 - t);
             return (
               <g key={t}>
-                <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
-                <text x={padL - 6} y={y + 4} textAnchor="end" fill="#9ca3af" fontSize="10">
+                <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="rgba(17,24,39,0.12)" strokeDasharray="3 3" />
+                <text x={padL - 6} y={y + 4} textAnchor="end" fill="#4b5563" fontSize="10">
                   {Math.round(maxVal * t)}
                 </text>
               </g>
             );
           })}
-          <path d={pathA} fill="none" stroke="#ef4444" strokeWidth="2.5" />
-          <path d={pathB} fill="none" stroke="#38bdf8" strokeWidth="2.5" />
-          <text x={padL} y={h - 6} fill="#9ca3af" fontSize="10">Game 1</text>
-          <text x={w - padR} y={h - 6} textAnchor="end" fill="#9ca3af" fontSize="10">Game {maxGP}</text>
+          <path d={pathA} fill="none" stroke="#c8102e" strokeWidth="2.5" />
+          <path d={pathB} fill="none" stroke="#0284c7" strokeWidth="2.5" />
+          <text x={padL} y={h - 6} fill="#4b5563" fontSize="10">Game 1</text>
+          <text x={w - padR} y={h - 6} textAnchor="end" fill="#4b5563" fontSize="10">Game {maxGP}</text>
         </svg>
         <div className="sparkline-legend">
           <span className="legend-item">
-            <span className="legend-dot" style={{ background: "#ef4444" }} />
+            <span className="legend-dot" style={{ background: "#c8102e" }} />
             {pA.bio.player_name} ({sA[sA.length - 1]?.val || 0} in {sA.length} GP)
           </span>
           <span className="legend-item">
-            <span className="legend-dot" style={{ background: "#38bdf8" }} />
+            <span className="legend-dot" style={{ background: "#0284c7" }} />
             {pB.bio.player_name} ({sB[sB.length - 1]?.val || 0} in {sB.length} GP)
           </span>
         </div>
@@ -426,12 +500,12 @@ function GoalsTimingChart({ buckets }) {
   if (!buckets || buckets.length === 0) return null;
   const maxVal = Math.max(1, ...buckets.map((b) => Math.max(b.nu_goals || 0, b.opp_goals || 0)));
   return (
-    <div className="timing-chart-wrap" style={{ marginTop: 18 }}>
-      <div className="card-header" style={{ marginBottom: 8 }}>
+    <div className="timing-chart-wrap">
+      <div className="timing-chart-header">
         <h3 style={{ margin: 0 }}>Scoring Timing Density (5-Minute Game Segments)</h3>
-        <div className="sparkline-legend" style={{ marginTop: 0 }}>
+        <div className="sparkline-legend">
           <span className="legend-item">
-            <span className="legend-dot" style={{ background: "#ef4444" }} />
+            <span className="legend-dot" style={{ background: "#c8102e" }} />
             Northeastern
           </span>
           <span className="legend-item">
@@ -442,16 +516,26 @@ function GoalsTimingChart({ buckets }) {
       </div>
       <div className="timing-bars-grid">
         {buckets.map((b) => {
-          const nuH = Math.round(((b.nu_goals || 0) / maxVal) * 100);
-          const oppH = Math.round(((b.opp_goals || 0) / maxVal) * 100);
+          const nuGoals = b.nu_goals || 0;
+          const oppGoals = b.opp_goals || 0;
+          const nuH = Math.round((nuGoals / maxVal) * 84);
+          const oppH = Math.round((oppGoals / maxVal) * 84);
           return (
-            <div key={b.label} className="timing-col" title={`${b.label}: NU ${b.nu_goals} – Opp ${b.opp_goals}`}>
+            <div key={b.label} className="timing-col" title={`${b.label}: NU ${nuGoals} – Opp ${oppGoals}`}>
               <div className="timing-bars-pair">
-                <div className="timing-bar nu" style={{ height: `${Math.max(4, nuH)}%` }}>
-                  {b.nu_goals > 0 && <span className="timing-bar-val">{b.nu_goals}</span>}
+                <div className="timing-bar-slot">
+                  {nuGoals > 0 && <span className="timing-bar-val">{nuGoals}</span>}
+                  <div
+                    className={`timing-bar nu${nuGoals > 0 ? "" : " zero"}`}
+                    style={{ height: `${Math.max(4, nuH)}%` }}
+                  />
                 </div>
-                <div className="timing-bar opp" style={{ height: `${Math.max(4, oppH)}%` }}>
-                  {b.opp_goals > 0 && <span className="timing-bar-val">{b.opp_goals}</span>}
+                <div className="timing-bar-slot">
+                  {oppGoals > 0 && <span className="timing-bar-val">{oppGoals}</span>}
+                  <div
+                    className={`timing-bar opp${oppGoals > 0 ? "" : " zero"}`}
+                    style={{ height: `${Math.max(4, oppH)}%` }}
+                  />
                 </div>
               </div>
               <div className="timing-lbl">{b.label.replace("m", "")}</div>
@@ -467,7 +551,7 @@ export default function App() {
   const [tab, setTab] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const t = params.get("tab");
-    return ["chat", "leaders", "records", "roster", "rivalry", "compare"].includes(t) ? t : "chat";
+    return VALID_TABS.includes(t) ? t : "chat";
   });
   const [seasons, setSeasons] = useState([]);
   const [opponents, setOpponents] = useState([]);
@@ -483,6 +567,8 @@ export default function App() {
   const [noticeDismissed, setNoticeDismissed] = useState(false);
   const [legalModal, setLegalModal] = useState(null); // "disclaimer" | "privacy" | "terms" | null
   const [bugModalOpen, setBugModalOpen] = useState(false);
+  const closeLegalModal = useCallback(() => setLegalModal(null), []);
+  const closeBugModal = useCallback(() => setBugModalOpen(false), []);
   const messagesEndRef = useRef(null);
   const drawerEndRef = useRef(null);
   const turnstileContainerRef = useRef(null);
@@ -549,6 +635,7 @@ export default function App() {
   // Leaders / Stats state
   const [leaders, setLeaders] = useState(null);
   const [leadersLoading, setLeadersLoading] = useState(false);
+  const [leadersError, setLeadersError] = useState("");
   const [leaderSort, setLeaderSort] = useState({ key: "points", dir: "desc" });
   const [leaderScope, setLeaderScope] = useState("all");
   const [leaderLocation, setLeaderLocation] = useState("all");
@@ -558,6 +645,7 @@ export default function App() {
   // Records & History state
   const [recordsData, setRecordsData] = useState(null);
   const [recordsLoading, setRecordsLoading] = useState(false);
+  const [recordsError, setRecordsError] = useState("");
   const [recordsSubTab, setRecordsSubTab] = useState("recordbook"); // "recordbook" | "milestones" | "chemistry" | "onthisday"
   const [recordsLeaderboardMode, setRecordsLeaderboardMode] = useState("career"); // "career" | "season"
   const [recordsPosition, setRecordsPosition] = useState("all");
@@ -580,6 +668,7 @@ export default function App() {
   // Roster state
   const [roster, setRoster] = useState(null);
   const [rosterLoading, setRosterLoading] = useState(false);
+  const [rosterError, setRosterError] = useState("");
   const [rosterSearch, setRosterSearch] = useState("");
   const [rosterView, setRosterView] = useState("position"); // "position" | "all"
 
@@ -588,6 +677,7 @@ export default function App() {
   const [rivalryScope, setRivalryScope] = useState("all"); // "season" | "all"
   const [rivalry, setRivalry] = useState(null);
   const [rivalryLoading, setRivalryLoading] = useState(false);
+  const [rivalryError, setRivalryError] = useState("");
 
   // Player profile state
   const [selectedPlayer, setSelectedPlayer] = useState(() => {
@@ -615,6 +705,9 @@ export default function App() {
   const [boxscoreData, setBoxscoreData] = useState(null);
   const [boxscoreLoading, setBoxscoreLoading] = useState(false);
   const [boxscoreError, setBoxscoreError] = useState("");
+  const boxscoreModalRef = useRef(null);
+  const boxscoreCloseRef = useRef(null);
+  const boxscoreReqIdRef = useRef(0);
   const [allPlayers, setAllPlayers] = useState([]);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState("");
@@ -744,6 +837,7 @@ export default function App() {
 
   async function openBoxScore(date, opponent) {
     if (!date || !opponent) return;
+    const reqId = ++boxscoreReqIdRef.current;
     setBoxscoreModal({ date, opponent });
     setBoxscoreData(null);
     setBoxscoreLoading(true);
@@ -754,23 +848,92 @@ export default function App() {
     try {
       const params = new URLSearchParams({ date, opponent });
       const res = await fetch(`${API_BASE}/api/boxscore?${params.toString()}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (boxscoreReqIdRef.current !== reqId) return;
       if (!res.ok) throw new Error(data.detail || "Unable to load box score");
       setBoxscoreData(data);
     } catch (err) {
+      if (boxscoreReqIdRef.current !== reqId) return;
       setBoxscoreError(err.message || "Unable to load box score");
     } finally {
-      setBoxscoreLoading(false);
+      if (boxscoreReqIdRef.current === reqId) {
+        setBoxscoreLoading(false);
+      }
     }
   }
 
   function closeBoxScore() {
+    boxscoreReqIdRef.current += 1;
     setBoxscoreModal(null);
     setBoxscoreData(null);
+    setBoxscoreLoading(false);
     setBoxscoreError("");
     const url = new URL(window.location.href);
     url.searchParams.delete("boxscore");
     window.history.replaceState({ tab, player: selectedPlayer, penaltyView }, "", url.toString());
+  }
+
+  const closeBoxScoreRef = useRef(null);
+  closeBoxScoreRef.current = closeBoxScore;
+
+  useEffect(() => {
+    if (!boxscoreModal) return;
+    const prevFocus = document.activeElement;
+    const focusTimer = window.setTimeout(() => {
+      boxscoreCloseRef.current?.focus();
+    }, 0);
+
+    function onBoxscoreKey(e) {
+      if (e.key === "Escape") {
+        closeBoxScoreRef.current?.();
+        return;
+      }
+      if (e.key === "Tab" && boxscoreModalRef.current) {
+        const focusable = Array.from(
+          boxscoreModalRef.current.querySelectorAll(
+            'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          )
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+
+    window.addEventListener("keydown", onBoxscoreKey);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", onBoxscoreKey);
+      if (prevFocus && typeof prevFocus.focus === "function") {
+        prevFocus.focus();
+      }
+    };
+  }, [Boolean(boxscoreModal)]);
+
+  function fallbackCopyText(text) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "-9999px";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      if (ok) {
+        setShareCopied(true);
+        window.setTimeout(() => setShareCopied(false), 2000);
+      }
+    } catch {}
   }
 
   function handleCopyShareLink() {
@@ -779,20 +942,37 @@ export default function App() {
       navigator.clipboard.writeText(shareUrl).then(() => {
         setShareCopied(true);
         window.setTimeout(() => setShareCopied(false), 2000);
-      }).catch(() => {});
+      }).catch(() => fallbackCopyText(shareUrl));
+    } else {
+      fallbackCopyText(shareUrl);
     }
   }
+
+  const sortedPlayersForMatching = useMemo(() => {
+    const seen = new Set();
+    const names = [];
+    for (const p of allPlayers) {
+      const pname = p.player_name;
+      if (!pname || pname.length < 5 || seen.has(pname)) continue;
+      seen.add(pname);
+      names.push(pname);
+    }
+    names.sort((a, b) => b.length - a.length);
+    return names.map((pname) => {
+      const escaped = pname.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return {
+        name: pname,
+        regex: new RegExp(`(?:^|[^A-Za-z0-9])${escaped}(?:$|[^A-Za-z0-9])`),
+      };
+    });
+  }, [allPlayers]);
 
   function extractAnswerEntities(text) {
     if (!text) return { players: [], games: [] };
     const foundPlayers = [];
-    const seenP = new Set();
-    for (const p of allPlayers) {
-      const pname = p.player_name;
-      if (!pname || pname.length < 5 || seenP.has(pname)) continue;
-      if (text.includes(pname)) {
-        seenP.add(pname);
-        foundPlayers.push(pname);
+    for (const entry of sortedPlayersForMatching) {
+      if (entry.regex.test(text)) {
+        foundPlayers.push(entry.name);
         if (foundPlayers.length >= 5) break;
       }
     }
@@ -823,10 +1003,11 @@ export default function App() {
         season: pv.season || "all",
         scope: pv.scope || "all",
       });
+      if (pv.location && pv.location !== "all") params.set("location", pv.location);
       if (pv.opponent) params.set("opponent", pv.opponent);
       if (pv.player) params.set("player", pv.player);
       const res = await fetch(`${API_BASE}/api/penalties?${params.toString()}`);
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.detail || "Unable to load penalty breakdown");
       setPenaltyData(data);
     } catch (err) {
@@ -852,8 +1033,16 @@ export default function App() {
 
     function handlePopState(e) {
       const state = e.state;
+      const params = new URLSearchParams(window.location.search);
+      boxscoreReqIdRef.current += 1;
+      setBoxscoreModal(null);
+      setBoxscoreData(null);
+      setBoxscoreLoading(false);
+      setBoxscoreError("");
+      let nextTab = "chat";
       if (state) {
-        setTab(state.tab || "chat");
+        nextTab = VALID_TABS.includes(state.tab) ? state.tab : "chat";
+        setTab(nextTab);
         setSelectedPlayer(state.player || null);
         if (state.penaltyView) {
           loadPenaltyBreakdown(state.penaltyView);
@@ -863,13 +1052,21 @@ export default function App() {
           setPenaltyError("");
         }
       } else {
-        const params = new URLSearchParams(window.location.search);
         const t = params.get("tab");
-        setTab(["chat", "leaders", "records", "roster", "rivalry", "compare"].includes(t) ? t : "chat");
+        nextTab = VALID_TABS.includes(t) ? t : "chat";
+        setTab(nextTab);
         setSelectedPlayer(params.get("player") || null);
         setPenaltyView(null);
         setPenaltyData(null);
         setPenaltyError("");
+      }
+      if (nextTab === "compare") {
+        const cmpA = params.get("compareA") || "";
+        const cmpB = params.get("compareB") || "";
+        setCompareAName(cmpA);
+        setCompareAQuery(cmpA);
+        setCompareBName(cmpB);
+        setCompareBQuery(cmpB);
       }
       setPlayerError("");
     }
@@ -879,8 +1076,13 @@ export default function App() {
   }, []);
 
   function navigateTab(nextTab) {
-    if (nextTab === tab && !selectedPlayer && !penaltyView) return;
+    if (nextTab === tab && !selectedPlayer && !penaltyView && !boxscoreModal) return;
     hasInAppHistory.current = true;
+    boxscoreReqIdRef.current += 1;
+    setBoxscoreModal(null);
+    setBoxscoreData(null);
+    setBoxscoreLoading(false);
+    setBoxscoreError("");
     setTab(nextTab);
     setPenaltyView(null);
     setPenaltyData(null);
@@ -891,11 +1093,17 @@ export default function App() {
     url.searchParams.set("tab", nextTab);
     url.searchParams.delete("player");
     url.searchParams.delete("penalties");
+    url.searchParams.delete("boxscore");
     window.history.pushState({ tab: nextTab, player: null, penaltyView: null }, "", url.toString());
   }
 
   function openPlayer(name) {
     hasInAppHistory.current = true;
+    boxscoreReqIdRef.current += 1;
+    setBoxscoreModal(null);
+    setBoxscoreData(null);
+    setBoxscoreLoading(false);
+    setBoxscoreError("");
     setPenaltyView(null);
     setPenaltyData(null);
     setSelectedPlayer(name);
@@ -904,6 +1112,7 @@ export default function App() {
     url.searchParams.set("tab", tab);
     url.searchParams.set("player", name);
     url.searchParams.delete("penalties");
+    url.searchParams.delete("boxscore");
     window.history.pushState({ tab, player: name, penaltyView: null }, "", url.toString());
   }
 
@@ -921,8 +1130,8 @@ export default function App() {
     window.history.replaceState({ tab, player: null, penaltyView: null }, "", url.toString());
   }
 
-  function openPenaltyBreakdown({ mode, player = "", season = "all", scope = "all", opponent = "" }) {
-    const pv = { mode, player, season, scope, opponent };
+  function openPenaltyBreakdown({ mode, player = "", season = "all", scope = "all", location = "all", opponent = "" }) {
+    const pv = { mode, player, season, scope, location, opponent };
     hasInAppHistory.current = true;
     const url = new URL(window.location.href);
     url.searchParams.set("tab", tab);
@@ -946,14 +1155,18 @@ export default function App() {
   }
 
   useEffect(() => {
+    let cancelled = false;
     fetch(`${API_BASE}/api/health`)
-      .then((r) => r.json())
-      .then((data) => setHealth(data))
+      .then((r) => (r.ok ? r.json().catch(() => null) : null))
+      .then((data) => {
+        if (!cancelled && data) setHealth(data);
+      })
       .catch(() => {});
 
     fetch(`${API_BASE}/api/seasons`)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json().catch(() => null) : null))
       .then((data) => {
+        if (cancelled || !data) return;
         const s = data.seasons || [];
         setSeasons(s);
         setOpponents(data.opponents || []);
@@ -961,15 +1174,22 @@ export default function App() {
       })
       .catch(() => {});
 
-    fetch(`${API_BASE}/api/games?limit=300`)
-      .then((r) => r.json())
-      .then((data) => setAllGamesList(data.games || []))
+    fetch(`${API_BASE}/api/games?limit=1200`)
+      .then((r) => (r.ok ? r.json().catch(() => null) : null))
+      .then((data) => {
+        if (!cancelled && data) setAllGamesList(data.games || []);
+      })
       .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (tab !== "records") return;
+    let cancelled = false;
     setRecordsLoading(true);
+    setRecordsError("");
     const params = new URLSearchParams({
       position: recordsPosition,
       class_year: recordsClassYear,
@@ -979,14 +1199,23 @@ export default function App() {
     });
     if (otdMmdd) params.set("mmdd", otdMmdd);
     fetch(`${API_BASE}/api/records?${params.toString()}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setRecordsData(data);
-        if (!otdMmdd && data?.on_this_day?.resolved_mmdd) {
-          setOtdMmdd(data.on_this_day.resolved_mmdd);
-        }
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.detail || `Failed to load records (${r.status})`);
+        return data;
       })
-      .finally(() => setRecordsLoading(false));
+      .then((data) => {
+        if (!cancelled) setRecordsData(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setRecordsError(err.message || "Unable to load program records.");
+      })
+      .finally(() => {
+        if (!cancelled) setRecordsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [tab, recordsPosition, recordsClassYear, chemSeason, chemStrength, otdMmdd]);
 
   const fetchBeanpotData = useCallback(() => {
@@ -1012,8 +1241,10 @@ export default function App() {
 
   useEffect(() => {
     if (!selectedSeason) return;
+    let cancelled = false;
     if (tab === "leaders") {
       setLeadersLoading(true);
+      setLeadersError("");
       const params = new URLSearchParams({
         season: selectedSeason,
         scope: leaderScope,
@@ -1024,51 +1255,93 @@ export default function App() {
         params.set("opponent", leaderOpponent);
       }
       fetch(`${API_BASE}/api/leaders?${params.toString()}`)
-        .then((r) => r.json())
+        .then(async (r) => {
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(data.detail || `Failed to load stats (${r.status})`);
+          return data;
+        })
         .then((data) => {
+          if (cancelled) return;
           setLeaders(data);
           if (leaderOpponent && !(data.opponents || []).includes(leaderOpponent)) {
             setLeaderOpponent("");
           }
         })
-        .finally(() => setLeadersLoading(false));
+        .catch((err) => {
+          if (!cancelled) setLeadersError(err.message || "Unable to load stats.");
+        })
+        .finally(() => {
+          if (!cancelled) setLeadersLoading(false);
+        });
     } else if (tab === "roster") {
-      const rosterSeason = selectedSeason === "all" ? (seasons[0] || "") : selectedSeason;
-      if (selectedSeason === "all" && rosterSeason) {
-        setSelectedSeason(rosterSeason);
+      if (selectedSeason === "all") {
+        if (seasons[0]) setSelectedSeason(seasons[0]);
+        return;
       }
-      if (!rosterSeason) return;
       setRosterLoading(true);
-      fetch(`${API_BASE}/api/roster?season=${encodeURIComponent(rosterSeason)}`)
-        .then((r) => r.json())
-        .then((data) => setRoster(data))
-        .finally(() => setRosterLoading(false));
+      setRosterError("");
+      fetch(`${API_BASE}/api/roster?season=${encodeURIComponent(selectedSeason)}`)
+        .then(async (r) => {
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(data.detail || `Failed to load roster (${r.status})`);
+          return data;
+        })
+        .then((data) => {
+          if (!cancelled) setRoster(data);
+        })
+        .catch((err) => {
+          if (!cancelled) setRosterError(err.message || "Unable to load roster.");
+        })
+        .finally(() => {
+          if (!cancelled) setRosterLoading(false);
+        });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [tab, selectedSeason, leaderScope, leaderLocation, leaderOpponent, seasons]);
 
   useEffect(() => {
     if (tab !== "rivalry" || !selectedRival) return;
     if (rivalryScope === "season" && !seasons[0]) return;
+    let cancelled = false;
     setRivalryPage(1);
     setRivalryLoading(true);
+    setRivalryError("");
     const params = new URLSearchParams({ opponent: selectedRival });
     if (rivalryScope === "season" && seasons[0]) {
       params.set("season", seasons[0]);
     }
     fetch(`${API_BASE}/api/rivalry?${params.toString()}`)
-      .then((r) => r.json())
-      .then((data) => setRivalry(data))
-      .finally(() => setRivalryLoading(false));
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.detail || `Failed to load opponent history (${r.status})`);
+        return data;
+      })
+      .then((data) => {
+        if (!cancelled) setRivalry(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setRivalryError(err.message || "Unable to load opponent history.");
+      })
+      .finally(() => {
+        if (!cancelled) setRivalryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [tab, selectedRival, rivalryScope, seasons]);
 
   useEffect(() => {
     if (!selectedPlayer) return;
+    let cancelled = false;
     setPlayerLoading(true);
     setPlayerError("");
     fetch(`${API_BASE}/api/player?name=${encodeURIComponent(selectedPlayer)}`)
       .then(async (r) => {
-        const data = await r.json();
+        const data = await r.json().catch(() => ({}));
         if (!r.ok) throw new Error(data.detail || "Player not found");
+        if (cancelled) return;
         setPlayerData(data);
         const logSeasons = Array.from(
           new Set((data.game_logs || []).map((g) => g.season).filter(Boolean))
@@ -1076,8 +1349,15 @@ export default function App() {
         setPlayerLogSeason(logSeasons[0] || "all");
         setPlayerOpponent("all");
       })
-      .catch((err) => setPlayerError(err.message))
-      .finally(() => setPlayerLoading(false));
+      .catch((err) => {
+        if (!cancelled) setPlayerError(err.message || "Player not found");
+      })
+      .finally(() => {
+        if (!cancelled) setPlayerLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedPlayer]);
 
   useEffect(() => {
@@ -1104,8 +1384,11 @@ export default function App() {
     if (tab === "beanpot") {
       return `User is viewing Beanpot Tournament Hub (${beanpotSubTab}).`;
     }
+    if (tab === "compare") {
+      return `User is viewing Compare Players (${compareAName || "Player A"} vs. ${compareBName || "Player B"}).`;
+    }
     return null;
-  }, [selectedPlayer, tab, selectedSeason, leaderScope, leaderLocation, leaderOpponent, selectedRival, recordsSubTab, beanpotSubTab]);
+  }, [selectedPlayer, tab, selectedSeason, leaderScope, leaderLocation, leaderOpponent, selectedRival, recordsSubTab, beanpotSubTab, compareAName, compareBName]);
 
   const sortedSkaters = useMemo(() => {
     if (!leaders?.skaters) return [];
@@ -1114,7 +1397,12 @@ export default function App() {
     list.sort((a, b) => {
       const av = Number(a[key] ?? 0);
       const bv = Number(b[key] ?? 0);
-      return dir === "desc" ? bv - av : av - bv;
+      if (bv !== av) return dir === "desc" ? bv - av : av - bv;
+      const ptDiff = Number(b.points ?? 0) - Number(a.points ?? 0);
+      if (ptDiff !== 0) return ptDiff;
+      const gDiff = Number(b.goals ?? 0) - Number(a.goals ?? 0);
+      if (gDiff !== 0) return gDiff;
+      return String(a.player_name || "").localeCompare(String(b.player_name || ""));
     });
     return list;
   }, [leaders, leaderSort]);
@@ -1151,7 +1439,7 @@ export default function App() {
     const q = questionText.trim();
     if (!q || chatLoading) return;
 
-    const history = messages.map((m) => ({
+    const history = messages.slice(-16).map((m) => ({
       role: m.role,
       content: m.content,
       ...(m.sig ? { sig: m.sig } : {}),
@@ -1183,7 +1471,7 @@ export default function App() {
         ? (effectiveUseContext ? pageContext : null)
         : null;
 
-      async function waitForTurnstileToken(maxAttempts = 40) {
+      async function waitForTurnstileToken(maxAttempts = 60) {
         if (!turnstileSiteKey) return "";
         for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
           let tok = turnstileTokenRef.current;
@@ -1304,13 +1592,13 @@ export default function App() {
   useEffect(() => {
     if (!chatDrawerOpen) return;
     function onDrawerKey(e) {
-      if (e.key === "Escape" && !legalModal && !bugModalOpen) {
+      if (e.key === "Escape" && !legalModal && !bugModalOpen && !boxscoreModal) {
         setChatDrawerOpen(false);
       }
     }
     window.addEventListener("keydown", onDrawerKey);
     return () => window.removeEventListener("keydown", onDrawerKey);
-  }, [chatDrawerOpen, legalModal, bugModalOpen]);
+  }, [chatDrawerOpen, legalModal, bugModalOpen, boxscoreModal]);
 
   return (
     <div className="app-shell">
@@ -1333,7 +1621,7 @@ export default function App() {
               </p>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div className="header-actions">
             {health?.latest_game_date && (
               <div className="header-pill">
                 <span className="header-pill-label">
@@ -1345,10 +1633,9 @@ export default function App() {
             )}
             <button
               type="button"
-              className="btn-ghost"
+              className="header-action-btn"
               onClick={handleCopyShareLink}
               title="Copy a direct link to this current view"
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 12 }}
             >
               <ShareIcon />
               <span>{shareCopied ? "Copied Link!" : "Share View"}</span>
@@ -1408,7 +1695,7 @@ export default function App() {
             aria-current={!selectedPlayer && tab === "beanpot" ? "page" : undefined}
             onClick={() => navigateTab("beanpot")}
           >
-            <TrophyIcon />
+            <BeanpotIcon />
             <span>Beanpot</span>
           </button>
           <button
@@ -1417,7 +1704,7 @@ export default function App() {
             aria-current={!selectedPlayer && tab === "compare" ? "page" : undefined}
             onClick={() => navigateTab("compare")}
           >
-            <UsersIcon />
+            <CompareIcon />
             <span>Compare</span>
           </button>
         </nav>
@@ -1430,7 +1717,7 @@ export default function App() {
               <strong>Unofficial Fan Analytics:</strong> Stats are scraped from public
               archives and <strong>Ask Paws</strong> uses AI (Google Gemini) to query
               data&mdash;please verify important figures against official{" "}
-              <a href="https://nuhuskies.com" target="_blank" rel="noreferrer" style={{ color: "inherit", fontWeight: 700 }}>
+              <a href="https://nuhuskies.com" target="_blank" rel="noopener noreferrer" style={{ color: "inherit", fontWeight: 700 }}>
                 nuhuskies.com
               </a>{" "}
               box scores.
@@ -1463,7 +1750,8 @@ export default function App() {
                   </h2>
                   <p className="muted" style={{ marginTop: 4 }}>
                     {penaltyView.season === "all" ? "All-Time (1999–present)" : penaltyView.season}
-                    {penaltyView.scope === "conference" ? " • Hockey East" : " • All Games"}
+                    {` • ${SCOPE_LABELS[penaltyView.scope] || "All Games"}`}
+                    {penaltyView.location && penaltyView.location !== "all" ? ` • ${penaltyView.location} Venue` : ""}
                     {penaltyView.opponent ? ` • vs. ${penaltyView.opponent}` : ""}
                   </p>
                 </div>
@@ -1475,7 +1763,7 @@ export default function App() {
                 </p>
               )}
               {penaltyError && (
-                <p className="muted" role="alert">
+                <p className="error-text" role="alert">
                   {penaltyError}
                 </p>
               )}
@@ -1782,7 +2070,7 @@ export default function App() {
           <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="controls-row">
               <button type="button" className="btn-ghost" onClick={closePlayer}>
-                &larr; Back to {tab === "roster" ? "Roster" : "Leaders"}
+                &larr; Back to {TAB_LABELS[tab] || "Stats"}
               </button>
               <button
                 type="button"
@@ -1791,11 +2079,11 @@ export default function App() {
               >
                 Compare with...
               </button>
-              {playerData?.bio?.roster_url && (
+              {safeExternalUrl(playerData?.bio?.roster_url) && (
                 <a
-                  href={playerData.bio.roster_url}
+                  href={safeExternalUrl(playerData.bio.roster_url)}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="btn-ghost"
                   style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
                 >
@@ -1812,7 +2100,7 @@ export default function App() {
 
             {playerError && (
               <div className="card" role="alert">
-                <p className="muted">{playerError}</p>
+                <p className="error-text">{playerError}</p>
               </div>
             )}
 
@@ -2263,7 +2551,12 @@ export default function App() {
                               {visibleLogs.map((g, i) => (
                                 <tr key={`${g.date}-${i}`}>
                                   <td>{g.date}</td>
-                                  <td>{g.opponent}</td>
+                                  <td>
+                                    <span className="opp-with-logo">
+                                      <OpponentLogo name={g.opponent} />
+                                      <span>{g.opponent}</span>
+                                    </span>
+                                  </td>
                                   <td>{`${g.nu_goals}-${g.opp_goals}`}</td>
                                   <td>{g.decision}</td>
                                   <td>{g.saves}</td>
@@ -2831,7 +3124,7 @@ export default function App() {
                   <div key={idx} className={`msg-row ${m.role}`}>
                     <div className={`msg ${m.role}`}>
                       {m.role === "assistant" ? (
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
                           {m.content}
                         </ReactMarkdown>
                       ) : (
@@ -2890,6 +3183,7 @@ export default function App() {
                 type="text"
                 aria-label="Ask Paws a hockey stats question"
                 placeholder="Ask Paws about players, games, Beanpot, shootouts..."
+                maxLength={1000}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={chatLoading}
@@ -2949,7 +3243,7 @@ export default function App() {
                     onChange={(e) => setLeaderLocation(e.target.value)}
                   >
                     <option value="all">All Venues</option>
-                    <option value="Home">Home (Matthews Arena)</option>
+                    <option value="Home">Home</option>
                     <option value="Away">Away</option>
                     <option value="Neutral">Neutral Site</option>
                   </select>
@@ -3072,10 +3366,13 @@ export default function App() {
               </span>
             </div>
             {leadersLoading && <p className="muted">Loading team stats...</p>}
-            {!leadersLoading && (!leaders?.team_stats || leaders.team_stats.games_played === 0) && (
+            {!leadersLoading && leadersError && (
+              <p className="error-text" role="alert">{leadersError}</p>
+            )}
+            {!leadersLoading && !leadersError && (!leaders?.team_stats || leaders.team_stats.games_played === 0) && (
               <p className="muted">No team stats found for this filter combination.</p>
             )}
-            {!leadersLoading && leaders?.team_stats && leaders.team_stats.games_played > 0 && (() => {
+            {!leadersLoading && !leadersError && leaders?.team_stats && leaders.team_stats.games_played > 0 && (() => {
               const ts = leaders.team_stats;
               const diffStr = ts.goal_diff > 0 ? `+${ts.goal_diff}` : String(ts.goal_diff);
               const winPctStr = Number(ts.win_pct || 0).toFixed(3).replace(/^0/, "");
@@ -3152,6 +3449,7 @@ export default function App() {
                           mode: "team",
                           season: selectedSeason,
                           scope: leaderScope,
+                          location: leaderLocation,
                           opponent: leaderOpponent,
                         })
                       }
@@ -3292,9 +3590,11 @@ export default function App() {
                     </>
                   )}
 
-                  {selectedSeason !== "all" && ts.games?.length > 0 && (
+                  {(selectedSeason !== "all" || ["beanpot", "postseason", "ncaa"].includes(leaderScope)) && ts.games?.length > 0 && (
                     <>
-                      <h3 style={{ marginTop: 20 }}>Season Games</h3>
+                      <h3 style={{ marginTop: 20 }}>
+                        {selectedSeason === "all" ? "Tournament Games" : "Season Games"}
+                      </h3>
                       <div className="table-wrap">
                         <table className="data-table">
                           <thead>
@@ -3359,7 +3659,13 @@ export default function App() {
                     ? `Player Stats vs. ${leaderOpponent}`
                     : leaderScope === "conference"
                       ? "Hockey East Player Stats"
-                      : "Skater Stats"}
+                      : leaderScope === "beanpot"
+                        ? "Beanpot Player Stats"
+                        : leaderScope === "postseason"
+                          ? "Hockey East Postseason Player Stats"
+                          : leaderScope === "ncaa"
+                            ? "NCAA Tournament Player Stats"
+                            : "Skater Stats"}
                 </span>
               </h2>
               <span className="muted">
@@ -3369,10 +3675,13 @@ export default function App() {
               </span>
             </div>
             {leadersLoading && <p className="muted">Loading stats...</p>}
-            {!leadersLoading && sortedSkaters.length === 0 && (
+            {!leadersLoading && leadersError && (
+              <p className="error-text" role="alert">{leadersError}</p>
+            )}
+            {!leadersLoading && !leadersError && sortedSkaters.length === 0 && (
               <p className="muted">No skater stats found for this filter combination.</p>
             )}
-            {!leadersLoading && sortedSkaters.length > 0 && (
+            {!leadersLoading && !leadersError && sortedSkaters.length > 0 && (
               <div className="table-wrap">
                 <table className="data-table">
                   <thead>
@@ -3517,13 +3826,27 @@ export default function App() {
                         <tr key={g.player_name}>
                           <td>{g.jersey_number}</td>
                           <td>
-                            <button
-                              type="button"
-                              className="player-link"
-                              onClick={() => openPlayer(g.player_name)}
-                            >
-                              {g.player_name}
-                            </button>
+                            <span className="roster-player-cell">
+                              {g.image_url && (
+                                <img
+                                  src={proxyImageUrl(g.image_url, 32, 32)}
+                                  srcSet={proxyImageSrcSet(g.image_url, 32, 32)}
+                                  alt=""
+                                  className="player-avatar-sm"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
+                                />
+                              )}
+                              <button
+                                type="button"
+                                className="player-link"
+                                onClick={() => openPlayer(g.player_name)}
+                              >
+                                {g.player_name}
+                              </button>
+                            </span>
                           </td>
                           <td>{g.goalie_gp}</td>
                           <td>{g.goalie_gs ?? 0}</td>
@@ -3549,11 +3872,11 @@ export default function App() {
                 {selectedSeason} Roster
                 {roster?.head_coach ? ` — Coach ${roster.head_coach}` : ""}
               </h2>
-              {roster?.roster_url && (
+              {safeExternalUrl(roster?.roster_url) && (
                 <a
-                  href={roster.roster_url}
+                  href={safeExternalUrl(roster.roster_url)}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="btn-ghost"
                   style={{ textDecoration: "none", display: "inline-flex", alignItems: "center" }}
                 >
@@ -3562,7 +3885,10 @@ export default function App() {
               )}
             </div>
             {rosterLoading && <p className="muted">Loading roster...</p>}
-            {!rosterLoading && (() => {
+            {!rosterLoading && rosterError && (
+              <p className="error-text" role="alert">{rosterError}</p>
+            )}
+            {!rosterLoading && !rosterError && (() => {
               const forwards = filteredRoster.filter((p) => p.position === "F");
               const defensemen = filteredRoster.filter((p) => p.position === "D");
               const goalies = filteredRoster.filter((p) => p.position === "G");
@@ -3694,7 +4020,10 @@ export default function App() {
             </div>
 
             {rivalryLoading && <p className="muted" role="status" aria-live="polite">Loading matchup history...</p>}
-            {!rivalryLoading && rivalry && (
+            {!rivalryLoading && rivalryError && (
+              <p className="error-text" role="alert">{rivalryError}</p>
+            )}
+            {!rivalryLoading && !rivalryError && rivalry && (
               <>
                 <div className="stat-grid">
                   <div className="stat-box">
@@ -3853,47 +4182,8 @@ export default function App() {
                   ? filterPlayerMatches(compareBQuery)
                   : [];
 
-                const dropdownStyle = {
-                  position: "absolute",
-                  top: "calc(100% + 4px)",
-                  left: 0,
-                  right: 0,
-                  zIndex: 40,
-                  background: "var(--nu-surface, #ffffff)",
-                  color: "var(--nu-text, #111827)",
-                  border: "1px solid var(--nu-border, #dde1e7)",
-                  borderRadius: 10,
-                  boxShadow: "0 10px 28px rgba(17, 18, 20, 0.14)",
-                  maxHeight: 280,
-                  overflowY: "auto",
-                  padding: 4,
-                };
-
-                const itemBtnStyle = {
-                  width: "100%",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "8px 10px",
-                  border: "none",
-                  background: "transparent",
-                  color: "var(--nu-text, #111827)",
-                  borderRadius: 7,
-                  cursor: "pointer",
-                  textAlign: "left",
-                  fontSize: 13,
-                };
-
                 return (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr auto 1fr",
-                      gap: 10,
-                      alignItems: "end",
-                    }}
-                  >
+                  <div className="compare-picker-grid">
                     <div style={{ position: "relative" }}>
                       <label className="muted" htmlFor="compare-a-input" style={{ fontSize: 12, display: "block", marginBottom: 4 }}>
                         Player A
@@ -3930,21 +4220,11 @@ export default function App() {
                         {compareAQuery && (
                           <button
                             type="button"
+                            className="compare-clear-btn"
                             aria-label="Clear Player A"
                             onClick={() => {
                               setCompareAQuery("");
                               setCompareAName("");
-                            }}
-                            style={{
-                              position: "absolute",
-                              right: 8,
-                              background: "transparent",
-                              border: "none",
-                              color: "var(--muted, #9ca3af)",
-                              cursor: "pointer",
-                              fontSize: 15,
-                              lineHeight: 1,
-                              padding: 2,
                             }}
                           >
                             ×
@@ -3952,25 +4232,20 @@ export default function App() {
                         )}
                       </div>
                       {compareAFocus && compareAQuery.trim() && compareAQuery.trim() !== compareAName && (
-                        <div style={dropdownStyle} role="listbox" aria-label="Player A matches">
+                        <div className="compare-dropdown" role="listbox" aria-label="Player A matches">
                           {matchesA.length > 0 ? (
                             matchesA.map((p) => (
                               <button
                                 key={p.player_name}
                                 type="button"
                                 role="option"
-                                style={itemBtnStyle}
+                                aria-selected={false}
+                                className="compare-dropdown-item"
                                 onMouseDown={(e) => {
                                   e.preventDefault();
                                   setCompareAQuery(p.player_name);
                                   setCompareAName(p.player_name);
                                   setCompareAFocus(false);
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = "var(--nu-bg, #f1f3f6)";
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = "transparent";
                                 }}
                               >
                                 <span style={{ fontWeight: 600 }}>{p.player_name}</span>
@@ -3994,17 +4269,26 @@ export default function App() {
 
                     <button
                       type="button"
-                      className="btn-ghost"
+                      className="btn-ghost compare-swap-btn"
                       title="Swap players"
+                      aria-label="Swap Player A and Player B"
                       onClick={() => {
                         const tmpNameA = compareAName;
                         const tmpNameB = compareBName;
                         const tmpQueryA = compareAQuery;
                         const tmpQueryB = compareBQuery;
+                        const tmpSeasonA = compareSeasonA;
+                        const tmpSeasonB = compareSeasonB;
+                        const tmpDataA = compareAData;
+                        const tmpDataB = compareBData;
                         setCompareAName(tmpNameB);
                         setCompareBName(tmpNameA);
                         setCompareAQuery(tmpQueryB);
                         setCompareBQuery(tmpQueryA);
+                        setCompareSeasonA(tmpSeasonB);
+                        setCompareSeasonB(tmpSeasonA);
+                        setCompareAData(tmpDataB);
+                        setCompareBData(tmpDataA);
                       }}
                     >
                       ⇄
@@ -4046,21 +4330,11 @@ export default function App() {
                         {compareBQuery && (
                           <button
                             type="button"
+                            className="compare-clear-btn"
                             aria-label="Clear Player B"
                             onClick={() => {
                               setCompareBQuery("");
                               setCompareBName("");
-                            }}
-                            style={{
-                              position: "absolute",
-                              right: 8,
-                              background: "transparent",
-                              border: "none",
-                              color: "var(--muted, #9ca3af)",
-                              cursor: "pointer",
-                              fontSize: 15,
-                              lineHeight: 1,
-                              padding: 2,
                             }}
                           >
                             ×
@@ -4068,25 +4342,20 @@ export default function App() {
                         )}
                       </div>
                       {compareBFocus && compareBQuery.trim() && compareBQuery.trim() !== compareBName && (
-                        <div style={dropdownStyle} role="listbox" aria-label="Player B matches">
+                        <div className="compare-dropdown" role="listbox" aria-label="Player B matches">
                           {matchesB.length > 0 ? (
                             matchesB.map((p) => (
                               <button
                                 key={p.player_name}
                                 type="button"
                                 role="option"
-                                style={itemBtnStyle}
+                                aria-selected={false}
+                                className="compare-dropdown-item"
                                 onMouseDown={(e) => {
                                   e.preventDefault();
                                   setCompareBQuery(p.player_name);
                                   setCompareBName(p.player_name);
                                   setCompareBFocus(false);
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = "var(--nu-bg, #f1f3f6)";
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = "transparent";
                                 }}
                               >
                                 <span style={{ fontWeight: 600 }}>{p.player_name}</span>
@@ -4233,7 +4502,8 @@ export default function App() {
                   const ties = logs.filter((g) => g.decision === "T").length;
                   const saves = logs.reduce((s, g) => s + Number(g.saves || 0), 0);
                   const ga = logs.reduce((s, g) => s + Number(g.goals_against || 0), 0);
-                  const shutouts = logs.filter((g) => Number(g.goals_against || 0) === 0 && Number(g.saves || 0) > 0).length;
+                  const shutouts = logs.reduce((s, g) => s + Number(g.shutouts || 0), 0);
+                  const mins = logs.reduce((s, g) => s + parseMinutesToFloat(g.minutes), 0);
                   const sa = saves + ga;
                   return {
                     gp,
@@ -4243,6 +4513,7 @@ export default function App() {
                     saves,
                     goals_against: ga,
                     save_pct: sa > 0 ? saves / sa : 0,
+                    gaa: mins > 0 ? (ga * 60) / mins : 0,
                     shutouts,
                   };
                 }
@@ -4301,6 +4572,35 @@ export default function App() {
               const buildSkaterRows = (sA, sB) => {
                 const gpA = Number(sA?.gp || 0);
                 const gpB = Number(sB?.gp || 0);
+                const getShotPct = (s) => {
+                  if (!s) return 0;
+                  if (s.shooting_pct !== undefined && s.shooting_pct !== null) {
+                    return Number(s.shooting_pct);
+                  }
+                  if (s.shot_pct !== undefined && s.shot_pct !== null) {
+                    const raw = Number(s.shot_pct);
+                    if (raw > 1) return raw;
+                    const sh = Number(s.shots || 0);
+                    const gl = Number(s.goals || 0);
+                    return sh > 0 ? (gl / sh) * 100 : raw * 100;
+                  }
+                  const sh = Number(s.shots || 0);
+                  const gl = Number(s.goals || 0);
+                  return sh > 0 ? (gl / sh) * 100 : 0;
+                };
+                const getFoPct = (s) => {
+                  if (!s) return null;
+                  const fw = Number(s.faceoffs_won || 0);
+                  const fl = Number(s.faceoffs_lost || 0);
+                  if (fw + fl > 0) {
+                    return (fw / (fw + fl)) * 100;
+                  }
+                  if (s.faceoff_pct !== undefined && s.faceoff_pct !== null && Number(s.faceoff_pct) > 0) {
+                    const raw = Number(s.faceoff_pct);
+                    return raw <= 1 ? raw * 100 : raw;
+                  }
+                  return null;
+                };
                 if (compareMode === "per_game") {
                   const rate = (val, gp, dec = 2) => (gp > 0 ? Number((Number(val || 0) / gp).toFixed(dec)) : 0);
                   return [
@@ -4309,14 +4609,16 @@ export default function App() {
                     { label: "Assists / Game", a: rate(sA?.assists, gpA), b: rate(sB?.assists, gpB), fmt: (v) => v.toFixed(2) },
                     { label: "Points / Game", a: rate(sA?.points, gpA), b: rate(sB?.points, gpB), fmt: (v) => v.toFixed(2) },
                     { label: "Shots / Game", a: rate(sA?.shots, gpA), b: rate(sB?.shots, gpB), fmt: (v) => v.toFixed(2) },
-                    { label: "Shooting %", a: Number(sA?.shooting_pct ?? sA?.shot_pct ?? 0), b: Number(sB?.shooting_pct ?? sB?.shot_pct ?? 0), fmt: (v) => `${v.toFixed(1)}%` },
+                    { label: "Shooting %", a: getShotPct(sA), b: getShotPct(sB), fmt: (v) => `${v.toFixed(1)}%` },
                     { label: "Blocks / Game", a: rate(sA?.blocked_shots, gpA), b: rate(sB?.blocked_shots, gpB), fmt: (v) => v.toFixed(2) },
-                    { label: "Faceoff %", a: Number(sA?.faceoff_pct || 0), b: Number(sB?.faceoff_pct || 0), fmt: (v) => `${v.toFixed(1)}%` },
+                    { label: "Faceoff %", a: getFoPct(sA), b: getFoPct(sB), fmt: (v) => (v === null ? "—" : `${v.toFixed(1)}%`) },
                     { label: "PIM / Game", a: rate(sA?.pim, gpA), b: rate(sB?.pim, gpB), fmt: (v) => v.toFixed(2), neutral: true },
                   ];
                 }
                 const foA = Number(sA?.faceoffs_won || 0) + Number(sA?.faceoffs_lost || 0);
                 const foB = Number(sB?.faceoffs_won || 0) + Number(sB?.faceoffs_lost || 0);
+                const foPctA = getFoPct(sA);
+                const foPctB = getFoPct(sB);
                 return [
                   { label: "Games Played (GP)", a: gpA, b: gpB, fmt: (v) => v },
                   { label: "Goals (G)", a: Number(sA?.goals || 0), b: Number(sB?.goals || 0), fmt: (v) => v },
@@ -4324,17 +4626,17 @@ export default function App() {
                   { label: "Points (PTS)", a: Number(sA?.points || 0), b: Number(sB?.points || 0), fmt: (v) => v },
                   { label: "+/-", a: Number(sA?.plus_minus || 0), b: Number(sB?.plus_minus || 0), fmt: (v) => (v > 0 ? `+${v}` : v) },
                   { label: "Shots on Goal (SOG)", a: Number(sA?.shots || 0), b: Number(sB?.shots || 0), fmt: (v) => v },
-                  { label: "Shooting %", a: Number(sA?.shooting_pct ?? sA?.shot_pct ?? 0), b: Number(sB?.shooting_pct ?? sB?.shot_pct ?? 0), fmt: (v) => `${v.toFixed(1)}%` },
+                  { label: "Shooting %", a: getShotPct(sA), b: getShotPct(sB), fmt: (v) => `${v.toFixed(1)}%` },
                   { label: "Power-Play Goals (PPG)", a: Number(sA?.ppg || 0), b: Number(sB?.ppg || 0), fmt: (v) => v },
                   { label: "Short-Handed Goals (SHG)", a: Number(sA?.shg || 0), b: Number(sB?.shg || 0), fmt: (v) => v },
                   { label: "Game-Winning Goals (GWG)", a: Number(sA?.gwg || 0), b: Number(sB?.gwg || 0), fmt: (v) => v },
                   { label: "Blocked Shots (BLK)", a: Number(sA?.blocked_shots || 0), b: Number(sB?.blocked_shots || 0), fmt: (v) => v },
                   {
                     label: "Faceoffs (W-Total)",
-                    a: foA > 0 ? Number(sA?.faceoff_pct || 0) : -1,
-                    b: foB > 0 ? Number(sB?.faceoff_pct || 0) : -1,
-                    displayA: foA > 0 ? `${sA.faceoffs_won}-${foA} (${Number(sA.faceoff_pct || 0).toFixed(1)}%)` : "-",
-                    displayB: foB > 0 ? `${sB.faceoffs_won}-${foB} (${Number(sB.faceoff_pct || 0).toFixed(1)}%)` : "-",
+                    a: foPctA,
+                    b: foPctB,
+                    displayA: foA > 0 ? `${sA.faceoffs_won}-${foA} (${foPctA.toFixed(1)}%)` : foPctA !== null ? `${foPctA.toFixed(1)}%` : "—",
+                    displayB: foB > 0 ? `${sB.faceoffs_won}-${foB} (${foPctB.toFixed(1)}%)` : foPctB !== null ? `${foPctB.toFixed(1)}%` : "—",
                   },
                   { label: "Penalty Minutes (PIM)", a: Number(sA?.pim || 0), b: Number(sB?.pim || 0), fmt: (v) => v, neutral: true },
                 ];
@@ -4386,15 +4688,7 @@ export default function App() {
                   </div>
 
                   {directChem && (
-                    <div
-                      className="card"
-                      style={{
-                        borderColor: "var(--accent)",
-                        background: "rgba(212, 27, 44, 0.08)",
-                        padding: "10px 14px",
-                        fontSize: 13,
-                      }}
-                    >
+                    <div className="card chemistry-banner">
                       <strong>Teammate Goal Chemistry:</strong> {pA.bio.player_name} and {pB.bio.player_name} connected on{" "}
                       <strong>{directChem.total_connections}</strong> Northeastern goal{directChem.total_connections === 1 ? "" : "s"} (
                       {pA.bio.player_name} scored {directChem.assisted_by_them}x off {pB.bio.player_name}, assisted{" "}
@@ -4476,13 +4770,16 @@ export default function App() {
                           </thead>
                           <tbody>
                             {rows.map((r) => {
-                              const aBetter =
+                              const comparable =
                                 !r.neutral &&
-                                r.a !== r.b &&
+                                r.a !== null &&
+                                r.b !== null &&
+                                r.a !== r.b;
+                              const aBetter =
+                                comparable &&
                                 (r.lowerBetter ? r.a < r.b : r.a > r.b);
                               const bBetter =
-                                !r.neutral &&
-                                r.a !== r.b &&
+                                comparable &&
                                 (r.lowerBetter ? r.b < r.a : r.b > r.a);
                               return (
                                 <tr key={r.label}>
@@ -4566,7 +4863,13 @@ export default function App() {
               </div>
             )}
 
-            {recordsData && recordsSubTab === "recordbook" && (() => {
+            {!recordsLoading && recordsError && (
+              <div className="card" role="alert">
+                <p className="error-text" style={{ margin: 0 }}>{recordsError}</p>
+              </div>
+            )}
+
+            {recordsData && !recordsError && recordsSubTab === "recordbook" && (() => {
               const isSeasonMode = recordsLeaderboardMode === "season";
               const posFilter = recordsPosition;
               const classFilter = recordsClassYear;
@@ -4776,10 +5079,11 @@ export default function App() {
                     </div>
 
                     {recordsPosition !== "G" && (
-                      <div className="table-wrap" style={{ marginBottom: 18 }}>
-                        <h3 style={{ margin: "6px 0 10px 0", fontSize: 14 }}>
+                      <>
+                        <h3 className="sub-heading">
                           {isSeasonMode ? "Single-Season Skater Leaders" : "Career Skater Leaders"}
                         </h3>
+                        <div className="table-wrap" style={{ marginBottom: 18 }}>
                         <table className="data-table">
                           <thead>
                             <tr>
@@ -4858,13 +5162,17 @@ export default function App() {
                           </tbody>
                         </table>
                       </div>
+                      </>
                     )}
 
                     {(recordsPosition === "all" || recordsPosition === "G") && (
-                      <div className="table-wrap">
-                        <h3 style={{ margin: "6px 0 10px 0", fontSize: 14 }}>
-                          {isSeasonMode ? "Single-Season Goalie Leaders" : "Career Goalie Leaders"}
+                      <>
+                        <h3 className="sub-heading">
+                          {isSeasonMode
+                            ? "Single-Season Goalie Leaders (min. 10 GP)"
+                            : "Career Goalie Leaders (min. 10 GP)"}
                         </h3>
+                        <div className="table-wrap">
                         <table className="data-table">
                           <thead>
                             <tr>
@@ -4937,6 +5245,7 @@ export default function App() {
                           </tbody>
                         </table>
                       </div>
+                      </>
                     )}
                   </div>
 
@@ -4965,7 +5274,12 @@ export default function App() {
                                   </button>
                                 </td>
                                 <td><strong>{r.points}</strong> ({r.goals}G, {r.assists}A)</td>
-                                <td>{r.opponent}</td>
+                                <td>
+                                  <span className="opp-with-logo">
+                                    <OpponentLogo name={r.opponent} />
+                                    <span>{r.opponent}</span>
+                                  </span>
+                                </td>
                                 <td>
                                   <button type="button" className="link-btn" onClick={() => openBoxScore(r.date, r.opponent)}>
                                     {r.date}
@@ -5005,7 +5319,12 @@ export default function App() {
                                     </button>
                                   </td>
                                   <td><strong>{r.saves}</strong> ({gaVal} GA)</td>
-                                  <td>{r.opponent}</td>
+                                  <td>
+                                    <span className="opp-with-logo">
+                                      <OpponentLogo name={r.opponent} />
+                                      <span>{r.opponent}</span>
+                                    </span>
+                                  </td>
                                   <td>
                                     <button type="button" className="link-btn" onClick={() => openBoxScore(r.date, r.opponent)}>
                                       {r.date}
@@ -5024,7 +5343,7 @@ export default function App() {
                         <h2>Fastest Goals &amp; Rapid-Fire Braces</h2>
                         <span className="muted">From opening faceoff &amp; fastest 2 goals by one player</span>
                       </div>
-                      <h3 style={{ fontSize: 13, margin: "4px 0 6px 0" }}>Fastest Goal From Opening Faceoff</h3>
+                      <h3 className="sub-heading">Fastest Goal From Opening Faceoff</h3>
                       <div className="table-wrap" style={{ marginBottom: 14 }}>
                         <table className="data-table">
                           <thead>
@@ -5047,7 +5366,12 @@ export default function App() {
                                     </button>
                                   </td>
                                   <td><strong>{r.time}</strong> ({secs}s)</td>
-                                  <td>{r.opponent}</td>
+                                  <td>
+                                    <span className="opp-with-logo">
+                                      <OpponentLogo name={r.opponent} />
+                                      <span>{r.opponent}</span>
+                                    </span>
+                                  </td>
                                   <td>
                                     <button type="button" className="link-btn" onClick={() => openBoxScore(r.date, r.opponent)}>
                                       {r.date}
@@ -5059,7 +5383,7 @@ export default function App() {
                           </tbody>
                         </table>
                       </div>
-                      <h3 style={{ fontSize: 13, margin: "4px 0 6px 0" }}>Fastest 2 Goals by Same Player</h3>
+                      <h3 className="sub-heading">Fastest 2 Goals by Same Player</h3>
                       <div className="table-wrap">
                         <table className="data-table">
                           <thead>
@@ -5079,7 +5403,12 @@ export default function App() {
                                   </button>
                                 </td>
                                 <td><strong>{r.span_display}</strong></td>
-                                <td>{r.opponent}</td>
+                                <td>
+                                  <span className="opp-with-logo">
+                                    <OpponentLogo name={r.opponent} />
+                                    <span>{r.opponent}</span>
+                                  </span>
+                                </td>
                                 <td>
                                   <button type="button" className="link-btn" onClick={() => openBoxScore(r.date, r.opponent)}>
                                     {r.date}
@@ -5097,7 +5426,7 @@ export default function App() {
                         <h2>Longest Player &amp; Team Streaks</h2>
                         <span className="muted">Consecutive games</span>
                       </div>
-                      <h3 style={{ fontSize: 13, margin: "4px 0 6px 0" }}>Longest Player Point Streaks</h3>
+                      <h3 className="sub-heading">Longest Player Point Streaks</h3>
                       <div className="table-wrap" style={{ marginBottom: 14 }}>
                         <table className="data-table">
                           <thead>
@@ -5124,7 +5453,7 @@ export default function App() {
                           </tbody>
                         </table>
                       </div>
-                      <h3 style={{ fontSize: 13, margin: "4px 0 6px 0" }}>Longest Team Win &amp; Unbeaten Streaks</h3>
+                      <h3 className="sub-heading">Longest Team Win &amp; Unbeaten Streaks</h3>
                       <div className="table-wrap">
                         <table className="data-table">
                           <thead>
@@ -5167,7 +5496,7 @@ export default function App() {
               );
             })()}
 
-            {recordsData && recordsSubTab === "milestones" && (() => {
+            {recordsData && !recordsError && recordsSubTab === "milestones" && (() => {
               const ms = recordsData.milestones || { active_season: "", items: [] };
               const cl = recordsData.clutch_leaders || {};
               return (
@@ -5357,7 +5686,7 @@ export default function App() {
               );
             })()}
 
-            {recordsData && recordsSubTab === "chemistry" && (() => {
+            {recordsData && !recordsError && recordsSubTab === "chemistry" && (() => {
               const chem = recordsData.chemistry || { top_duos: [], top_trios: [] };
               return (
                 <>
@@ -5403,7 +5732,7 @@ export default function App() {
 
                     <div className="records-grid-2col">
                       <div>
-                        <h3 style={{ margin: "4px 0 10px 0", fontSize: 15 }}>Top Scoring Duos (Goal + Assist)</h3>
+                        <h3 className="sub-heading">Top Scoring Duos (Goal + Assist)</h3>
                         <div className="table-wrap">
                           <table className="data-table">
                             <thead>
@@ -5442,7 +5771,7 @@ export default function App() {
                       </div>
 
                       <div>
-                        <h3 style={{ margin: "4px 0 10px 0", fontSize: 15 }}>Top Scoring Trios (Goal + A1 + A2)</h3>
+                        <h3 className="sub-heading">Top Scoring Trios (Goal + A1 + A2)</h3>
                         <div className="table-wrap">
                           <table className="data-table">
                             <thead>
@@ -5488,7 +5817,7 @@ export default function App() {
               );
             })()}
 
-            {recordsData && recordsSubTab === "onthisday" && (() => {
+            {recordsData && !recordsError && recordsSubTab === "onthisday" && (() => {
               const otd = recordsData.on_this_day || {};
               return (
                 <div className="card">
@@ -5518,7 +5847,7 @@ export default function App() {
 
                   {otd.highlights?.length > 0 && (
                     <div style={{ marginBottom: 16 }}>
-                      <h3 style={{ margin: "4px 0 8px 0", fontSize: 14 }}>Memorable Moments on {otd.resolved_mmdd}</h3>
+                      <h3 className="sub-heading">Memorable Moments on {otd.resolved_mmdd}</h3>
                       <div className="milestone-grid">
                         {otd.highlights.map((h, i) => (
                           <div key={i} className="milestone-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 8 }}>
@@ -5602,7 +5931,7 @@ export default function App() {
 
         {tab === "beanpot" && (
           <section className="card" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+            <div className="card-header">
               <div>
                 <h2 style={{ margin: 0 }}>The Beanpot — Northeastern Huskies Hub</h2>
                 <p className="muted" style={{ margin: "4px 0 0" }}>
@@ -5632,7 +5961,7 @@ export default function App() {
 
             {beanpotError ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10 }}>
-                <p className="muted" style={{ margin: 0 }}>
+                <p className="error-text" role="alert" style={{ margin: 0 }}>
                   Could not load Beanpot data: {beanpotError}
                 </p>
                 <button type="button" className="btn-ghost" onClick={fetchBeanpotData}>
@@ -5643,20 +5972,20 @@ export default function App() {
               <p className="muted">Loading Beanpot history and statistics...</p>
             ) : (
               <>
-                <div className="kpi-grid">
-                  <div className="kpi-card">
+                <div className="stat-grid">
+                  <div className="stat-box">
                     <div className="val">9</div>
                     <div className="lbl">All-Time Titles (5 since 2018)</div>
                   </div>
-                  <div className="kpi-card">
+                  <div className="stat-box">
                     <div className="val">{beanpotData.summary?.record || "—"}</div>
                     <div className="lbl">Record (2000–2026)</div>
                   </div>
-                  <div className="kpi-card">
+                  <div className="stat-box">
                     <div className="val">{beanpotData.summary?.finals_appearances ?? 0}</div>
                     <div className="lbl">Finals Since 2000 ({beanpotData.summary?.championships ?? 0} Won)</div>
                   </div>
-                  <div className="kpi-card">
+                  <div className="stat-box">
                     <div className="val">
                       {beanpotData.summary ? `${beanpotData.summary.goals_for}-${beanpotData.summary.goals_against}` : "—"}
                     </div>
@@ -5805,7 +6134,7 @@ export default function App() {
                   };
                   return (
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                      <div className="card-header">
                         <div className="segmented">
                           {[
                             ["all", `All Tournaments (${(beanpotData.tournaments || []).length})`],
@@ -5846,10 +6175,8 @@ export default function App() {
                                 <td>{renderGameCell(t.round2, t.round2_label)}</td>
                                 <td>
                                   <span
-                                    style={{
-                                      fontWeight: 700,
-                                      color: t.finish === "Champion" ? "#d41b2c" : undefined,
-                                    }}
+                                    className={t.finish === "Champion" ? "champion-text" : undefined}
+                                    style={t.finish === "Champion" ? undefined : { fontWeight: 700 }}
                                   >
                                     {t.finish === "Champion" ? "🏆 Champion" : t.finish}
                                   </span>
@@ -5904,7 +6231,9 @@ export default function App() {
                     return (
                       <th
                         key={key}
+                        scope="col"
                         className={`sortable ${active ? "sorted" : ""}`}
+                        aria-sort={active ? (beanpotSkaterSort.dir === "desc" ? "descending" : "ascending") : "none"}
                         onClick={() => toggleBpSkaterSort(key)}
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -5923,7 +6252,9 @@ export default function App() {
                     return (
                       <th
                         key={key}
+                        scope="col"
                         className={`sortable ${active ? "sorted" : ""}`}
+                        aria-sort={active ? (beanpotGoalieSort.dir === "desc" ? "descending" : "ascending") : "none"}
                         onClick={() => toggleBpGoalieSort(key)}
                         tabIndex={0}
                         onKeyDown={(e) => {
@@ -6123,10 +6454,10 @@ export default function App() {
         </div>
       </footer>
 
-      <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />
+      <LegalModal type={legalModal} onClose={closeLegalModal} />
       <BugReportModal
         open={bugModalOpen}
-        onClose={() => setBugModalOpen(false)}
+        onClose={closeBugModal}
         apiBase={API_BASE}
         pageContext={
           selectedPlayer
@@ -6138,7 +6469,7 @@ export default function App() {
                 : tab === "beanpot"
                   ? `Beanpot (${beanpotSubTab})`
                   : tab === "compare"
-                    ? `Compare (${comparePlayerA} vs ${comparePlayerB})`
+                    ? `Compare (${compareAName || "—"} vs ${compareBName || "—"})`
                     : tab === "roster"
                       ? `Roster • Season: ${selectedSeason || "latest"} • View: ${rosterView}`
                     : tab === "rivalry"
@@ -6156,17 +6487,17 @@ export default function App() {
           }}
         >
           <div
-            className="modal-card"
+            ref={boxscoreModalRef}
+            className="modal-card boxscore-modal-card"
             role="dialog"
             aria-modal="true"
             aria-labelledby="boxscore-modal-title"
-            style={{ maxWidth: 860, width: "95vw" }}
           >
             <div className="modal-header">
               <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                 <OpponentLogo
                   name={boxscoreData?.game?.opponent || boxscoreModal.opponent}
-                  size={28}
+                  large
                 />
                 <div style={{ minWidth: 0 }}>
                   <h2 id="boxscore-modal-title" style={{ margin: 0, fontSize: 18 }}>
@@ -6181,6 +6512,7 @@ export default function App() {
                 </div>
               </div>
               <button
+                ref={boxscoreCloseRef}
                 type="button"
                 className="chat-drawer-btn"
                 onClick={closeBoxScore}
@@ -6194,19 +6526,7 @@ export default function App() {
               {boxscoreError && <p className="error-text">{boxscoreError}</p>}
               {!boxscoreLoading && !boxscoreError && boxscoreData && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      padding: "10px 14px",
-                      borderRadius: 10,
-                      background: "rgba(255, 255, 255, 0.04)",
-                      border: "1px solid var(--border)",
-                    }}
-                  >
+                  <div className="boxscore-banner">
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <OutcomeBadge outcome={boxscoreData.game?.outcome} />
                       <strong style={{ fontSize: 18 }}>
@@ -6219,11 +6539,11 @@ export default function App() {
                         </span>
                       )}
                     </div>
-                    {boxscoreData.game?.boxscore_url && (
+                    {safeExternalUrl(boxscoreData.game?.boxscore_url) && (
                       <a
-                        href={boxscoreData.game.boxscore_url}
+                        href={safeExternalUrl(boxscoreData.game.boxscore_url)}
                         target="_blank"
-                        rel="noreferrer"
+                        rel="noopener noreferrer"
                         style={{ fontSize: 13 }}
                       >
                         Official Box Score ↗
@@ -6232,7 +6552,7 @@ export default function App() {
                   </div>
 
                   <div>
-                    <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Scoring Summary</h3>
+                    <h3 className="sub-heading">Scoring Summary</h3>
                     {boxscoreData.goals?.length ? (
                       <div className="table-wrap">
                         <table className="data-table">
@@ -6312,7 +6632,7 @@ export default function App() {
 
                   {boxscoreData.shootouts?.length > 0 && (
                     <div>
-                      <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Shootout</h3>
+                      <h3 className="sub-heading">Shootout</h3>
                       <div className="table-wrap">
                         <table className="data-table">
                           <thead>
@@ -6324,14 +6644,34 @@ export default function App() {
                             </tr>
                           </thead>
                           <tbody>
-                            {boxscoreData.shootouts.map((so, idx) => (
-                              <tr key={`so-${idx}`}>
-                                <td>{so.round}</td>
-                                <td>{so.shooter_team}</td>
-                                <td>{so.shooter_name || "-"}</td>
-                                <td>{so.result || "-"}</td>
-                              </tr>
-                            ))}
+                            {boxscoreData.shootouts.map((so, idx) => {
+                              const isNU = so.shooter_team === "Northeastern";
+                              const shooter = (so.shooter_name || "").trim();
+                              const canLink = isNU && shooter && !["team", "tm"].includes(shooter.toLowerCase());
+                              return (
+                                <tr key={`so-${idx}`}>
+                                  <td>{so.round}</td>
+                                  <td>{so.shooter_team}</td>
+                                  <td>
+                                    {canLink ? (
+                                      <button
+                                        type="button"
+                                        className="link-btn"
+                                        onClick={() => {
+                                          closeBoxScore();
+                                          openPlayer(shooter);
+                                        }}
+                                      >
+                                        {shooter}
+                                      </button>
+                                    ) : (
+                                      shooter || "-"
+                                    )}
+                                  </td>
+                                  <td>{so.result || "-"}</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -6340,7 +6680,7 @@ export default function App() {
 
                   {boxscoreData.skaters?.length > 0 && (
                     <div>
-                      <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Northeastern Skaters</h3>
+                      <h3 className="sub-heading">Northeastern Skaters</h3>
                       <div className="table-wrap">
                         <table className="data-table">
                           <thead>
@@ -6400,7 +6740,7 @@ export default function App() {
 
                   {boxscoreData.goalies?.length > 0 && (
                     <div>
-                      <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Northeastern Goalies</h3>
+                      <h3 className="sub-heading">Northeastern Goalies</h3>
                       <div className="table-wrap">
                         <table className="data-table">
                           <thead>
@@ -6443,7 +6783,7 @@ export default function App() {
 
                   {boxscoreData.penalties?.length > 0 && (
                     <div>
-                      <h3 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Penalties</h3>
+                      <h3 className="sub-heading">Penalties</h3>
                       <div className="table-wrap">
                         <table className="data-table">
                           <thead>
@@ -6457,16 +6797,36 @@ export default function App() {
                             </tr>
                           </thead>
                           <tbody>
-                            {boxscoreData.penalties.map((p, idx) => (
-                              <tr key={`pen-${idx}`}>
-                                <td>{p.period}</td>
-                                <td>{p.time}</td>
-                                <td>{p.team}</td>
-                                <td>{p.player_name || "-"}</td>
-                                <td>{p.infraction || "-"}</td>
-                                <td>{p.penalty_minutes}</td>
-                              </tr>
-                            ))}
+                            {boxscoreData.penalties.map((p, idx) => {
+                              const isNU = p.team === "Northeastern";
+                              const penPlayer = (p.player_name || "").trim();
+                              const canLink = isNU && penPlayer && !["team", "tm"].includes(penPlayer.toLowerCase());
+                              return (
+                                <tr key={`pen-${idx}`}>
+                                  <td>{p.period}</td>
+                                  <td>{p.time}</td>
+                                  <td>{p.team}</td>
+                                  <td>
+                                    {canLink ? (
+                                      <button
+                                        type="button"
+                                        className="link-btn"
+                                        onClick={() => {
+                                          closeBoxScore();
+                                          openPlayer(penPlayer);
+                                        }}
+                                      >
+                                        {penPlayer}
+                                      </button>
+                                    ) : (
+                                      penPlayer || "-"
+                                    )}
+                                  </td>
+                                  <td>{p.infraction || "-"}</td>
+                                  <td>{p.penalty_minutes}</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -6557,7 +6917,7 @@ export default function App() {
                   <div key={idx} className={`msg-row ${m.role}`}>
                     <div className={`msg ${m.role}`}>
                       {m.role === "assistant" ? (
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
                           {m.content}
                         </ReactMarkdown>
                       ) : (
@@ -6588,6 +6948,9 @@ export default function App() {
                         ))}
                       </div>
                     )}
+                    {m.role === "assistant" && m.cached && (
+                      <span className="msg-meta">Instant cached answer</span>
+                    )}
                   </div>
                 );
               })}
@@ -6617,6 +6980,7 @@ export default function App() {
                     ? `Ask Paws about ${selectedPlayer}...`
                     : "Ask Paws anything..."
                 }
+                maxLength={1000}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={chatLoading}

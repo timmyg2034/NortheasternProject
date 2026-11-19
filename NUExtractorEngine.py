@@ -2536,7 +2536,8 @@ async def run_pipeline():
             index = {}
 
     limits = httpx.Limits(max_keepalive_connections=25, max_connections=40)
-    async with httpx.AsyncClient(headers=HEADERS, limits=limits, follow_redirects=True, verify=False) as client:
+    verify_tls = os.getenv("NU_SCRAPER_INSECURE_TLS", "").strip().lower() not in ("1", "true", "yes")
+    async with httpx.AsyncClient(headers=HEADERS, limits=limits, follow_redirects=True, verify=verify_tls) as client:
         all_urls, schedule_locations = await gather_all_game_urls(client)
 
         cached_count = sum(1 for u in all_urls if (CACHE_DIR / url_to_filename(u)).exists())

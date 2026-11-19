@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import ipaddress
 import json
+import logging
 import os
 import re
 import secrets
@@ -20,6 +22,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None  # type: ignore[assignment]
+
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.concurrency import run_in_threadpool
@@ -31,6 +38,8 @@ from pydantic import BaseModel, Field
 
 from .engine import HockeyDatasets, ResponseCache, answer_question, build_llm, classify_api_error, load_datasets
 
+logger = logging.getLogger(__name__)
+
 DATA_DIR = Path(os.getenv("NU_DATA_DIR", Path(__file__).resolve().parent.parent))
 load_dotenv(DATA_DIR / ".env")
 RATE_LIMIT_MAX = int(os.getenv("CHAT_RATE_LIMIT_PER_MIN", "6"))
@@ -39,6 +48,25 @@ RATE_LIMIT_DAY_MAX = int(os.getenv("CHAT_RATE_LIMIT_PER_DAY", "180"))
 MAX_DAILY_LLM_CALLS = int(os.getenv("MAX_DAILY_LLM_CALLS", "1000"))
 BUG_REPORTS_PATH = DATA_DIR / "bug_reports.jsonl"
 _bug_report_lock = threading.Lock()
+_DEFAULT_SIGNING_SECRET = os.getenv("CHAT_TOKEN_SECRET") or secrets.token_hex(32)
+_RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
+_RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip().lower()
+_DEFAULT_ALLOWED_ORIGINS = [
+    "https://northeasternhockeystats.com",
+    "https://www.northeasternhockeystats.com",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+if _RENDER_EXTERNAL_URL.startswith(("https://", "http://")) and _RENDER_EXTERNAL_URL not in _DEFAULT_ALLOWED_ORIGINS:
+    _DEFAULT_ALLOWED_ORIGINS.append(_RENDER_EXTERNAL_URL)
+_ALLOWED_BUG_CATEGORIES = {
+    "Data / Stat Issue",
+    "Ask Paws AI",
+    "UI / Layout",
+    "Broken Link / Image",
+    "Content / Takedown Request",
+    "Other",
+}
 
 _BOT_UA_PATTERNS = (
     "curl/",
@@ -132,7 +160,7 @@ class ChatTokenManager:
     """Issues and verifies short-lived single-use HMAC-signed chat tokens."""
 
     def __init__(self, secret: str | None = None, ttl_seconds: int = 900, max_used: int = 8192) -> None:
-        self._secret = (secret or os.getenv("CHAT_TOKEN_SECRET") or secrets.token_hex(32)).encode("utf-8")
+        self._secret = (secret or os.getenv("CHAT_TOKEN_SECRET") or _DEFAULT_SIGNING_SECRET).encode("utf-8")
         self._ttl = ttl_seconds
         self._max_used = max_used
         self._used: dict[str, float] = {}
@@ -169,7 +197,10 @@ class ChatTokenManager:
                 for k in stale:
                     self._used.pop(k, None)
                 if len(self._used) > self._max_used:
-                    self._used.clear()
+                    evict_count = max(1, len(self._used) // 4)
+                    oldest = sorted(self._used.items(), key=lambda item: item[1])[:evict_count]
+                    for k, _ in oldest:
+                        self._used.pop(k, None)
             if nonce in self._used:
                 return False
             self._used[nonce] = float(exp)
@@ -190,7 +221,7 @@ class TurnstileSessionManager:
     """Issues and verifies short-lived IP-bound HMAC passes after Turnstile succeeds once."""
 
     def __init__(self, secret: str | None = None, ttl_seconds: int = 7200) -> None:
-        self._secret = (secret or os.getenv("CHAT_TOKEN_SECRET") or secrets.token_hex(32)).encode("utf-8")
+        self._secret = (secret or os.getenv("CHAT_TOKEN_SECRET") or _DEFAULT_SIGNING_SECRET).encode("utf-8")
         self._ttl = ttl_seconds
 
     @staticmethod
@@ -226,15 +257,104 @@ class TurnstileSessionManager:
         return hmac.compare_digest(sig, expected_sig)
 
 
+def _parse_valid_ip(raw: str | None) -> str | None:
+    candidate = (raw or "").strip()
+    if not candidate or len(candidate) > 64:
+        return None
+    try:
+        return str(ipaddress.ip_address(candidate))
+    except ValueError:
+        return None
+
+
+_CLOUDFLARE_IP_NETWORKS = tuple(
+    ipaddress.ip_network(cidr)
+    for cidr in (
+        "103.21.244.0/22",
+        "103.22.200.0/22",
+        "103.31.4.0/22",
+        "104.16.0.0/13",
+        "104.24.0.0/14",
+        "108.162.192.0/18",
+        "131.0.72.0/22",
+        "141.101.64.0/18",
+        "162.158.0.0/15",
+        "172.64.0.0/13",
+        "173.245.48.0/20",
+        "188.114.96.0/20",
+        "190.93.240.0/20",
+        "197.234.240.0/22",
+        "198.41.128.0/17",
+        "2400:cb00::/32",
+        "2606:4700::/32",
+        "2803:f800::/32",
+        "2405:b500::/32",
+        "2405:8100::/32",
+        "2a06:98c0::/29",
+        "2c0f:f248::/32",
+    )
+)
+
+
+def _is_cloudflare_ip(ip_str: str | None) -> bool:
+    parsed = _parse_valid_ip(ip_str)
+    if not parsed:
+        return False
+    ip_obj = ipaddress.ip_address(parsed)
+    return any(ip_obj.version == net.version and ip_obj in net for net in _CLOUDFLARE_IP_NETWORKS)
+
+
+def _is_trusted_proxy_peer(peer_ip: str | None) -> bool:
+    parsed = _parse_valid_ip(peer_ip)
+    if not parsed:
+        return False
+    ip_obj = ipaddress.ip_address(parsed)
+    return ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local
+
+
 def _get_client_ip(request: Request) -> str:
     """Extract client IP safely behind Cloudflare / Render reverse proxies."""
-    for header in ("cf-connecting-ip", "true-client-ip", "x-forwarded-for"):
-        val = request.headers.get(header)
-        if val:
-            first_ip = val.split(",")[0].strip()
-            if first_ip:
-                return first_ip[:64]
-    return (request.client.host if request.client else "unknown")[:64]
+    peer_host = request.client.host if request.client else ""
+    trust_proxy = (
+        _is_trusted_proxy_peer(peer_host)
+        or os.getenv("RENDER", "").strip().lower() == "true"
+        or os.getenv("TRUST_PROXY_HEADERS", "").strip().lower() in ("1", "true", "yes")
+    )
+    xff_client_ip: str | None = None
+    if trust_proxy:
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            parsed_ips = [_parse_valid_ip(part) for part in xff.split(",")]
+            valid_ips = [ip for ip in parsed_ips if ip]
+            for ip in reversed(valid_ips):
+                ip_obj = ipaddress.ip_address(ip)
+                if not (ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_link_local):
+                    xff_client_ip = ip
+                    break
+            if xff_client_ip is None and valid_ips:
+                xff_client_ip = valid_ips[-1]
+
+    trust_cf = bool(request.headers.get("cf-ray")) and (
+        _is_cloudflare_ip(peer_host)
+        or (trust_proxy and _is_cloudflare_ip(xff_client_ip))
+        or (
+            trust_proxy
+            and os.getenv("TRUST_CLOUDFLARE_HEADERS", "").strip().lower() in ("1", "true", "yes")
+        )
+    )
+    if trust_cf:
+        for header in ("cf-connecting-ip", "true-client-ip"):
+            ip_val = _parse_valid_ip(request.headers.get(header))
+            if ip_val:
+                return ip_val
+
+    if xff_client_ip:
+        return xff_client_ip
+
+    validated_peer = _parse_valid_ip(peer_host)
+    if validated_peer:
+        return validated_peer
+    return (peer_host or "unknown")[:64]
 
 
 def _verify_browser_request(request: Request) -> None:
@@ -247,21 +367,42 @@ def _verify_browser_request(request: Request) -> None:
         )
 
     origin = (request.headers.get("origin") or "").strip()
+    if not origin:
+        return
+    if origin.lower() == "null":
+        raise HTTPException(
+            status_code=403,
+            detail="Cross-origin requests are not permitted.",
+        )
+
+    parsed = urllib.parse.urlparse(origin)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(
+            status_code=403,
+            detail="Cross-origin requests are not permitted.",
+        )
+    origin_host = parsed.netloc.lower()
+    origin_hostname = (parsed.hostname or "").lower()
     host = (request.headers.get("host") or "").strip().lower()
-    if origin and origin != "null":
-        parsed = urllib.parse.urlparse(origin)
-        origin_host = parsed.netloc.lower()
-        if host and origin_host != host and not origin_host.endswith("northeasternhockeystats.com"):
-            if allow_origins != ["*"] and origin not in allow_origins:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Cross-origin requests are not permitted.",
-                )
+    is_allowed = (
+        (host and origin_host == host)
+        or origin_hostname == "northeasternhockeystats.com"
+        or origin_hostname.endswith(".northeasternhockeystats.com")
+        or (_RENDER_EXTERNAL_HOSTNAME and origin_hostname == _RENDER_EXTERNAL_HOSTNAME)
+        or origin_hostname in ("localhost", "127.0.0.1")
+        or allow_origins == ["*"]
+        or origin in allow_origins
+    )
+    if not is_allowed:
+        raise HTTPException(
+            status_code=403,
+            detail="Cross-origin requests are not permitted.",
+        )
 
 
 class ChatMessage(BaseModel):
     role: str = Field(..., pattern="^(user|assistant)$")
-    content: str = Field(..., min_length=1, max_length=4000)
+    content: str = Field(..., min_length=1, max_length=12000)
     sig: str | None = Field(default=None, max_length=64)
 
 
@@ -280,15 +421,19 @@ class ChatResponse(BaseModel):
 
 class _AppState:
     datasets: HockeyDatasets | None = None
+    dataset_version: str = ""
     llm: Any = None
     cache: ResponseCache = ResponseCache(ttl_seconds=None, max_entries=2000)
     limiter: RateLimiter = RateLimiter(max_requests=20, window_seconds=60)
     chat_min_limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_MAX, window_seconds=60)
     chat_hour_limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_HOUR_MAX, window_seconds=3600)
     chat_day_limiter: RateLimiter = RateLimiter(max_requests=RATE_LIMIT_DAY_MAX, window_seconds=86400)
+    bug_min_limiter: RateLimiter = RateLimiter(max_requests=5, window_seconds=60)
+    bug_hour_limiter: RateLimiter = RateLimiter(max_requests=20, window_seconds=3600)
+    image_proxy_limiter: RateLimiter = RateLimiter(max_requests=120, window_seconds=60)
     daily_budget: DailyBudgetTracker = DailyBudgetTracker(max_daily_calls=MAX_DAILY_LLM_CALLS)
-    token_manager: ChatTokenManager = ChatTokenManager()
-    turnstile_sessions: TurnstileSessionManager = TurnstileSessionManager()
+    token_manager: ChatTokenManager = ChatTokenManager(secret=_DEFAULT_SIGNING_SECRET)
+    turnstile_sessions: TurnstileSessionManager = TurnstileSessionManager(secret=_DEFAULT_SIGNING_SECRET)
 
 
 state = _AppState()
@@ -304,8 +449,12 @@ def _compute_dataset_version(data_dir: Path) -> str:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    global _PLAYERS_CACHE
     state.datasets = load_datasets(DATA_DIR)
-    state.cache.sync_version(_compute_dataset_version(DATA_DIR))
+    ds_version = _compute_dataset_version(DATA_DIR)
+    state.dataset_version = ds_version
+    state.cache.sync_version(ds_version)
+    _PLAYERS_CACHE = None
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     has_any_llm = bool(
         api_key
@@ -327,15 +476,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-raw_origins = os.getenv("FRONTEND_ORIGINS", "*")
-allow_origins = [o.strip() for o in raw_origins.split(",") if o.strip()] or ["*"]
+raw_origins = os.getenv("FRONTEND_ORIGINS", "").strip()
+allow_origins = (
+    [o.strip() for o in raw_origins.split(",") if o.strip()] or list(_DEFAULT_ALLOWED_ORIGINS)
+    if raw_origins
+    else list(_DEFAULT_ALLOWED_ORIGINS)
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
     allow_credentials=False,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["*"],
+    allow_headers=["Content-Type", "X-Chat-Token", "X-Turnstile-Token", "X-Turnstile-Pass"],
 )
 
 
@@ -349,16 +502,20 @@ async def add_security_headers(request: Request, call_next):
         "Permissions-Policy",
         "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
     )
+    forwarded_proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip().lower()
+    if request.url.scheme == "https" or forwarded_proto == "https":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     response.headers.setdefault(
         "Content-Security-Policy",
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com; "
+        "script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com https://static.cloudflareinsights.com; "
         "worker-src 'self' blob: https://challenges.cloudflare.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com data:; "
         "img-src 'self' https: data: blob:; "
         "frame-src https://challenges.cloudflare.com; "
         "connect-src 'self' data: https://challenges.cloudflare.com https://cloudflareinsights.com; "
+        "object-src 'none'; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
         "form-action 'self'",
@@ -450,7 +607,7 @@ def get_seasons() -> dict[str, Any]:
 
 
 @app.get("/api/roster")
-def get_roster(season: str | None = Query(default=None)) -> dict[str, Any]:
+def get_roster(season: str | None = Query(default=None, max_length=20)) -> dict[str, Any]:
     ds = _require_datasets()
     target_season = season or (ds.available_seasons[0] if ds.available_seasons else "")
     df = ds.rosters[ds.rosters["season"] == target_season].copy()
@@ -484,6 +641,46 @@ def _parse_minutes_to_float(val: Any) -> float:
         return float(text)
     except ValueError:
         return 0.0
+
+
+def _format_minutes(total_minutes: float) -> str:
+    tot_secs = int(round(max(0.0, float(total_minutes)) * 60))
+    return f"{tot_secs // 60}:{tot_secs % 60:02d}"
+
+
+def _build_roster_lookup_maps(rosters_df: pd.DataFrame, target_season: str) -> tuple[dict[str, str], dict[str, str]]:
+    """Build player_name -> jersey_number and player_name -> image_url maps, preferring target_season."""
+    if rosters_df.empty:
+        return {}, {}
+    ordered = rosters_df.sort_values("season", ascending=False)
+    jersey_map: dict[str, str] = {}
+    image_map: dict[str, str] = {}
+
+    for row in ordered.itertuples():
+        name = str(getattr(row, "player_name", "") or "").strip()
+        if not name:
+            continue
+        jnum = str(getattr(row, "jersey_number", "") or "").strip()
+        img = str(getattr(row, "image_url", "") or "").strip()
+        if jnum and name not in jersey_map:
+            jersey_map[name] = jnum
+        if img and name not in image_map:
+            image_map[name] = img
+
+    if target_season and target_season != "all":
+        season_rows = ordered[ordered["season"] == target_season]
+        for row in season_rows.itertuples():
+            name = str(getattr(row, "player_name", "") or "").strip()
+            if not name:
+                continue
+            jnum = str(getattr(row, "jersey_number", "") or "").strip()
+            img = str(getattr(row, "image_url", "") or "").strip()
+            if jnum:
+                jersey_map[name] = jnum
+            if img:
+                image_map[name] = img
+
+    return jersey_map, image_map
 
 
 def _filter_games_by_criteria(
@@ -578,8 +775,8 @@ def _build_team_stats(
     goal_diff = goals_for - goals_against
     gf_per_game = round(goals_for / gp, 2) if gp else 0.0
     ga_per_game = round(goals_against / gp, 2) if gp else 0.0
-    shutouts_for = int(((games_df["is_shutout"] == 1) & (games_df["shutout_team"] == "Northeastern")).sum()) if gp else 0
-    shutouts_against = int(((games_df["is_shutout"] == 1) & (games_df["shutout_team"] != "Northeastern")).sum()) if gp else 0
+    shutouts_for = int(((games_df["is_shutout"] == 1) & (games_df["shutout_team"].isin(["Northeastern", "Both (0-0 Tie)"]))).sum()) if gp else 0
+    shutouts_against = int(((games_df["is_shutout"] == 1) & (~games_df["shutout_team"].isin(["Northeastern", "None", ""]))).sum()) if gp else 0
 
     pp_goals = int(games_df["nu_pp_goals"].sum()) if (gp and "nu_pp_goals" in games_df.columns) else 0
     pp_opps = int(games_df["nu_pp_opps"].sum()) if (gp and "nu_pp_opps" in games_df.columns) else 0
@@ -723,7 +920,10 @@ def _build_team_stats(
             scoring_first_record = _wlt(games_df[mask_sf])
 
         for per_name in ["1st", "2nd", "3rd", "OT"]:
-            per_sub = goals_ev[goals_ev["period"] == per_name]
+            if per_name == "OT":
+                per_sub = goals_ev[goals_ev["period"].isin(["OT", "1OT", "2OT", "3OT"])]
+            else:
+                per_sub = goals_ev[goals_ev["period"] == per_name]
             if not per_sub.empty or per_name in ("1st", "2nd", "3rd"):
                 goals_by_period.append({
                     "period": per_name,
@@ -826,10 +1026,10 @@ def _build_team_stats(
 
 @app.get("/api/leaders")
 def get_leaders(
-    season: str | None = Query(default=None),
+    season: str | None = Query(default=None, max_length=20),
     scope: str = Query(default="all", pattern="^(all|conference|beanpot|postseason|ncaa)$"),
     location: str = Query(default="all", pattern="^(all|Home|Away|Neutral|home|away|neutral)$"),
-    opponent: str | None = Query(default=None),
+    opponent: str | None = Query(default=None, max_length=100),
     limit: int = Query(default=35, ge=1, le=100),
 ) -> dict[str, Any]:
     ds = _require_datasets()
@@ -845,6 +1045,8 @@ def get_leaders(
     if not season_rows.empty:
         urls = [u for u in season_rows["stats_url"].unique() if u]
         stats_url = urls[0] if urls else ""
+
+    jersey_map, image_map = _build_roster_lookup_maps(ds.rosters, target_season)
 
     use_game_logs = (
         target_opponent is not None
@@ -863,15 +1065,6 @@ def get_leaders(
             sk_df = sk_df[[(str(d), str(o)) in valid_keys for d, o in zip(sk_df["date"], sk_df["opponent"])]]
         else:
             sk_df = sk_df.iloc[0:0]
-
-        roster_df = ds.rosters if target_season == "all" else ds.rosters[ds.rosters["season"] == target_season]
-        jersey_map = (
-            roster_df.drop_duplicates("player_name")
-            .set_index("player_name")["jersey_number"]
-            .to_dict()
-            if not roster_df.empty
-            else {}
-        )
 
         # Count PPG, SHG, OTG from goal_events for these filtered games
         g_ev = ds.goals if target_season == "all" else ds.goals[ds.goals["season"] == target_season]
@@ -925,7 +1118,8 @@ def get_leaders(
                 else 0.0,
                 axis=1,
             )
-            grouped["jersey_number"] = grouped["player_name"].map(lambda n: jersey_map.get(n, ""))
+            grouped["jersey_number"] = grouped["player_name"].map(lambda n: jersey_map.get(str(n), ""))
+            grouped["image_url"] = grouped["player_name"].map(lambda n: image_map.get(str(n), ""))
             skaters_list = _records(grouped)
 
         gl_df = ds.goalies if target_season == "all" else ds.goalies[ds.goalies["season"] == target_season]
@@ -955,8 +1149,9 @@ def get_leaders(
                 )
             )
             g_grouped["player_name"] = g_grouped["goalie_name"]
-            g_grouped["jersey_number"] = g_grouped["player_name"].map(lambda n: jersey_map.get(n, ""))
-            g_grouped["goalie_minutes"] = g_grouped["_mins"].apply(lambda m: f"{int(m)}:{int(round((m % 1) * 60)):02d}")
+            g_grouped["jersey_number"] = g_grouped["player_name"].map(lambda n: jersey_map.get(str(n), ""))
+            g_grouped["image_url"] = g_grouped["player_name"].map(lambda n: image_map.get(str(n), ""))
+            g_grouped["goalie_minutes"] = g_grouped["_mins"].apply(_format_minutes)
             g_grouped["gaa"] = g_grouped.apply(
                 lambda r: round((r["ga"] * 60.0) / r["_mins"], 2) if r["_mins"] > 0 else 0.0, axis=1
             )
@@ -986,68 +1181,95 @@ def get_leaders(
     mpg_map = extras["mpg_map"]
     fow_map = extras["fow_map"]
     fol_map = extras["fol_map"]
-    df = season_rows.copy()
+    df = season_rows.sort_values("season").copy() if not season_rows.empty else season_rows.copy()
+    prefix = "conf_" if scope == "conference" else ""
     if target_season == "all" and not df.empty:
         # Aggregate career/all-time stats across seasons
+        sk_gp_col = f"{prefix}gp"
         sk_agg = (
-            df[(df["gp"] > 0) & (df["position"] != "G")]
+            df[(df[sk_gp_col] > 0) & (df["position"] != "G")]
             .groupby("player_name", as_index=False)
             .agg(
                 jersey_number=("jersey_number", "last"),
                 captain_role=("captain_role", "last"),
                 position=("position", "last"),
-                gp=("conf_gp" if scope == "conference" else "gp", "sum"),
-                goals=("conf_goals" if scope == "conference" else "goals", "sum"),
-                assists=("conf_assists" if scope == "conference" else "assists", "sum"),
-                points=("conf_points" if scope == "conference" else "points", "sum"),
-                shots=("conf_shots" if scope == "conference" else "shots", "sum"),
-                plus_minus=("conf_plus_minus" if scope == "conference" else "plus_minus", "sum"),
-                ppg=("conf_ppg" if scope == "conference" else "ppg", "sum"),
-                shg=("conf_shg" if scope == "conference" else "shg", "sum"),
-                gwg=("conf_gwg" if scope == "conference" else "gwg", "sum"),
-                otg=("conf_otg" if scope == "conference" else "otg", "sum"),
-                pim=("conf_pim" if scope == "conference" else "pim", "sum"),
-                blocked_shots=("conf_blocked_shots" if scope == "conference" else "blocked_shots", "sum"),
+                gp=(sk_gp_col, "sum"),
+                goals=(f"{prefix}goals", "sum"),
+                assists=(f"{prefix}assists", "sum"),
+                points=(f"{prefix}points", "sum"),
+                shots=(f"{prefix}shots", "sum"),
+                plus_minus=(f"{prefix}plus_minus", "sum"),
+                ppg=(f"{prefix}ppg", "sum"),
+                shg=(f"{prefix}shg", "sum"),
+                gwg=(f"{prefix}gwg", "sum"),
+                otg=(f"{prefix}otg", "sum"),
+                pim=(f"{prefix}pim", "sum"),
+                blocked_shots=(f"{prefix}blocked_shots", "sum"),
             )
         )
-        sk_agg["shot_pct"] = sk_agg.apply(
-            lambda r: round((r["goals"] / r["shots"]) * 100.0, 1) if r["shots"] > 0 else 0.0, axis=1
-        )
-        sk_agg["multi_goal_games"] = sk_agg["player_name"].map(lambda n: mgg_map.get(str(n), 0))
-        sk_agg["hat_tricks"] = sk_agg["player_name"].map(lambda n: htg_map.get(str(n), 0))
-        sk_agg["multi_point_games"] = sk_agg["player_name"].map(lambda n: mpg_map.get(str(n), 0))
-        sk_agg["faceoffs_won"] = sk_agg["player_name"].map(lambda n: fow_map.get(str(n), 0))
-        sk_agg["faceoffs_lost"] = sk_agg["player_name"].map(lambda n: fol_map.get(str(n), 0))
-        sk_agg["faceoff_pct"] = sk_agg.apply(
-            lambda r: round((r["faceoffs_won"] / (r["faceoffs_won"] + r["faceoffs_lost"])) * 100.0, 1)
-            if (r["faceoffs_won"] + r["faceoffs_lost"]) > 0
-            else 0.0,
-            axis=1,
-        )
-        skaters = sk_agg[sk_agg["gp"] > 0].sort_values(
-            ["points", "goals", "gp"], ascending=[False, False, True]
-        ).head(limit)
+        if not sk_agg.empty:
+            sk_agg["jersey_number"] = sk_agg.apply(
+                lambda r: r["jersey_number"] or jersey_map.get(str(r["player_name"]), ""), axis=1
+            )
+            sk_agg["image_url"] = sk_agg["player_name"].map(lambda n: image_map.get(str(n), ""))
+            sk_agg["shot_pct"] = sk_agg.apply(
+                lambda r: round((r["goals"] / r["shots"]) * 100.0, 1) if r["shots"] > 0 else 0.0, axis=1
+            )
+            sk_agg["multi_goal_games"] = sk_agg["player_name"].map(lambda n: mgg_map.get(str(n), 0))
+            sk_agg["hat_tricks"] = sk_agg["player_name"].map(lambda n: htg_map.get(str(n), 0))
+            sk_agg["multi_point_games"] = sk_agg["player_name"].map(lambda n: mpg_map.get(str(n), 0))
+            sk_agg["faceoffs_won"] = sk_agg["player_name"].map(lambda n: fow_map.get(str(n), 0))
+            sk_agg["faceoffs_lost"] = sk_agg["player_name"].map(lambda n: fol_map.get(str(n), 0))
+            sk_agg["faceoff_pct"] = sk_agg.apply(
+                lambda r: round((r["faceoffs_won"] / (r["faceoffs_won"] + r["faceoffs_lost"])) * 100.0, 1)
+                if (r["faceoffs_won"] + r["faceoffs_lost"]) > 0
+                else 0.0,
+                axis=1,
+            )
+            skaters = sk_agg[sk_agg["gp"] > 0].sort_values(
+                ["points", "goals", "gp"], ascending=[False, False, True]
+            ).head(limit)
+            skaters_all_list = _records(skaters)
+        else:
+            skaters_all_list = []
 
-        gl_agg = (
-            df[df["goalie_gp"] > 0]
-            .groupby("player_name", as_index=False)
-            .agg(
-                jersey_number=("jersey_number", "last"),
-                goalie_gp=("conf_goalie_gp" if scope == "conference" else "goalie_gp", "sum"),
-                goalie_gs=("conf_goalie_gs" if scope == "conference" else "goalie_gs", "sum"),
-                wins=("conf_wins" if scope == "conference" else "wins", "sum"),
-                losses=("conf_losses" if scope == "conference" else "losses", "sum"),
-                ties=("conf_ties" if scope == "conference" else "ties", "sum"),
-                ga=("conf_ga" if scope == "conference" else "ga", "sum"),
-                saves=("conf_saves" if scope == "conference" else "saves", "sum"),
-                shutouts=("conf_shutouts" if scope == "conference" else "shutouts", "sum"),
-                gaa=("conf_gaa" if scope == "conference" else "gaa", "mean"),
-                save_pct=("conf_save_pct" if scope == "conference" else "save_pct", "mean"),
+        gl_gp_col = f"{prefix}goalie_gp"
+        gl_src = df[df[gl_gp_col] > 0].copy()
+        goalies_all_list: list[dict[str, Any]] = []
+        if not gl_src.empty:
+            gl_src["_mins"] = gl_src[f"{prefix}goalie_minutes"].apply(_parse_minutes_to_float)
+            gl_agg = (
+                gl_src.groupby("player_name", as_index=False)
+                .agg(
+                    jersey_number=("jersey_number", "last"),
+                    goalie_gp=(gl_gp_col, "sum"),
+                    goalie_gs=(f"{prefix}goalie_gs", "sum"),
+                    wins=(f"{prefix}wins", "sum"),
+                    losses=(f"{prefix}losses", "sum"),
+                    ties=(f"{prefix}ties", "sum"),
+                    ga=(f"{prefix}ga", "sum"),
+                    saves=(f"{prefix}saves", "sum"),
+                    shutouts=(f"{prefix}shutouts", "sum"),
+                    _mins=("_mins", "sum"),
+                )
             )
-        )
-        goalies = gl_agg[gl_agg["goalie_gp"] > 0].sort_values(
-            ["goalie_gp", "save_pct"], ascending=[False, False]
-        ).head(limit)
+            gl_agg["jersey_number"] = gl_agg.apply(
+                lambda r: r["jersey_number"] or jersey_map.get(str(r["player_name"]), ""), axis=1
+            )
+            gl_agg["image_url"] = gl_agg["player_name"].map(lambda n: image_map.get(str(n), ""))
+            gl_agg["goalie_minutes"] = gl_agg["_mins"].apply(_format_minutes)
+            gl_agg["gaa"] = gl_agg.apply(
+                lambda r: round((r["ga"] * 60.0) / r["_mins"], 2) if r["_mins"] > 0 else 0.0, axis=1
+            )
+            gl_agg["save_pct"] = gl_agg.apply(
+                lambda r: round(r["saves"] / (r["saves"] + r["ga"]), 3) if (r["saves"] + r["ga"]) > 0 else 0.0,
+                axis=1,
+            )
+            gl_agg = gl_agg.drop(columns=["_mins"]).sort_values(
+                ["goalie_gp", "save_pct"], ascending=[False, False]
+            ).head(limit)
+            goalies_all_list = _records(gl_agg)
+
         return {
             "season": target_season,
             "scope": scope,
@@ -1056,11 +1278,10 @@ def get_leaders(
             "opponents": season_opponents,
             "stats_url": "",
             "team_stats": _build_team_stats(ds, target_season, scope, None, norm_loc),
-            "skaters": _records(skaters),
-            "goalies": _records(goalies),
+            "skaters": skaters_all_list,
+            "goalies": goalies_all_list,
         }
 
-    prefix = "conf_" if scope == "conference" else ""
     sk_gp_col = f"{prefix}gp"
     skaters_src = df[(df[sk_gp_col] > 0) & (df["position"] != "G")].sort_values(
         [f"{prefix}points", f"{prefix}goals", sk_gp_col], ascending=[False, False, True]
@@ -1073,9 +1294,14 @@ def get_leaders(
         round((w / t) * 100.0, 1) if t > 0 else 0.0
         for w, t in zip(sk_fow, sk_fo_tot)
     ]
+    sk_shot_pct = [
+        round((g / s) * 100.0, 1) if s > 0 else 0.0
+        for g, s in zip(skaters_src[f"{prefix}goals"], skaters_src[f"{prefix}shots"])
+    ]
     skaters_norm = pd.DataFrame({
         "jersey_number": skaters_src["jersey_number"],
         "player_name": skaters_src["player_name"],
+        "image_url": skaters_src["player_name"].map(lambda n: image_map.get(str(n), "")),
         "captain_role": skaters_src["captain_role"],
         "position": skaters_src["position"],
         "class_year": skaters_src["class_year"],
@@ -1084,7 +1310,7 @@ def get_leaders(
         "assists": skaters_src[f"{prefix}assists"],
         "points": skaters_src[f"{prefix}points"],
         "shots": skaters_src[f"{prefix}shots"],
-        "shot_pct": skaters_src[f"{prefix}shot_pct"],
+        "shot_pct": sk_shot_pct,
         "plus_minus": skaters_src[f"{prefix}plus_minus"],
         "ppg": skaters_src[f"{prefix}ppg"],
         "shg": skaters_src[f"{prefix}shg"],
@@ -1108,6 +1334,7 @@ def get_leaders(
     goalies_norm = pd.DataFrame({
         "jersey_number": goalies_src["jersey_number"],
         "player_name": goalies_src["player_name"],
+        "image_url": goalies_src["player_name"].map(lambda n: image_map.get(str(n), "")),
         "captain_role": goalies_src["captain_role"],
         "goalie_gp": goalies_src[f"{prefix}goalie_gp"],
         "goalie_gs": goalies_src[f"{prefix}goalie_gs"],
@@ -1137,16 +1364,16 @@ def get_leaders(
 
 @app.get("/api/games")
 def get_games(
-    season: str | None = Query(default=None),
-    opponent: str | None = Query(default=None),
-    limit: int = Query(default=60, ge=1, le=300),
+    season: str | None = Query(default=None, max_length=20),
+    opponent: str | None = Query(default=None, max_length=100),
+    limit: int = Query(default=60, ge=1, le=1500),
 ) -> dict[str, Any]:
     ds = _require_datasets()
     df = ds.games.copy()
     if season:
         df = df[df["season"] == season]
     if opponent:
-        df = df[df["opponent"].str.contains(opponent, case=False, na=False)]
+        df = df[df["opponent"].str.contains(opponent, case=False, na=False, regex=False)]
     df = df.sort_values("date", ascending=False).head(limit)
     return {
         "count": int(len(df)),
@@ -1156,13 +1383,13 @@ def get_games(
 
 @app.get("/api/rivalry")
 def get_rivalry(
-    opponent: str = Query(..., min_length=2),
-    season: str | None = Query(default=None),
+    opponent: str = Query(..., min_length=2, max_length=100),
+    season: str | None = Query(default=None, max_length=20),
 ) -> dict[str, Any]:
     ds = _require_datasets()
     df = ds.games[ds.games["opponent"].str.lower() == opponent.strip().lower()].copy()
     if df.empty:
-        df = ds.games[ds.games["opponent"].str.contains(opponent.strip(), case=False, na=False)].copy()
+        df = ds.games[ds.games["opponent"].str.contains(opponent.strip(), case=False, na=False, regex=False)].copy()
 
     matched_opponent = str(df["opponent"].iloc[0]) if not df.empty else opponent.strip()
     active_season = season.strip() if season and season.strip().lower() != "all" else None
@@ -1277,29 +1504,48 @@ def list_players() -> dict[str, Any]:
 
 
 @app.get("/api/player")
-def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
+def get_player(name: str = Query(..., min_length=2, max_length=100)) -> dict[str, Any]:
     ds = _require_datasets()
     target = name.strip()
+    target_low = target.lower()
 
-    roster_df = ds.rosters[ds.rosters["player_name"].str.lower() == target.lower()].copy()
-    if roster_df.empty:
-        roster_df = ds.rosters[ds.rosters["player_name"].str.contains(target, case=False, na=False, regex=False)].copy()
+    def _find_canonical_name() -> str | None:
+        sources = (
+            (ds.rosters, "player_name"),
+            (ds.season_stats, "player_name"),
+            (ds.skaters, "player_name"),
+            (ds.goalies, "goalie_name"),
+        )
+        for src_df, col in sources:
+            if not src_df.empty and col in src_df.columns:
+                exact = src_df[src_df[col].astype(str).str.strip().str.lower() == target_low]
+                if not exact.empty:
+                    return str(exact[col].iloc[0]).strip()
+        candidates: list[str] = []
+        seen_low: set[str] = set()
+        for src_df, col in sources:
+            if not src_df.empty and col in src_df.columns:
+                matches = src_df[src_df[col].astype(str).str.contains(target, case=False, na=False, regex=False)]
+                for val in matches[col].dropna():
+                    s = str(val).strip()
+                    sl = s.lower()
+                    if s and sl not in seen_low:
+                        seen_low.add(sl)
+                        candidates.append(s)
+        if not candidates:
+            return None
+        candidates.sort(key=lambda s: (0 if s.lower().startswith(target_low) else 1, s.lower()))
+        return candidates[0]
 
-    stats_df = ds.season_stats[ds.season_stats["player_name"].str.lower() == target.lower()].copy()
-    if stats_df.empty:
-        stats_df = ds.season_stats[ds.season_stats["player_name"].str.contains(target, case=False, na=False, regex=False)].copy()
-
-    sk_logs = ds.skaters[ds.skaters["player_name"].str.lower() == target.lower()].copy()
-    gl_logs = ds.goalies[ds.goalies["goalie_name"].str.lower() == target.lower()].copy()
-
-    if roster_df.empty and stats_df.empty and sk_logs.empty and gl_logs.empty:
+    canonical_name = _find_canonical_name()
+    if not canonical_name:
         raise HTTPException(status_code=404, detail=f"Player '{target}' not found.")
 
-    canonical_name = (
-        str(roster_df["player_name"].iloc[0])
-        if not roster_df.empty
-        else (str(stats_df["player_name"].iloc[0]) if not stats_df.empty else target)
-    )
+    canon_low = canonical_name.lower()
+    roster_df = ds.rosters[ds.rosters["player_name"].astype(str).str.strip().str.lower() == canon_low].copy()
+    stats_df = ds.season_stats[ds.season_stats["player_name"].astype(str).str.strip().str.lower() == canon_low].copy()
+    sk_logs = ds.skaters[ds.skaters["player_name"].astype(str).str.strip().str.lower() == canon_low].copy()
+    gl_logs = ds.goalies[ds.goalies["goalie_name"].astype(str).str.strip().str.lower() == canon_low].copy()
 
     if not roster_df.empty:
         roster_df = roster_df.sort_values("season", ascending=False)
@@ -1395,41 +1641,63 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
     season_rows = _records(stats_df) if not stats_df.empty else []
 
     # Enrich season rows with faceoff, multi-goal, and multi-point totals aggregated from game-by-game skater logs
-    if season_rows and not sk_logs.empty:
-        sk_enriched = sk_logs.assign(
-            _mgg=(sk_logs["goals"] >= 2).astype(int),
-            _htg=(sk_logs["goals"] >= 3).astype(int),
-            _mpg=(sk_logs["points"] >= 2).astype(int),
-        )
-        fo_all = (
-            sk_enriched.groupby("season", as_index=False)[["faceoffs_won", "faceoffs_lost", "_mgg", "_htg", "_mpg"]]
-            .sum()
-            .set_index("season")
-            .to_dict(orient="index")
-        )
-        sk_conf = sk_enriched[sk_enriched["opponent"].isin(HOCKEY_EAST_TEAMS)]
-        fo_conf = (
-            sk_conf.groupby("season", as_index=False)[["faceoffs_won", "faceoffs_lost", "_mgg", "_htg", "_mpg"]]
-            .sum()
-            .set_index("season")
-            .to_dict(orient="index")
-            if not sk_conf.empty
-            else {}
-        )
+    if season_rows:
+        fo_all: dict[Any, Any] = {}
+        fo_conf: dict[Any, Any] = {}
+        if not sk_logs.empty:
+            sk_enriched = sk_logs.assign(
+                _mgg=(sk_logs["goals"] >= 2).astype(int),
+                _htg=(sk_logs["goals"] >= 3).astype(int),
+                _mpg=(sk_logs["points"] >= 2).astype(int),
+            )
+            fo_all = (
+                sk_enriched.groupby("season", as_index=False)[["faceoffs_won", "faceoffs_lost", "_mgg", "_htg", "_mpg"]]
+                .sum()
+                .set_index("season")
+                .to_dict(orient="index")
+            )
+            conf_games = _filter_games_by_criteria(ds.games, "all", "conference", None, "all")
+            conf_keys = set(zip(conf_games["date"].astype(str), conf_games["opponent"].astype(str)))
+            if conf_keys:
+                conf_mask = [(str(d), str(o)) in conf_keys for d, o in zip(sk_enriched["date"], sk_enriched["opponent"])]
+                sk_conf = sk_enriched[conf_mask]
+            else:
+                sk_conf = sk_enriched.iloc[0:0]
+            fo_conf = (
+                sk_conf.groupby("season", as_index=False)[["faceoffs_won", "faceoffs_lost", "_mgg", "_htg", "_mpg"]]
+                .sum()
+                .set_index("season")
+                .to_dict(orient="index")
+                if not sk_conf.empty
+                else {}
+            )
+
         for row in season_rows:
             sea = row.get("season", "")
             all_vals = fo_all.get(sea, {})
             conf_vals = fo_conf.get(sea, {})
-            row["faceoffs_won"] = int(all_vals.get("faceoffs_won", 0))
-            row["faceoffs_lost"] = int(all_vals.get("faceoffs_lost", 0))
+            fow = int(all_vals.get("faceoffs_won", 0))
+            fol = int(all_vals.get("faceoffs_lost", 0))
+            cfow = int(conf_vals.get("faceoffs_won", 0))
+            cfol = int(conf_vals.get("faceoffs_lost", 0))
+            row["faceoffs_won"] = fow
+            row["faceoffs_lost"] = fol
+            row["faceoff_pct"] = round((fow / (fow + fol)) * 100.0, 1) if (fow + fol) > 0 else None
             row["multi_goal_games"] = int(all_vals.get("_mgg", 0))
             row["hat_tricks"] = int(all_vals.get("_htg", 0))
             row["multi_point_games"] = int(all_vals.get("_mpg", 0))
-            row["conf_faceoffs_won"] = int(conf_vals.get("faceoffs_won", 0))
-            row["conf_faceoffs_lost"] = int(conf_vals.get("faceoffs_lost", 0))
+            row["conf_faceoffs_won"] = cfow
+            row["conf_faceoffs_lost"] = cfol
+            row["conf_faceoff_pct"] = round((cfow / (cfow + cfol)) * 100.0, 1) if (cfow + cfol) > 0 else None
             row["conf_multi_goal_games"] = int(conf_vals.get("_mgg", 0))
             row["conf_hat_tricks"] = int(conf_vals.get("_htg", 0))
             row["conf_multi_point_games"] = int(conf_vals.get("_mpg", 0))
+            r_goals = int(row.get("goals", 0) or 0)
+            r_shots = int(row.get("shots", 0) or 0)
+            rc_goals = int(row.get("conf_goals", 0) or 0)
+            rc_shots = int(row.get("conf_shots", 0) or 0)
+            row["shooting_pct"] = round((r_goals / r_shots) * 100.0, 1) if r_shots > 0 else 0.0
+            row["conf_shooting_pct"] = round((rc_goals / rc_shots) * 100.0, 1) if rc_shots > 0 else 0.0
 
     shootout_stats = {
         "attempts": 0,
@@ -1529,8 +1797,8 @@ def get_player(name: str = Query(..., min_length=2)) -> dict[str, Any]:
 
 @app.get("/api/boxscore")
 def get_boxscore(
-    date: str = Query(..., min_length=8),
-    opponent: str = Query(..., min_length=1),
+    date: str = Query(..., min_length=8, max_length=20),
+    opponent: str = Query(..., min_length=1, max_length=100),
 ) -> dict[str, Any]:
     ds = _require_datasets()
     target_date = date.strip()
@@ -1619,17 +1887,20 @@ def get_boxscore(
 
 @app.get("/api/penalties")
 def get_penalties(
-    season: str | None = Query(default=None),
-    scope: str = Query(default="all", pattern="^(all|conference)$"),
-    opponent: str | None = Query(default=None),
-    player: str | None = Query(default=None),
+    season: str | None = Query(default=None, max_length=20),
+    scope: str = Query(default="all", pattern="^(all|conference|beanpot|postseason|ncaa)$"),
+    location: str = Query(default="all", pattern="^(all|Home|Away|Neutral|home|away|neutral)$"),
+    opponent: str | None = Query(default=None, max_length=100),
+    player: str | None = Query(default=None, max_length=100),
 ) -> dict[str, Any]:
     ds = _require_datasets()
     df = ds.penalties
+    norm_loc = location.capitalize() if location and location.lower() in ("home", "away", "neutral") else "all"
     if df.empty:
         return {
             "season": season or "all",
             "scope": scope,
+            "location": norm_loc,
             "opponent": opponent,
             "player": player,
             "summary": {"total_penalties": 0, "total_pim": 0, "minors": 0, "majors": 0, "other": 0},
@@ -1659,20 +1930,24 @@ def get_penalties(
     target_season = season.strip() if season and season.strip() and season.strip().lower() != "all" else "all"
     if target_season != "all":
         df = df[df["season"] == target_season]
-    if scope == "conference":
-        df = df[df["opponent"].isin(HOCKEY_EAST_TEAMS)]
     target_opponent = opponent.strip() if opponent and opponent.strip() else None
-    if target_opponent:
-        df = df[df["opponent"].str.lower() == target_opponent.lower()]
+    if scope != "all" or norm_loc != "all" or target_opponent:
+        fg = _filter_games_by_criteria(ds.games, target_season, scope, target_opponent, norm_loc)
+        valid_keys = set(zip(fg["date"].astype(str), fg["opponent"].astype(str)))
+        if valid_keys:
+            df = df[[(str(d), str(o)) in valid_keys for d, o in zip(df["date"], df["opponent"])]]
+        else:
+            df = df.iloc[0:0]
     target_player = player.strip() if player and player.strip() else None
     if target_player:
         exact = df[df["player_name"].str.lower() == target_player.lower()]
-        df = exact if not exact.empty else df[df["player_name"].str.contains(target_player, case=False, na=False)]
+        df = exact if not exact.empty else df[df["player_name"].str.contains(target_player, case=False, na=False, regex=False)]
 
     if df.empty:
         return {
             "season": target_season,
             "scope": scope,
+            "location": norm_loc,
             "opponent": target_opponent,
             "player": target_player,
             "summary": {"total_penalties": 0, "total_pim": 0, "minors": 0, "majors": 0, "other": 0},
@@ -1757,6 +2032,7 @@ def get_penalties(
     return {
         "season": target_season,
         "scope": scope,
+        "location": norm_loc,
         "opponent": target_opponent,
         "player": target_player,
         "summary": {
@@ -1792,7 +2068,7 @@ async def chat(req: ChatRequest, request: Request) -> ChatResponse:
     if state.llm is None:
         raise HTTPException(
             status_code=503,
-            detail="GEMINI_API_KEY is not configured on the server.",
+            detail="The AI stats assistant is not configured on this server.",
         )
 
     _verify_browser_request(request)
@@ -1909,11 +2185,12 @@ class BugReportResponse(BaseModel):
 
 def _forward_bug_webhook(entry: dict[str, Any]) -> None:
     webhook_url = (os.getenv("BUG_WEBHOOK_URL") or os.getenv("DISCORD_WEBHOOK_URL") or "").strip()
-    if not webhook_url:
+    if not webhook_url or urllib.parse.urlparse(webhook_url).scheme != "https":
         return
+    quoted_desc = "\n".join(f"> {line}" for line in entry["description"].splitlines())
     lines = [
         f"**Bug Report #{entry['id']}** ({entry['category']})",
-        f"> {entry['description']}",
+        quoted_desc,
     ]
     if entry.get("page_context"):
         lines.append(f"**View:** `{entry['page_context']}`")
@@ -1938,11 +2215,21 @@ def _forward_bug_webhook(entry: dict[str, Any]) -> None:
 
 @app.post("/api/bug-report", response_model=BugReportResponse)
 def submit_bug_report(req: BugReportRequest, request: Request) -> BugReportResponse:
+    _verify_browser_request(request)
+    category = req.category.strip()
+    if category not in _ALLOWED_BUG_CATEGORIES:
+        raise HTTPException(status_code=400, detail="Invalid bug report category.")
+
     client_ip = _get_client_ip(request)
-    if not state.limiter.allow(f"bug:{client_ip}"):
+    if not state.bug_min_limiter.allow(client_ip):
         raise HTTPException(
             status_code=429,
             detail="Too many reports submitted. Please wait a minute and try again.",
+        )
+    if not state.bug_hour_limiter.allow(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Hourly bug report limit reached. Please try again later.",
         )
 
     report_id = uuid.uuid4().hex[:8]
@@ -1950,17 +2237,18 @@ def submit_bug_report(req: BugReportRequest, request: Request) -> BugReportRespo
     entry = {
         "id": report_id,
         "created_at": created_at,
-        "category": req.category.strip(),
+        "category": category,
         "description": req.description.strip(),
         "page_context": req.page_context.strip() if req.page_context else "",
         "contact": req.contact.strip() if req.contact else "",
-        "user_agent": request.headers.get("user-agent", ""),
+        "user_agent": (request.headers.get("user-agent") or "")[:300],
     }
 
     with _bug_report_lock:
         BUG_REPORTS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with BUG_REPORTS_PATH.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        if not BUG_REPORTS_PATH.exists() or BUG_REPORTS_PATH.stat().st_size < 10 * 1024 * 1024:
+            with BUG_REPORTS_PATH.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     threading.Thread(target=_forward_bug_webhook, args=(entry,), daemon=True).start()
 
@@ -1974,20 +2262,91 @@ _ALLOWED_IMAGE_HOSTS = {
     "images.sidearmdev.com",
     "static.gonu.com",
 }
+_ALLOWED_IMAGE_CONTENT_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/webp",
+    "image/gif",
+    "image/avif",
+}
+_MAX_PROXY_IMAGE_BYTES = 5 * 1024 * 1024
+_MAX_PROXY_CACHE_ENTRIES = 400
+_MAX_PROXY_CACHE_BYTES = 48 * 1024 * 1024
 _IMAGE_PROXY_CACHE: dict[str, tuple[bytes, str]] = {}
+_IMAGE_PROXY_CACHE_BYTES = 0
 _IMAGE_PROXY_LOCK = threading.Lock()
 
 try:
     import io
     from PIL import Image, ImageOps
+    Image.MAX_IMAGE_PIXELS = 20_000_000
     _PIL_AVAILABLE = True
 except Exception:
     _PIL_AVAILABLE = False
 
 
-def _fetch_proxied_image(url: str) -> tuple[bytes, str]:
+def _validate_proxy_url(raw_url: str) -> str:
+    cleaned = raw_url.strip()
+    parsed = urllib.parse.urlparse(cleaned)
+    host = (parsed.hostname or "").lower()
+    if (
+        parsed.scheme != "https"
+        or parsed.username
+        or parsed.password
+        or parsed.port not in (None, 443)
+        or host not in _ALLOWED_IMAGE_HOSTS
+    ):
+        raise HTTPException(status_code=400, detail="Unsupported image host.")
+    return cleaned
+
+
+class _SafeImageRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Validate every HTTP redirect target against the image host allowlist."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirects = getattr(req, "_redirect_count", 0) + 1
+        if redirects > 3:
+            raise HTTPException(status_code=502, detail="Too many image redirects.")
+        _validate_proxy_url(newurl)
+        new_req = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new_req is not None:
+            setattr(new_req, "_redirect_count", redirects)
+        return new_req
+
+
+_IMAGE_OPENER = urllib.request.build_opener(_SafeImageRedirectHandler())
+
+
+def _cache_get_image(key: str) -> tuple[bytes, str] | None:
     with _IMAGE_PROXY_LOCK:
-        cached = _IMAGE_PROXY_CACHE.get(url)
+        cached = _IMAGE_PROXY_CACHE.pop(key, None)
+        if cached is not None:
+            _IMAGE_PROXY_CACHE[key] = cached
+        return cached
+
+
+def _cache_put_image(key: str, data: bytes, ctype: str) -> None:
+    global _IMAGE_PROXY_CACHE_BYTES
+    if len(data) > _MAX_PROXY_IMAGE_BYTES:
+        return
+    with _IMAGE_PROXY_LOCK:
+        old = _IMAGE_PROXY_CACHE.pop(key, None)
+        if old is not None:
+            _IMAGE_PROXY_CACHE_BYTES -= len(old[0])
+        while _IMAGE_PROXY_CACHE and (
+            len(_IMAGE_PROXY_CACHE) >= _MAX_PROXY_CACHE_ENTRIES
+            or _IMAGE_PROXY_CACHE_BYTES + len(data) > _MAX_PROXY_CACHE_BYTES
+        ):
+            oldest_key = next(iter(_IMAGE_PROXY_CACHE))
+            evicted = _IMAGE_PROXY_CACHE.pop(oldest_key)
+            _IMAGE_PROXY_CACHE_BYTES -= len(evicted[0])
+        _IMAGE_PROXY_CACHE[key] = (data, ctype)
+        _IMAGE_PROXY_CACHE_BYTES += len(data)
+
+
+def _fetch_proxied_image(url: str) -> tuple[bytes, str]:
+    cached = _cache_get_image(url)
     if cached is not None:
         return cached
     req = urllib.request.Request(
@@ -1997,15 +2356,14 @@ def _fetch_proxied_image(url: str) -> tuple[bytes, str]:
             "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
         },
     )
-    with urllib.request.urlopen(req, timeout=8) as resp:
-        data = resp.read()
-        ctype = resp.headers.get("Content-Type", "image/png").split(";")[0].strip() or "image/png"
-    if not ctype.startswith("image/"):
-        raise HTTPException(status_code=502, detail="Upstream resource is not an image.")
-    with _IMAGE_PROXY_LOCK:
-        if len(_IMAGE_PROXY_CACHE) >= 1800:
-            _IMAGE_PROXY_CACHE.clear()
-        _IMAGE_PROXY_CACHE[url] = (data, ctype)
+    with _IMAGE_OPENER.open(req, timeout=8) as resp:
+        ctype = resp.headers.get("Content-Type", "").split(";")[0].strip().lower()
+        if ctype not in _ALLOWED_IMAGE_CONTENT_TYPES:
+            raise HTTPException(status_code=502, detail="Unsupported upstream image type.")
+        data = resp.read(_MAX_PROXY_IMAGE_BYTES + 1)
+    if len(data) > _MAX_PROXY_IMAGE_BYTES:
+        raise HTTPException(status_code=502, detail="Upstream image too large.")
+    _cache_put_image(url, data, ctype)
     return data, ctype
 
 
@@ -2017,8 +2375,7 @@ def _fetch_and_resize_proxied_image(
     if not w and not h:
         return _fetch_proxied_image(url)
     cache_key = f"{url}|w={w or 0}|h={h or 0}"
-    with _IMAGE_PROXY_LOCK:
-        cached = _IMAGE_PROXY_CACHE.get(cache_key)
+    cached = _cache_get_image(cache_key)
     if cached is not None:
         return cached
 
@@ -2028,6 +2385,8 @@ def _fetch_and_resize_proxied_image(
 
     try:
         with Image.open(io.BytesIO(raw_data)) as src_im:
+            if src_im.width <= 0 or src_im.height <= 0 or (src_im.width * src_im.height) > 20_000_000:
+                return raw_data, raw_ctype
             im = ImageOps.exif_transpose(src_im)
             has_alpha = im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info)
             im = im.convert("RGBA" if has_alpha else "RGB")
@@ -2066,25 +2425,23 @@ def _fetch_and_resize_proxied_image(
     except Exception:
         return raw_data, raw_ctype
 
-    with _IMAGE_PROXY_LOCK:
-        if len(_IMAGE_PROXY_CACHE) >= 1800:
-            _IMAGE_PROXY_CACHE.clear()
-        _IMAGE_PROXY_CACHE[cache_key] = (out_data, out_ctype)
+    _cache_put_image(cache_key, out_data, out_ctype)
     return out_data, out_ctype
 
 
 @app.get("/api/image-proxy")
 async def image_proxy(
-    url: str = Query(..., min_length=10),
+    request: Request,
+    url: str = Query(..., min_length=10, max_length=500),
     w: int | None = Query(None, ge=16, le=600),
     h: int | None = Query(None, ge=16, le=600),
 ) -> Response:
-    parsed = urllib.parse.urlparse(url.strip())
-    host = (parsed.hostname or "").lower()
-    if parsed.scheme != "https" or host not in _ALLOWED_IMAGE_HOSTS:
-        raise HTTPException(status_code=400, detail="Unsupported image host.")
+    client_ip = _get_client_ip(request)
+    if not state.image_proxy_limiter.allow(client_ip):
+        raise HTTPException(status_code=429, detail="Too many image requests. Please wait a moment.")
+    validated_url = _validate_proxy_url(url)
     try:
-        data, ctype = await run_in_threadpool(_fetch_and_resize_proxied_image, url.strip(), w, h)
+        data, ctype = await run_in_threadpool(_fetch_and_resize_proxied_image, validated_url, w, h)
     except HTTPException:
         raise
     except Exception:
@@ -2149,8 +2506,8 @@ def _get_cached_static_records(ds: HockeyDatasets) -> dict[str, Any]:
         for i in range(len(rows) - 1):
             diff = rows[i + 1]["_abs_sec"] - rows[i]["_abs_sec"]
             if 0 < diff <= 600:
-                mins = int(diff) // 60
-                secs = int(round(diff - mins * 60))
+                total_sec = int(round(float(diff)))
+                mins, secs = divmod(total_sec, 60)
                 fastest_two_list.append({
                     "date": str(d_val),
                     "season": str(rows[i].get("season", "")),
@@ -2547,7 +2904,14 @@ def _build_on_this_day(ds: HockeyDatasets, mmdd: str | None = None) -> dict[str,
 
     games["mmdd"] = games["date"].astype(str).str.slice(5, 10)
     avail_dates = sorted(games["mmdd"].dropna().unique())
-    today_mmdd = datetime.now().strftime("%m-%d")
+    try:
+        today_mmdd = (
+            datetime.now(ZoneInfo("America/New_York")).strftime("%m-%d")
+            if ZoneInfo
+            else datetime.now().strftime("%m-%d")
+        )
+    except Exception:
+        today_mmdd = datetime.now().strftime("%m-%d")
     req_mmdd = (mmdd or "").strip()
     if not re.match(r"^\d{2}-\d{2}$", req_mmdd):
         req_mmdd = today_mmdd
@@ -2634,26 +2998,26 @@ def _build_on_this_day(ds: HockeyDatasets, mmdd: str | None = None) -> dict[str,
 @app.get("/api/records")
 def get_program_records(
     position: str = Query(default="all", pattern="^(all|F|D|G|f|d|g)$"),
-    class_year: str = Query(default="all"),
-    chemistry_season: str = Query(default="all"),
+    class_year: str = Query(default="all", max_length=20),
+    chemistry_season: str = Query(default="all", max_length=20),
     chemistry_strength: str = Query(default="all", pattern="^(all|EV|PP|SH|ev|pp|sh)$"),
-    mmdd: str | None = Query(default=None),
+    mmdd: str | None = Query(default=None, max_length=10),
     limit: int = Query(default=500, ge=5, le=2000),
 ) -> dict[str, Any]:
     ds = _require_datasets()
     pos_filter = position.upper() if position and position.lower() in ("f", "d", "g") else "all"
     cls_filter = class_year.strip() if class_year and class_year.strip().lower() != "all" else "all"
 
-    df = ds.season_stats.copy()
-    sk_df = df[(df["gp"] > 0) & (df["position"] != "G")].copy()
+    df = ds.season_stats.sort_values("season").copy() if not ds.season_stats.empty else ds.season_stats.copy()
+    sk_base = df[(df["gp"] > 0) & (df["position"] != "G")].copy()
     if pos_filter in ("F", "D"):
-        sk_df = sk_df[sk_df["position"] == pos_filter]
-    if cls_filter != "all":
-        sk_df = sk_df[sk_df["class_year"].str.lower() == cls_filter.lower()]
+        sk_base = sk_base[sk_base["position"] == pos_filter]
+
+    sk_ss_df = sk_base if cls_filter == "all" else sk_base[sk_base["class_year"].str.lower() == cls_filter.lower()].copy()
 
     # Single-season skaters
-    sk_df["pts_per_gp"] = sk_df.apply(lambda r: round(r["points"] / r["gp"], 2) if r["gp"] > 0 else 0.0, axis=1)
-    ss_sk = sk_df.sort_values(["points", "goals", "gp"], ascending=[False, False, True]).head(limit)
+    sk_ss_df["pts_per_gp"] = sk_ss_df.apply(lambda r: round(r["points"] / r["gp"], 2) if r["gp"] > 0 else 0.0, axis=1)
+    ss_sk = sk_ss_df.sort_values(["points", "goals", "gp"], ascending=[False, False, True]).head(limit)
     single_season_skaters = _records(
         ss_sk[[
             "season", "player_name", "position", "class_year", "captain_role",
@@ -2661,11 +3025,11 @@ def get_program_records(
         ]]
     )
 
-    # Career skaters (filtered by position and optional class_year slice)
+    # Career skaters (filtered by position only; class_year applies strictly to single-season records)
     career_sk_list: list[dict[str, Any]] = []
-    if not sk_df.empty:
+    if not sk_base.empty:
         c_sk = (
-            sk_df.groupby("player_name", as_index=False)
+            sk_base.groupby("player_name", as_index=False)
             .agg(
                 position=("position", "last"),
                 seasons=("season", "nunique"),
@@ -2693,11 +3057,10 @@ def get_program_records(
         career_sk_list = _records(c_sk)
 
     # Single-season & Career Goalies
-    gl_df = df[df["goalie_gp"] > 0].copy()
-    if cls_filter != "all":
-        gl_df = gl_df[gl_df["class_year"].str.lower() == cls_filter.lower()]
+    gl_base = df[df["goalie_gp"] > 0].copy()
+    gl_ss_df = gl_base if cls_filter == "all" else gl_base[gl_base["class_year"].str.lower() == cls_filter.lower()].copy()
 
-    ss_gl = gl_df[gl_df["goalie_gp"] >= 10].sort_values(["wins", "save_pct", "shutouts"], ascending=[False, False, False]).head(limit)
+    ss_gl = gl_ss_df[gl_ss_df["goalie_gp"] >= 10].sort_values(["wins", "save_pct", "shutouts"], ascending=[False, False, False]).head(limit)
     single_season_goalies = _records(
         ss_gl[[
             "season", "player_name", "class_year", "goalie_gp", "goalie_gs",
@@ -2706,9 +3069,10 @@ def get_program_records(
     )
 
     career_gl_list: list[dict[str, Any]] = []
-    if not gl_df.empty:
+    if not gl_base.empty:
+        gl_base["_mins"] = gl_base["goalie_minutes"].apply(_parse_minutes_to_float)
         c_gl = (
-            gl_df.groupby("player_name", as_index=False)
+            gl_base.groupby("player_name", as_index=False)
             .agg(
                 seasons=("season", "nunique"),
                 first_season=("season", "min"),
@@ -2721,18 +3085,22 @@ def get_program_records(
                 saves=("saves", "sum"),
                 ga=("ga", "sum"),
                 shutouts=("shutouts", "sum"),
-                gaa=("gaa", "mean"),
+                _mins=("_mins", "sum"),
             )
         )
         c_gl["save_pct"] = c_gl.apply(
             lambda r: round(r["saves"] / (r["saves"] + r["ga"]), 3) if (r["saves"] + r["ga"]) > 0 else 0.0,
             axis=1,
         )
-        c_gl["gaa"] = c_gl["gaa"].round(2)
+        c_gl["gaa"] = c_gl.apply(
+            lambda r: round((r["ga"] * 60.0) / r["_mins"], 2) if r["_mins"] > 0 else 0.0,
+            axis=1,
+        )
         c_gl["span"] = c_gl.apply(
             lambda r: r["first_season"] if r["first_season"] == r["last_season"] else f"{r['first_season']}–{r['last_season'][-2:]}",
             axis=1,
         )
+        c_gl = c_gl.drop(columns=["_mins"])
         c_gl = c_gl[c_gl["goalie_gp"] >= 10].sort_values(["wins", "save_pct", "shutouts"], ascending=[False, False, False]).head(limit)
         career_gl_list = _records(c_gl)
 
@@ -2856,6 +3224,8 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
         if yr == 2020:
             finish = "Champion"
             championships_era += 1
+        elif not g2:
+            finish = "Finalist (TBD)" if advanced else "Consolation (TBD)"
         elif round2_label == "Championship" and _won_or_advanced(g2):
             finish = "Champion"
             championships_era += 1
@@ -2863,7 +3233,7 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
             finish = "Runner-Up"
         elif _won_or_advanced(g2):
             finish = "3rd Place"
-        elif g2 and g2.get("outcome") == "T" and g2.get("shootout_winner") in ("None", "", None):
+        elif g2.get("outcome") == "T" and g2.get("shootout_winner") in ("None", "", None):
             finish = "3rd Place (Tie)"
         else:
             finish = "4th Place"
@@ -3139,10 +3509,11 @@ if FRONTEND_DIST_DIR.is_dir():
 
     @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     def serve_spa(full_path: str):
-        if full_path.startswith("api/") or any(part.startswith(".") for part in full_path.split("/") if part):
+        norm_path = full_path.replace("\\", "/")
+        if norm_path == "api" or norm_path.startswith("api/") or any(part.startswith(".") for part in norm_path.split("/") if part):
             raise HTTPException(status_code=404, detail="Not found")
-        candidate = (FRONTEND_DIST_DIR / full_path).resolve()
-        if full_path and candidate.is_file() and candidate.is_relative_to(FRONTEND_DIST_DIR.resolve()):
+        candidate = (FRONTEND_DIST_DIR / norm_path).resolve()
+        if norm_path and candidate.is_file() and candidate.is_relative_to(FRONTEND_DIST_DIR.resolve()):
             return FileResponse(str(candidate))
         return FileResponse(str(FRONTEND_DIST_DIR / "index.html"))
 

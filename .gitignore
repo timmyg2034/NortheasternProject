@@ -10,7 +10,6 @@ northeastern_master_goalie_notebook.md
 northeastern_master_notebook.md
 NUGoalieExtractor.py
 NUHockeyExtractor.py
-keep_alive_*.png
 .venv/
 frontend/node_modules/
 frontend/dist/

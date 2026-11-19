@@ -12,6 +12,8 @@ const CATEGORIES = [
 export default function BugReportModal({ open, onClose, apiBase, pageContext }) {
   const modalRef = useRef(null);
   const closeBtnRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [description, setDescription] = useState("");
   const [contact, setContact] = useState("");
@@ -29,7 +31,7 @@ export default function BugReportModal({ open, onClose, apiBase, pageContext }) 
     const onKey = (e) => {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === "Tab" && modalRef.current) {
@@ -56,7 +58,7 @@ export default function BugReportModal({ open, onClose, apiBase, pageContext }) 
         previouslyFocused.focus();
       }
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -80,9 +82,9 @@ export default function BugReportModal({ open, onClose, apiBase, pageContext }) 
           contact: contact.trim() || null,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.detail || "Could not submit bug report.");
+        throw new Error(data.detail || `Could not submit bug report (${res.status}).`);
       }
       setSubmittedId(data.id);
       setDescription("");

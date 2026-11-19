@@ -32,7 +32,7 @@ const LEGAL_CONTENT = {
           upstream omissions (for example, blocked shots and faceoffs were not
           officially tracked by the NCAA prior to 2012&ndash;13). Always verify
           important stats against the linked official box scores or rosters on{" "}
-          <a href="https://nuhuskies.com" target="_blank" rel="noreferrer">
+          <a href="https://nuhuskies.com" target="_blank" rel="noopener noreferrer">
             nuhuskies.com
           </a>
           .
@@ -53,14 +53,17 @@ const LEGAL_CONTENT = {
     title: "Privacy Policy",
     body: (
       <>
-        <h3>No Cookies, Local Storage, or User Tracking</h3>
+        <h3>No Tracking Cookies or Analytics Profiles</h3>
         <p>
-          This frontend does <strong>not</strong> set tracking cookies, use browser{" "}
-          <code>localStorage</code> or <code>sessionStorage</code>, store{" "}
-          <code>IndexedDB</code> data, or run third-party analytics or ad-tracking
-          scripts (such as Google Analytics or Meta Pixel). A minimal Progressive
-          Web App manifest and network-first service worker (<code>sw.js</code>) are
-          included solely to support standalone mobile home-screen installation.
+          This frontend does <strong>not</strong> set tracking cookies, use{" "}
+          <code>localStorage</code> or <code>IndexedDB</code> for tracking, or run
+          third-party analytics or ad-tracking scripts (such as Google Analytics or
+          Meta Pixel). When Cloudflare Turnstile verification is enabled, a
+          short-lived, strictly necessary verification pass may be stored in browser{" "}
+          <code>sessionStorage</code> for your current tab session so you are not
+          repeatedly re-challenged. A minimal Progressive Web App manifest and
+          network-first service worker (<code>sw.js</code>) are included solely to
+          support standalone mobile home-screen installation.
         </p>
 
         <h3>What Data Is Processed When You Use the App</h3>
@@ -74,18 +77,20 @@ const LEGAL_CONTENT = {
           <li>
             <strong>Server Rate Limiting &amp; Query Caching:</strong> Our FastAPI
             backend has no persistent user database. It temporarily holds your
-            client IP address in memory for a 60-second sliding window to prevent
-            automated abuse on <code>/api/chat</code> and{" "}
-            <code>/api/bug-report</code>, and caches standalone (non-contextual)
-            question-and-answer pairs in memory for up to 24 hours to conserve API
-            quota.
+            client IP address in memory across sliding rate-limit windows (per
+            minute, hour, and day) to prevent automated abuse on{" "}
+            <code>/api/chat</code>, <code>/api/bug-report</code>, and{" "}
+            <code>/api/image-proxy</code>, and caches standalone (non-contextual)
+            question-and-answer pairs in memory until the dataset updates to
+            conserve AI quota.
           </li>
           <li>
-            <strong>Third-Party AI Processing (Google Gemini):</strong> When you
-            submit a question in <strong>Ask Paws</strong>, your prompt, recent
-            chat turns, and optional page context are transmitted to Google&apos;s
-            Gemini API to generate the query and response. Please do not enter
-            personal, confidential, or sensitive information into the chat.
+            <strong>Third-Party AI Processing:</strong> When you submit a question
+            in <strong>Ask Paws</strong>, your prompt, recent chat turns, and
+            optional page context are transmitted to configured AI inference
+            providers (Google Gemini and optional fallback providers) to generate the
+            query and response. Please do not enter personal, confidential, or
+            sensitive information into the chat.
           </li>
           <li>
             <strong>Bug &amp; Takedown Reports:</strong> If you voluntarily submit a
@@ -161,6 +166,8 @@ const LEGAL_CONTENT = {
 export default function LegalModal({ type, onClose }) {
   const modalRef = useRef(null);
   const closeBtnRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   const content = type ? LEGAL_CONTENT[type] : null;
 
   useEffect(() => {
@@ -171,7 +178,7 @@ export default function LegalModal({ type, onClose }) {
     function onKeyDown(e) {
       if (e.key === "Escape") {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key === "Tab" && modalRef.current) {
@@ -198,7 +205,7 @@ export default function LegalModal({ type, onClose }) {
         previouslyFocused.focus();
       }
     };
-  }, [type, onClose]);
+  }, [type]);
 
   if (!content) return null;
 

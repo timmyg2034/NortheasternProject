@@ -17,5 +17,8 @@ ENV PORT=7860
 ENV CHAT_RATE_LIMIT_PER_MIN=20
 EXPOSE 7860
 
+RUN adduser --disabled-password --gecos "" appuser && chown -R appuser:appuser /app
+USER appuser
+
 CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-7860}"]
 
