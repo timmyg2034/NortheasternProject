@@ -513,7 +513,7 @@ async def add_security_headers(request: Request, call_next):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com data:; "
         "img-src 'self' https: data: blob:; "
-        "frame-src https://challenges.cloudflare.com; "
+        "frame-src https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com; "
         "connect-src 'self' data: https://challenges.cloudflare.com https://cloudflareinsights.com; "
         "object-src 'none'; "
         "frame-ancestors 'none'; "
@@ -3163,6 +3163,105 @@ _BEANPOT_LOCK = threading.Lock()
 _BEANPOT_HISTORY_PATH = Path(__file__).resolve().parent / "beanpot_history.json"
 
 
+_BEANPOT_HIGHLIGHT_VIDEOS: dict[str, dict[str, str]] = {
+    "2013-02-04": {
+        "video_id": "pNXWBtkSGzg",
+        "video_url": "https://www.youtube.com/watch?v=pNXWBtkSGzg",
+        "video_title": "Northeastern vs. Boston University Beanpot Highlights - 02/04/2013",
+    },
+    "2013-02-11": {
+        "video_id": "S1LuweVZo70",
+        "video_url": "https://www.youtube.com/watch?v=S1LuweVZo70",
+        "video_title": "Boston College vs. Northeastern Beanpot Highlights - 02/11/2013",
+    },
+    "2014-02-03": {
+        "video_id": "5UO8qAg6sMo",
+        "video_url": "https://www.youtube.com/watch?v=5UO8qAg6sMo",
+        "video_title": "Northeastern vs. Harvard Beanpot Highlights - 02/03/2014",
+    },
+    "2015-02-03": {
+        "video_id": "BJ6fs330P9Q",
+        "video_url": "https://www.youtube.com/watch?v=BJ6fs330P9Q",
+        "video_title": "Northeastern vs. Boston College Beanpot Highlights - 02/03/2015",
+    },
+    "2015-02-23": {
+        "video_id": "B-LRM0rTDLk",
+        "video_url": "https://www.youtube.com/watch?v=B-LRM0rTDLk",
+        "video_title": "Boston University vs. Northeastern - Beanpot Championship Highlights - 02/23/2015",
+    },
+    "2016-02-01": {
+        "video_id": "__09m5bUwDU",
+        "video_url": "https://www.youtube.com/watch?v=__09m5bUwDU",
+        "video_title": "Boston University vs. Northeastern - Beanpot Highlights - 02/01/2016",
+    },
+    "2017-02-06": {
+        "video_id": "XgDWAuguLdQ",
+        "video_url": "https://www.youtube.com/watch?v=XgDWAuguLdQ",
+        "video_title": "Northeastern vs. Harvard - Beanpot Goal Highlights - 02/06/2017",
+    },
+    "2018-02-05": {
+        "video_id": "-ZEpdXLPW7o",
+        "video_url": "https://www.youtube.com/watch?v=-ZEpdXLPW7o",
+        "video_title": "Northeastern vs. Boston College - Beanpot Highlights - 02/05/2018",
+    },
+    "2018-02-12": {
+        "video_id": "zfKzBpqvZo8",
+        "video_url": "https://www.youtube.com/watch?v=zfKzBpqvZo8",
+        "video_title": "Northeastern vs. Boston University - Beanpot Highlights - 02/12/2018",
+    },
+    "2019-02-04": {
+        "video_id": "HBgOyWHmbNo",
+        "video_url": "https://www.youtube.com/watch?v=HBgOyWHmbNo",
+        "video_title": "2019 Beanpot Highlights: Northeastern 2, Boston University 1 (OT)",
+    },
+    "2019-02-11": {
+        "video_id": "txIzG2mFG9M",
+        "video_url": "https://www.youtube.com/watch?v=txIzG2mFG9M",
+        "video_title": "Men's Hockey: Beanpot Championship Highlights (Feb. 11, 2019)",
+    },
+    "2020-02-03": {
+        "video_id": "BPIrvwnoFrE",
+        "video_url": "https://www.youtube.com/watch?v=BPIrvwnoFrE",
+        "video_title": "2020 Beanpot Semifinals: Northeastern vs. Harvard Highlights",
+    },
+    "2020-02-10": {
+        "video_id": "9KsztqO2_jo",
+        "video_url": "https://www.youtube.com/watch?v=9KsztqO2_jo",
+        "video_title": "2020 Beanpot Finals: Northeastern vs. Boston University Highlights",
+    },
+    "2022-02-14": {
+        "video_id": "0VIccBUGo9o",
+        "video_url": "https://www.youtube.com/watch?v=0VIccBUGo9o",
+        "video_title": "Boston University vs. Northeastern Beanpot Highlights - 02/14/2022",
+    },
+    "2023-02-13": {
+        "video_id": "eE_Fdv2DzjQ",
+        "video_url": "https://www.youtube.com/watch?v=eE_Fdv2DzjQ",
+        "video_title": "Northeastern vs. Harvard Beanpot Highlights - 02/13/2023",
+    },
+    "2024-02-05": {
+        "video_id": "Cef_PX98IYI",
+        "video_url": "https://www.youtube.com/watch?v=Cef_PX98IYI",
+        "video_title": "2024 Beanpot - Northeastern vs. Harvard Highlights",
+    },
+    "2024-02-12": {
+        "video_id": "-yT83Ns1cAo",
+        "video_url": "https://www.youtube.com/watch?v=-yT83Ns1cAo",
+        "video_title": "2024 Beanpot - Northeastern vs. Boston University Highlights",
+    },
+    "2025-02-03": {
+        "video_id": "US5k69E3Iu8",
+        "video_url": "https://www.youtube.com/watch?v=US5k69E3Iu8",
+        "video_title": "Boston College vs. Northeastern - 2025 Beanpot Semifinal Goal Highlights",
+    },
+    "2026-02-02": {
+        "video_id": "Ku6mj7-JvUM",
+        "video_url": "https://www.youtube.com/watch?v=Ku6mj7-JvUM",
+        "video_title": "Boston University vs. Northeastern - 2026 Beanpot Semifinal Highlights",
+    },
+}
+
+
 def _load_beanpot_history_json() -> list[dict[str, Any]]:
     try:
         if _BEANPOT_HISTORY_PATH.is_file():
@@ -3215,6 +3314,10 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
 
     for yr, grp in bp_games.groupby("year"):
         yr_games = _records(grp.sort_values("date"))
+        for g in yr_games:
+            vid = _BEANPOT_HIGHLIGHT_VIDEOS.get(str(g.get("date", "")))
+            if vid:
+                g.update(vid)
         g1 = yr_games[0] if len(yr_games) >= 1 else None
         g2 = yr_games[1] if len(yr_games) >= 2 else None
 
@@ -3477,6 +3580,12 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
                     "player_name": gname,
                     "headline": f"{gname} posted {sv} saves in a {'shutout ' if sho > 0 else ''}win vs. {opp}",
                 })
+
+    for m in moments:
+        if not m.get("video_id"):
+            vid = _BEANPOT_HIGHLIGHT_VIDEOS.get(str(m.get("date", "")))
+            if vid:
+                m.update(vid)
 
     moments.sort(key=lambda x: x["date"], reverse=True)
 

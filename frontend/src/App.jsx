@@ -6182,15 +6182,37 @@ export default function App() {
                             {g.opponent} &bull; <OutcomeBadge outcome={g.outcome} /> <strong>{`${g.nu_goals}-${g.opp_goals}`}</strong>{otLabel}
                           </span>
                         </span>
-                        {g.has_boxscore !== false && (
-                          <button
-                            type="button"
-                            className="link-btn"
-                            onClick={() => openBoxScore(g.date, g.opponent)}
-                          >
-                            Box
-                          </button>
-                        )}
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                          {g.has_boxscore !== false && (
+                            <button
+                              type="button"
+                              className="link-btn"
+                              onClick={() => openBoxScore(g.date, g.opponent)}
+                            >
+                              Box
+                            </button>
+                          )}
+                          {(g.video_id || g.video_url) && (
+                            <button
+                              type="button"
+                              className="link-btn"
+                              onClick={() =>
+                                setBeanpotClipModal({
+                                  type: labelPrefix || "Semifinal",
+                                  date: g.date,
+                                  headline:
+                                    g.video_title ||
+                                    `${g.opponent} • ${g.outcome} ${g.nu_goals}-${g.opp_goals}${otLabel}`,
+                                  video_id: g.video_id,
+                                  video_url: g.video_url,
+                                })
+                              }
+                              title={g.video_title || "Watch game highlights"}
+                            >
+                              ▶ Highlights
+                            </button>
+                          )}
+                        </div>
                       </div>
                     );
                   };
@@ -6478,9 +6500,9 @@ export default function App() {
                                       type="button"
                                       className="link-btn"
                                       onClick={() => setBeanpotClipModal(m)}
-                                      title="Watch highlight clip"
+                                      title={m.clip_start != null ? "Watch highlight clip" : (m.video_title || "Watch game highlights")}
                                     >
-                                      ▶ Clip
+                                      {m.clip_start != null ? "▶ Clip" : "▶ Highlights"}
                                     </button>
                                   )}
                                 </div>
