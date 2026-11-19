@@ -5883,20 +5883,43 @@ export default function App() {
                       </h2>
                       <span className="muted">
                         All-Time Record on {otd.resolved_mmdd}: <strong>{otd.record || "0-0-0"}</strong> ({otd.games_count || 0} Games)
+                        {otd.requested_mmdd && otd.resolved_mmdd && otd.requested_mmdd !== otd.resolved_mmdd
+                          ? ` • No games on ${otd.requested_mmdd}, showing closest date`
+                          : ""}
                       </span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <label htmlFor="otd-select" className="field-label">Date (MM-DD):</label>
-                      <select
+                      <label htmlFor="otd-select" className="field-label">Pick Date:</label>
+                      <input
                         id="otd-select"
+                        type="date"
                         className="select-input"
-                        value={otdMmdd || otd.resolved_mmdd || ""}
-                        onChange={(e) => setOtdMmdd(e.target.value)}
-                      >
-                        {(otd.available_dates || []).map((d) => (
-                          <option key={d} value={d}>{d}</option>
-                        ))}
-                      </select>
+                        min="2024-01-01"
+                        max="2024-12-31"
+                        value={
+                          (otdMmdd || otd.resolved_mmdd)
+                            ? `2024-${otdMmdd || otd.resolved_mmdd}`
+                            : ""
+                        }
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val && val.length >= 10) {
+                            setOtdMmdd(val.slice(5, 10));
+                          } else {
+                            setOtdMmdd("");
+                          }
+                        }}
+                      />
+                      {otdMmdd && (
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          style={{ padding: "6px 10px", fontSize: 12 }}
+                          onClick={() => setOtdMmdd("")}
+                        >
+                          Today
+                        </button>
+                      )}
                     </div>
                   </div>
 
