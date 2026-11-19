@@ -3292,6 +3292,19 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
             "nu_championships": _NU_ALL_TIME_BEANPOT_TITLES,
         }
 
+    # Official NCAA box scores record games tied after 1OT (like 2020's 2OT final) as a Tie.
+    # For Beanpot tournament stats & history, reflect the actual 2OT outcome and score.
+    _bp_2ot_overrides = {
+        "2020-02-10": {"outcome": "W", "nu_goals": 5, "opp_goals": 4, "overtime_status": "2OT"},
+        "2005-02-07": {"overtime_status": "2OT"},
+    }
+    for _dt, _ov in _bp_2ot_overrides.items():
+        _mask = bp_games["date"].astype(str) == _dt
+        if _mask.any():
+            for _col, _val in _ov.items():
+                if _col in bp_games.columns:
+                    bp_games.loc[_mask, _col] = _val
+
     bp_games["year"] = bp_games["date"].astype(str).str.slice(0, 4).astype(int)
     bp_dates = set(bp_games["date"].astype(str))
 
@@ -3419,11 +3432,19 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
     if not g_bp.empty and "scorer" in g_bp.columns and "strength" in g_bp.columns:
         ppg_by_player = g_bp[g_bp["strength"] == "PP"].groupby("scorer").size().to_dict()
         shg_by_player = g_bp[g_bp["strength"] == "SH"].groupby("scorer").size().to_dict()
+    if "2020-02-10" in bp_dates:
+        ppg_by_player["Jordan Harris"] = int(ppg_by_player.get("Jordan Harris", 0)) + 1
 
     # Skater leaders in Beanpot (box-score era)
     sk_bp = ds.skaters[ds.skaters["date"].isin(bp_dates)].copy()
     if not sk_bp.empty and "position" in sk_bp.columns:
         sk_bp = sk_bp[sk_bp["position"] != "G"].copy()
+    if not sk_bp.empty and "2020-02-10" in bp_dates:
+        jh_mask = (sk_bp["date"].astype(str) == "2020-02-10") & (sk_bp["player_name"] == "Jordan Harris")
+        if jh_mask.any():
+            sk_bp.loc[jh_mask, "goals"] = pd.to_numeric(sk_bp.loc[jh_mask, "goals"], errors="coerce").fillna(0) + 1
+            sk_bp.loc[jh_mask, "points"] = pd.to_numeric(sk_bp.loc[jh_mask, "points"], errors="coerce").fillna(0) + 1
+            sk_bp.loc[jh_mask, "gwg"] = pd.to_numeric(sk_bp.loc[jh_mask, "gwg"], errors="coerce").fillna(0) + 1
     skater_leaders: list[dict[str, Any]] = []
     if not sk_bp.empty:
         sk_bp["year"] = sk_bp["date"].astype(str).str.slice(0, 4).astype(int)
@@ -3455,6 +3476,10 @@ def _build_beanpot_data(ds: HockeyDatasets) -> dict[str, Any]:
 
     # Goalie leaders in Beanpot (box-score era)
     gl_bp = ds.goalies[ds.goalies["date"].isin(bp_dates)].copy()
+    if not gl_bp.empty and "2020-02-10" in bp_dates:
+        cp_mask = (gl_bp["date"].astype(str) == "2020-02-10") & (gl_bp["goalie_name"] == "Craig Pantano")
+        if cp_mask.any():
+            gl_bp.loc[cp_mask, "decision"] = "W"
     goalie_leaders: list[dict[str, Any]] = []
     if not gl_bp.empty:
         gl_bp["year"] = gl_bp["date"].astype(str).str.slice(0, 4).astype(int)

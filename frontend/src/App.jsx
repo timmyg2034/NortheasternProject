@@ -6172,7 +6172,11 @@ export default function App() {
                           : boxTournaments;
                   const renderGameCell = (g, labelPrefix) => {
                     if (!g) return <span className="muted">—</span>;
-                    const otLabel = g.overtime_status && g.overtime_status !== "REG" ? ` (${g.overtime_status})` : "";
+                    const soDetail =
+                      g.overtime_status === "SO" && g.shootout_winner && g.shootout_winner !== "None"
+                        ? `SO • ${g.shootout_winner === "Northeastern" ? "NU" : g.shootout_winner} Won`
+                        : g.overtime_status;
+                    const otLabel = g.overtime_status && g.overtime_status !== "REG" ? ` (${soDetail})` : "";
                     return (
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                         <span className="opp-with-logo">
