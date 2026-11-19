@@ -5969,7 +5969,7 @@ export default function App() {
                                 ? `${g.venue}${g.location ? ` (${g.location})` : ""}`
                                 : g.location || "—"}
                             </td>
-                            <td>{g.game_type}</td>
+                            <td>{g.beanpot_round ? `${g.game_type} (${g.beanpot_round})` : g.game_type}</td>
                             <td>
                               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                                 <OutcomeBadge outcome={g.outcome} />

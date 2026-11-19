@@ -3015,9 +3015,28 @@ def _build_on_this_day(ds: HockeyDatasets, mmdd: str | None = None) -> dict[str,
             if vid:
                 h.update(vid)
 
+    bp_round_by_date: dict[str, str] = {}
+    bp_all = games[games.get("game_type", "") == "Beanpot"].sort_values("date")
+    if not bp_all.empty:
+        bp_all_yr = bp_all.assign(_yr=bp_all["date"].astype(str).str.slice(0, 4))
+        for _, grp in bp_all_yr.groupby("_yr"):
+            rows = grp.sort_values("date").to_dict("records")
+            for idx, r in enumerate(rows):
+                r_dt = str(r.get("date", ""))
+                if idx == 0:
+                    bp_round_by_date[r_dt] = "Semifinal"
+                else:
+                    g1 = rows[0]
+                    adv = g1.get("outcome") == "W" or (
+                        g1.get("outcome") == "T" and g1.get("shootout_winner") == "Northeastern"
+                    )
+                    bp_round_by_date[r_dt] = "Final" if adv else "Consolation"
+
     game_records = _records(day_games.drop(columns=["mmdd"]))
     for g in game_records:
         dt = str(g.get("date", ""))
+        if dt in bp_round_by_date:
+            g["beanpot_round"] = bp_round_by_date[dt]
         if dt == "2020-02-10":
             g["beanpot_note"] = (
                 "Beanpot Championship: NU won 5-4 in 2OT (Jordan Harris GWG). "
