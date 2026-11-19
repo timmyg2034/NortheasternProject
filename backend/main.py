@@ -2984,12 +2984,63 @@ def _build_on_this_day(ds: HockeyDatasets, mmdd: str | None = None) -> dict[str,
             "headline": f"{gname} posted a {sv}-save {'shutout' if sho > 0 else 'victory'} vs. {opp}",
         })
 
+    # Beanpot iconic moments (including 2OT/SO games not captured in standard NCAA goal logs)
+    if "2020-02-10" in day_dates:
+        highlights.append({
+            "type": "2OT Title Winner",
+            "date": "2020-02-10",
+            "season": "2019-20",
+            "opponent": "Boston University",
+            "player_name": "Jordan Harris",
+            "headline": "Jordan Harris scored in 2OT (5-4) vs. Boston University to clinch the Beanpot three-peat",
+            "video_url": "https://www.youtube.com/watch?v=9KsztqO2_jo&t=790s",
+            "video_id": "9KsztqO2_jo",
+            "clip_start": 790,
+            "clip_end": 814,
+        })
+    if "2023-02-13" in day_dates:
+        highlights.append({
+            "type": "SO Title Winner",
+            "date": "2023-02-13",
+            "season": "2022-23",
+            "opponent": "Harvard",
+            "player_name": "Aidan McDonough",
+            "headline": "Aidan McDonough & Devon Levi sealed the first-ever Beanpot shootout title vs. Harvard",
+            **_BEANPOT_HIGHLIGHT_VIDEOS.get("2023-02-13", {}),
+        })
+
+    for h in highlights:
+        if not h.get("video_id"):
+            vid = _BEANPOT_HIGHLIGHT_VIDEOS.get(str(h.get("date", "")))
+            if vid:
+                h.update(vid)
+
+    game_records = _records(day_games.drop(columns=["mmdd"]))
+    for g in game_records:
+        dt = str(g.get("date", ""))
+        if dt == "2020-02-10":
+            g["beanpot_note"] = (
+                "Beanpot Championship: NU won 5-4 in 2OT (Jordan Harris GWG). "
+                "Beanpot games that go past 1OT are officially recorded as Ties in NCAA records."
+            )
+            g["beanpot_badge"] = "2OT Win (5-4)"
+        elif g.get("game_type") == "Beanpot" and g.get("outcome") == "T":
+            so_w = g.get("shootout_winner")
+            so_txt = f" ({so_w} won shootout)" if so_w and so_w != "None" else ""
+            g["beanpot_note"] = (
+                f"Beanpot games that go past 1OT are officially recorded as Ties in NCAA records{so_txt}."
+            )
+            g["beanpot_badge"] = f"{so_w} SO" if so_w and so_w != "None" else "NCAA Tie"
+        vid = _BEANPOT_HIGHLIGHT_VIDEOS.get(dt)
+        if vid:
+            g.update(vid)
+
     return {
         "requested_mmdd": req_mmdd,
         "resolved_mmdd": resolved_mmdd,
         "record": f"{wins}-{losses}-{ties}",
         "games_count": int(len(day_games)),
-        "games": _records(day_games.drop(columns=["mmdd"])),
+        "games": game_records,
         "highlights": highlights[:12],
         "available_dates": avail_dates,
     }

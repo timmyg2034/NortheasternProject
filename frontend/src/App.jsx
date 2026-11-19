@@ -5912,7 +5912,7 @@ export default function App() {
                               </span>
                               {h.text || h.headline} ({h.date})
                             </div>
-                            <div style={{ display: "flex", gap: 10 }}>
+                            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                               {h.player_name && (
                                 <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => openPlayer(h.player_name)}>
                                   Player Profile &rarr;
@@ -5921,6 +5921,17 @@ export default function App() {
                               <button type="button" className="link-btn" style={{ fontSize: 12 }} onClick={() => openBoxScore(h.date, h.opponent)}>
                                 View Box Score &rarr;
                               </button>
+                              {(h.video_id || h.video_url) && (
+                                <button
+                                  type="button"
+                                  className="link-btn"
+                                  style={{ fontSize: 12 }}
+                                  onClick={() => setBeanpotClipModal(h)}
+                                  title={h.clip_start != null ? "Watch highlight clip" : (h.video_title || "Watch game highlights")}
+                                >
+                                  {h.clip_start != null ? "▶ Clip" : "▶ Highlights"}
+                                </button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -5959,19 +5970,54 @@ export default function App() {
                                 : g.location || "—"}
                             </td>
                             <td>{g.game_type}</td>
-                            <td><OutcomeBadge outcome={g.outcome} /></td>
                             <td>
-                              <strong>{`${g.nu_goals}-${g.opp_goals}`}</strong>
-                              {g.overtime_status ? ` (${g.overtime_status})` : ""}
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                <OutcomeBadge outcome={g.outcome} />
+                                {g.beanpot_note && (
+                                  <span
+                                    className="pill"
+                                    title={g.beanpot_note}
+                                    style={{ cursor: "help", fontSize: 11 }}
+                                  >
+                                    ⓘ {g.beanpot_badge || "NCAA Tie"}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td>
-                              <button
-                                type="button"
-                                className="link-btn"
-                                onClick={() => openBoxScore(g.date, g.opponent)}
-                              >
-                                Box Score
-                              </button>
+                              <strong>{`${g.nu_goals}-${g.opp_goals}`}</strong>
+                              {g.overtime_status && g.overtime_status !== "REG" ? ` (${g.overtime_status})` : ""}
+                            </td>
+                            <td>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <button
+                                  type="button"
+                                  className="link-btn"
+                                  onClick={() => openBoxScore(g.date, g.opponent)}
+                                >
+                                  Box Score
+                                </button>
+                                {(g.video_id || g.video_url) && (
+                                  <button
+                                    type="button"
+                                    className="link-btn"
+                                    onClick={() =>
+                                      setBeanpotClipModal({
+                                        type: "Beanpot",
+                                        date: g.date,
+                                        headline:
+                                          g.video_title ||
+                                          `${g.opponent} • ${g.outcome} ${g.nu_goals}-${g.opp_goals}`,
+                                        video_id: g.video_id,
+                                        video_url: g.video_url,
+                                      })
+                                    }
+                                    title={g.video_title || "Watch game highlights"}
+                                  >
+                                    ▶ Highlights
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
