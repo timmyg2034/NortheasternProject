@@ -2,8 +2,9 @@ name: Auto-Update Hockey Stats
 
 on:
   schedule:
-    # Run daily at 11:00 UTC (6:00 AM EST)
-    - cron: '0 11 * * *'
+    # Run twice daily off top-of-hour to reduce GitHub Actions queue delay (12:37 AM EST & 6:37 AM EST)
+    - cron: '37 5 * * *'
+    - cron: '37 11 * * *'
   workflow_dispatch: # Allows manual one-click trigger from GitHub Actions tab
 
 permissions:
