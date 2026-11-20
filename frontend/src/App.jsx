@@ -674,6 +674,8 @@ export default function App() {
   const [otdMmdd, setOtdMmdd] = useState("");
   const [otdPickerOpen, setOtdPickerOpen] = useState(false);
   const [otdPickerMonth, setOtdPickerMonth] = useState(null);
+  const [streakMode, setStreakMode] = useState("all_time"); // "all_time" | "season_openers"
+  const [streakCat, setStreakCat] = useState("points"); // "points" | "goals" | "assists" | "team"
 
   // Beanpot Hub state
   const [beanpotData, setBeanpotData] = useState(null);
@@ -5479,74 +5481,165 @@ export default function App() {
                     </div>
 
                     <div className="card">
-                      <div className="card-header">
-                        <h2>Longest Player &amp; Team Streaks</h2>
-                        <span className="muted">Consecutive games</span>
-                      </div>
-                      <h3 className="sub-heading">Longest Player Point Streaks</h3>
-                      <div className="table-wrap" style={{ marginBottom: 14 }}>
-                        <table className="data-table">
-                          <thead>
-                            <tr>
-                              <th>Player</th>
-                              <th>Games</th>
-                              <th>Totals</th>
-                              <th>Span</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(streaks.point_streaks || []).slice(0, 7).map((r, i) => (
-                              <tr key={`ps-${i}`}>
-                                <td>
-                                  <button type="button" className="link-btn" onClick={() => openPlayer(r.player_name)}>
-                                    {r.player_name}
-                                  </button>
-                                </td>
-                                <td><strong>{r.length ?? r.streak_games} GP</strong></td>
-                                <td>{r.goals}G, {r.assists}A ({r.points} PTS)</td>
-                                <td className="muted" style={{ fontSize: 12 }}>{r.start_date} &rarr; {r.end_date}</td>
-                              </tr>
+                      <div className="card-header" style={{ flexWrap: "wrap", gap: 10 }}>
+                        <div>
+                          <h2>Longest Player &amp; Team Streaks</h2>
+                          <span className="muted">
+                            {streakMode === "season_openers"
+                              ? "Consecutive games to open a season (Game 1 onward)"
+                              : "Consecutive games (1999–Present)"}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                          <div className="segmented">
+                            <button
+                              type="button"
+                              className={`segmented-btn ${streakMode === "all_time" ? "active" : ""}`}
+                              onClick={() => setStreakMode("all_time")}
+                            >
+                              All-Time
+                            </button>
+                            <button
+                              type="button"
+                              className={`segmented-btn ${streakMode === "season_openers" ? "active" : ""}`}
+                              onClick={() => setStreakMode("season_openers")}
+                            >
+                              Season Openers
+                            </button>
+                          </div>
+                          <div className="segmented">
+                            {[
+                              ["points", "Points"],
+                              ["goals", "Goals"],
+                              ["assists", "Assists"],
+                              ["team", "Team"],
+                            ].map(([k, lbl]) => (
+                              <button
+                                key={k}
+                                type="button"
+                                className={`segmented-btn ${streakCat === k ? "active" : ""}`}
+                                onClick={() => setStreakCat(k)}
+                              >
+                                {lbl}
+                              </button>
                             ))}
-                          </tbody>
-                        </table>
+                          </div>
+                        </div>
                       </div>
-                      <h3 className="sub-heading">Longest Team Win &amp; Unbeaten Streaks</h3>
-                      <div className="table-wrap">
-                        <table className="data-table">
-                          <thead>
-                            <tr>
-                              <th>Type</th>
-                              <th>Streak</th>
-                              <th>Record</th>
-                              <th>Span</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(streaks.team_win_streaks || []).slice(0, 4).map((r, i) => {
-                              const len = r.length ?? r.streak_games;
-                              return (
-                                <tr key={`tws-${i}`}>
-                                  <td>Win Streak</td>
-                                  <td><strong>{len} Wins</strong></td>
-                                  <td>{r.record || `${len}-0-0`}</td>
-                                  <td className="muted" style={{ fontSize: 12 }}>{r.start_date} &rarr; {r.end_date}</td>
-                                </tr>
-                              );
-                            })}
-                            {(streaks.team_unbeaten_streaks || []).slice(0, 4).map((r, i) => {
-                              const len = r.length ?? r.streak_games;
-                              return (
-                                <tr key={`tus-${i}`}>
-                                  <td>Unbeaten</td>
-                                  <td><strong>{len} GP</strong></td>
-                                  <td>{r.record}</td>
-                                  <td className="muted" style={{ fontSize: 12 }}>{r.start_date} &rarr; {r.end_date}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+
+                      {streakCat !== "team" ? (() => {
+                        const openers = streaks.season_openers || {};
+                        const rows =
+                          streakMode === "season_openers"
+                            ? (openers[streakCat] || [])
+                            : streakCat === "goals"
+                              ? (streaks.goal_streaks || [])
+                              : streakCat === "assists"
+                                ? (streaks.assist_streaks || [])
+                                : (streaks.point_streaks || []);
+                        const catTitle =
+                          streakCat === "goals"
+                            ? "Goal Streaks"
+                            : streakCat === "assists"
+                              ? "Assist Streaks"
+                              : "Point Streaks";
+                        return (
+                          <>
+                            <h3 className="sub-heading">
+                              {streakMode === "season_openers" ? `Season-Opening ${catTitle}` : `Longest Player ${catTitle}`}
+                            </h3>
+                            <div className="table-wrap">
+                              <table className="data-table">
+                                <thead>
+                                  <tr>
+                                    <th>Player</th>
+                                    <th>Season</th>
+                                    <th>Games</th>
+                                    <th>Totals</th>
+                                    <th>Span</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {rows.slice(0, 10).map((r, i) => (
+                                    <tr key={`${streakMode}-${streakCat}-${i}`}>
+                                      <td>
+                                        <button type="button" className="link-btn" onClick={() => openPlayer(r.player_name)}>
+                                          {r.player_name}
+                                        </button>
+                                      </td>
+                                      <td>{r.season}</td>
+                                      <td><strong>{r.length ?? r.streak_games} GP</strong></td>
+                                      <td>
+                                        {streakCat === "goals" && r.points == null
+                                          ? `${r.goals}G`
+                                          : streakCat === "assists" && r.points == null
+                                            ? `${r.assists}A`
+                                            : `${r.goals}G, ${r.assists}A (${r.points} PTS)`}
+                                      </td>
+                                      <td className="muted" style={{ fontSize: 12 }}>{r.start_date} &rarr; {r.end_date}</td>
+                                    </tr>
+                                  ))}
+                                  {rows.length === 0 && (
+                                    <tr>
+                                      <td colSpan={5} className="muted">No qualifying streaks found.</td>
+                                    </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
+                        );
+                      })() : (() => {
+                        const openers = streaks.season_openers || {};
+                        const wRows = streakMode === "season_openers" ? (openers.team_wins || []) : (streaks.team_win_streaks || []);
+                        const uRows = streakMode === "season_openers" ? (openers.team_unbeaten || []) : (streaks.team_unbeaten_streaks || []);
+                        return (
+                          <>
+                            <h3 className="sub-heading">
+                              {streakMode === "season_openers" ? "Season-Opening Team Win & Unbeaten Streaks" : "Longest Team Win & Unbeaten Streaks"}
+                            </h3>
+                            <div className="table-wrap">
+                              <table className="data-table">
+                                <thead>
+                                  <tr>
+                                    <th>Type</th>
+                                    <th>Season</th>
+                                    <th>Streak</th>
+                                    <th>Record</th>
+                                    <th>Span</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {wRows.slice(0, 5).map((r, i) => {
+                                    const len = r.length ?? r.streak_games;
+                                    return (
+                                      <tr key={`tws-${streakMode}-${i}`}>
+                                        <td>Win Streak</td>
+                                        <td>{r.season}</td>
+                                        <td><strong>{len} Wins</strong></td>
+                                        <td>{r.record || `${len}-0-0`}</td>
+                                        <td className="muted" style={{ fontSize: 12 }}>{r.start_date} &rarr; {r.end_date}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                  {uRows.slice(0, 5).map((r, i) => {
+                                    const len = r.length ?? r.streak_games;
+                                    return (
+                                      <tr key={`tus-${streakMode}-${i}`}>
+                                        <td>Unbeaten</td>
+                                        <td>{r.season}</td>
+                                        <td><strong>{len} GP</strong></td>
+                                        <td>{r.record}</td>
+                                        <td className="muted" style={{ fontSize: 12 }}>{r.start_date} &rarr; {r.end_date}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </>

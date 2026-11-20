@@ -2525,6 +2525,7 @@ def _get_cached_static_records(ds: HockeyDatasets) -> dict[str, Any]:
     sk_sorted = sk.sort_values("date")
     point_streaks: list[dict[str, Any]] = []
     goal_streaks: list[dict[str, Any]] = []
+    assist_streaks: list[dict[str, Any]] = []
     for pname, grp in sk_sorted.groupby("player_name"):
         if not pname or len(grp) < 4:
             continue
@@ -2606,8 +2607,85 @@ def _get_cached_static_records(ds: HockeyDatasets) -> dict[str, Any]:
                 "end_date": cur_end,
             })
 
+        # Assist streak
+        cur_len, cur_a = 0, 0
+        cur_start, cur_end, cur_sea = "", "", ""
+        for r in grp.itertuples():
+            ast = int(getattr(r, "assists", 0) or 0)
+            dt = str(getattr(r, "date", ""))
+            sea = str(getattr(r, "season", ""))
+            if ast > 0:
+                if cur_len == 0:
+                    cur_start = dt
+                    cur_sea = sea
+                cur_len += 1
+                cur_a += ast
+                cur_end = dt
+            else:
+                if cur_len >= 4:
+                    assist_streaks.append({
+                        "player_name": str(pname),
+                        "season": cur_sea,
+                        "streak_games": cur_len,
+                        "assists": cur_a,
+                        "start_date": cur_start,
+                        "end_date": cur_end,
+                    })
+                cur_len, cur_a = 0, 0
+        if cur_len >= 4:
+            assist_streaks.append({
+                "player_name": str(pname),
+                "season": cur_sea,
+                "streak_games": cur_len,
+                "assists": cur_a,
+                "start_date": cur_start,
+                "end_date": cur_end,
+            })
+
     point_streaks.sort(key=lambda x: (-x["streak_games"], -x["points"], x["end_date"]))
     goal_streaks.sort(key=lambda x: (-x["streak_games"], -x["goals"], x["end_date"]))
+    assist_streaks.sort(key=lambda x: (-x["streak_games"], -x["assists"], x["end_date"]))
+
+    # Season-opening player streaks (consecutive games from Game 1 of each season)
+    opener_points: list[dict[str, Any]] = []
+    opener_goals: list[dict[str, Any]] = []
+    opener_assists: list[dict[str, Any]] = []
+    for (pname, sea), grp in sk_sorted.groupby(["player_name", "season"]):
+        if not pname or not sea:
+            continue
+        rows = grp.to_dict("records")
+        for stat_col, min_len, out_list in (
+            ("points", 4, opener_points),
+            ("goals", 3, opener_goals),
+            ("assists", 3, opener_assists),
+        ):
+            cnt, tot_g, tot_a, tot_p = 0, 0, 0, 0
+            start_dt, end_dt = "", ""
+            for r in rows:
+                if int(r.get(stat_col, 0) or 0) > 0:
+                    if cnt == 0:
+                        start_dt = str(r.get("date", ""))
+                    cnt += 1
+                    tot_g += int(r.get("goals", 0) or 0)
+                    tot_a += int(r.get("assists", 0) or 0)
+                    tot_p += int(r.get("points", 0) or 0)
+                    end_dt = str(r.get("date", ""))
+                else:
+                    break
+            if cnt >= min_len:
+                out_list.append({
+                    "player_name": str(pname),
+                    "season": str(sea),
+                    "streak_games": cnt,
+                    "goals": tot_g,
+                    "assists": tot_a,
+                    "points": tot_p,
+                    "start_date": start_dt,
+                    "end_date": end_dt,
+                })
+    opener_points.sort(key=lambda x: (-x["streak_games"], -x["points"], x["season"]))
+    opener_goals.sort(key=lambda x: (-x["streak_games"], -x["goals"], x["season"]))
+    opener_assists.sort(key=lambda x: (-x["streak_games"], -x["assists"], x["season"]))
 
     # Team Win & Unbeaten streaks
     gm_sorted = ds.games.sort_values("date")
@@ -2660,6 +2738,56 @@ def _get_cached_static_records(ds: HockeyDatasets) -> dict[str, Any]:
         })
     win_streaks.sort(key=lambda x: (-x["streak_games"], x["end_date"]))
     unbeaten_streaks.sort(key=lambda x: (-x["streak_games"], x["end_date"]))
+
+    # Season-opening team win & unbeaten streaks
+    opener_team_wins: list[dict[str, Any]] = []
+    opener_team_unbeaten: list[dict[str, Any]] = []
+    for sea, grp in gm_sorted.groupby("season"):
+        if not sea:
+            continue
+        rows = grp.to_dict("records")
+        w_cnt, w_s, w_e = 0, "", ""
+        for r in rows:
+            if str(r.get("outcome", "")) == "W":
+                if w_cnt == 0:
+                    w_s = str(r.get("date", ""))
+                w_cnt += 1
+                w_e = str(r.get("date", ""))
+            else:
+                break
+        if w_cnt >= 3:
+            opener_team_wins.append({
+                "streak_games": w_cnt,
+                "record": f"{w_cnt}-0-0",
+                "season": str(sea),
+                "start_date": w_s,
+                "end_date": w_e,
+            })
+
+        u_cnt, uw, ut, u_s, u_e = 0, 0, 0, "", ""
+        for r in rows:
+            out = str(r.get("outcome", ""))
+            if out in ("W", "T"):
+                if u_cnt == 0:
+                    u_s = str(r.get("date", ""))
+                u_cnt += 1
+                if out == "W":
+                    uw += 1
+                else:
+                    ut += 1
+                u_e = str(r.get("date", ""))
+            else:
+                break
+        if u_cnt >= 4:
+            opener_team_unbeaten.append({
+                "streak_games": u_cnt,
+                "record": f"{uw}-0-{ut}",
+                "season": str(sea),
+                "start_date": u_s,
+                "end_date": u_e,
+            })
+    opener_team_wins.sort(key=lambda x: (-x["streak_games"], x["season"]))
+    opener_team_unbeaten.sort(key=lambda x: (-x["streak_games"], x["season"]))
 
     # 3. Active Milestone Watch
     # Pick latest season that has active games/stats (plus current roster players)
@@ -2829,8 +2957,16 @@ def _get_cached_static_records(ds: HockeyDatasets) -> dict[str, Any]:
         "streaks": {
             "point_streaks": point_streaks[:15],
             "goal_streaks": goal_streaks[:15],
+            "assist_streaks": assist_streaks[:15],
             "team_win_streaks": win_streaks[:10],
             "team_unbeaten_streaks": unbeaten_streaks[:10],
+            "season_openers": {
+                "points": opener_points[:10],
+                "goals": opener_goals[:10],
+                "assists": opener_assists[:10],
+                "team_wins": opener_team_wins[:10],
+                "team_unbeaten": opener_team_unbeaten[:10],
+            },
             "active": {
                 "season": active_season,
                 "latest_game_date": latest_team_game,
