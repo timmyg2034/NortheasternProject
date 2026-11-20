@@ -2773,6 +2773,50 @@ def _get_cached_static_records(ds: HockeyDatasets) -> dict[str, Any]:
         so_grp = so_grp.sort_values(["made", "winners", "pct"], ascending=[False, False, False]).head(15)
         so_leaders_list = _records(so_grp)
 
+    # Active player game streaks (goals, assists, points) in active_season
+    sk_active = sk[sk["season"] == active_season].sort_values("date") if active_season else pd.DataFrame()
+    latest_team_game = (
+        str(ds.games[ds.games["season"] == active_season]["date"].max())
+        if active_season and not ds.games[ds.games["season"] == active_season].empty
+        else ""
+    )
+    active_streaks_by_stat: dict[str, list[dict[str, Any]]] = {"points": [], "goals": [], "assists": []}
+    if not sk_active.empty:
+        for stat_col in ("points", "goals", "assists"):
+            items: list[dict[str, Any]] = []
+            for pname, grp in sk_active.groupby("player_name"):
+                if not pname:
+                    continue
+                rows = grp.sort_values("date", ascending=False).to_dict("records")
+                cnt = 0
+                tot_g, tot_a, tot_p = 0, 0, 0
+                start_dt, end_dt = "", ""
+                for r in rows:
+                    if int(r.get(stat_col, 0) or 0) > 0:
+                        cnt += 1
+                        tot_g += int(r.get("goals", 0) or 0)
+                        tot_a += int(r.get("assists", 0) or 0)
+                        tot_p += int(r.get("points", 0) or 0)
+                        if not end_dt:
+                            end_dt = str(r.get("date", ""))
+                        start_dt = str(r.get("date", ""))
+                    else:
+                        break
+                if cnt >= 2:
+                    items.append({
+                        "player_name": str(pname),
+                        "season": active_season,
+                        "streak_games": cnt,
+                        "goals": tot_g,
+                        "assists": tot_a,
+                        "points": tot_p,
+                        "start_date": start_dt,
+                        "end_date": end_dt,
+                        "played_latest": bool(latest_team_game and end_dt == latest_team_game),
+                    })
+            items.sort(key=lambda x: (-x["streak_games"], -x[stat_col], -x["points"], x["player_name"]))
+            active_streaks_by_stat[stat_col] = items[:15]
+
     data = {
         "single_game_records": {
             "most_points": most_points_game,
@@ -2787,6 +2831,13 @@ def _get_cached_static_records(ds: HockeyDatasets) -> dict[str, Any]:
             "goal_streaks": goal_streaks[:15],
             "team_win_streaks": win_streaks[:10],
             "team_unbeaten_streaks": unbeaten_streaks[:10],
+            "active": {
+                "season": active_season,
+                "latest_game_date": latest_team_game,
+                "points": active_streaks_by_stat["points"],
+                "goals": active_streaks_by_stat["goals"],
+                "assists": active_streaks_by_stat["assists"],
+            },
         },
         "milestones": {
             "active_season": active_season,

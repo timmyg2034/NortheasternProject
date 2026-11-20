@@ -5608,6 +5608,77 @@ export default function App() {
                     )}
                   </div>
 
+                  {(() => {
+                    const activeStreaks = recordsData.streaks?.active || {};
+                    const activeSeasonLabel = activeStreaks.season || ms.active_season;
+                    const streakCols = [
+                      { key: "points", title: "Point Streaks", statLabel: (r) => `${r.goals}G, ${r.assists}A (${r.points} PTS)` },
+                      { key: "goals", title: "Goal Streaks", statLabel: (r) => `${r.goals}G (${r.points} PTS)` },
+                      { key: "assists", title: "Assist Streaks", statLabel: (r) => `${r.assists}A (${r.points} PTS)` },
+                    ];
+                    return (
+                      <div className="card">
+                        <div className="card-header">
+                          <div>
+                            <h2>Active Game Streaks ({activeSeasonLabel})</h2>
+                            <span className="muted">
+                              Consecutive games with a point, goal, or assist (2+ GP){activeStreaks.latest_game_date ? ` • Through ${activeStreaks.latest_game_date}` : ""}
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+                          {streakCols.map((col) => {
+                            const list = activeStreaks[col.key] || [];
+                            return (
+                              <div key={col.key}>
+                                <h3 className="sub-heading" style={{ marginTop: 0 }}>{col.title}</h3>
+                                {list.length > 0 ? (
+                                  <div className="table-wrap">
+                                    <table className="data-table">
+                                      <thead>
+                                        <tr>
+                                          <th>Player</th>
+                                          <th>Streak</th>
+                                          <th>Totals</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {list.map((r) => (
+                                          <tr key={`${col.key}-${r.player_name}`}>
+                                            <td>
+                                              <button
+                                                type="button"
+                                                className="link-btn"
+                                                onClick={() => openPlayer(r.player_name)}
+                                              >
+                                                {r.player_name}
+                                              </button>
+                                            </td>
+                                            <td>
+                                              <strong>{r.streak_games} GP</strong>
+                                            </td>
+                                            <td>
+                                              <div>{col.statLabel(r)}</div>
+                                              <div className="muted" style={{ fontSize: 11 }}>
+                                                {r.start_date} &rarr; {r.end_date}
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <p className="muted" style={{ fontSize: 13 }}>No active {col.key} streaks (2+ GP).</p>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="records-grid-2col">
                     <div className="card">
                       <div className="card-header">
