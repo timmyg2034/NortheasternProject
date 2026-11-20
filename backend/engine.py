@@ -438,11 +438,21 @@ def load_datasets(data_dir: Path | str = ".") -> HockeyDatasets:
             )
 
     # Clean game results
+    exhibition_dates: set[str] = set()
     if not games_df.empty:
         games_df = games_df[
             games_df["opponent"].astype(str).str.strip().ne("Unknown")
             & games_df["date"].astype(str).str.strip().ne("")
         ].copy()
+        exh_opp = games_df["opponent"].astype(str).str.contains(r"\(\s*exh\.?\s*\)", case=False, na=False)
+        exh_url = (
+            games_df["boxscore_url"].astype(str).str.contains(r"-exh-", case=False, na=False)
+            if "boxscore_url" in games_df.columns
+            else False
+        )
+        exh_mask = exh_opp | exh_url
+        if exh_mask.any():
+            exhibition_dates.update(games_df.loc[exh_mask, "date"].apply(standardize_date).tolist())
         if "opponent" in games_df.columns:
             games_df["opponent"] = games_df["opponent"].fillna("").apply(clean_opponent_name)
         if "shutout_team" in games_df.columns:
@@ -537,10 +547,14 @@ def load_datasets(data_dir: Path | str = ".") -> HockeyDatasets:
             if col in season_stats_df.columns:
                 season_stats_df[col] = pd.to_numeric(season_stats_df[col], errors="coerce").fillna(0)
 
-    # Standardize dates and sort chronologically
-    for df in [skater_df, goalie_df, goals_df, penalties_df, games_df, shootouts_df]:
+    # Standardize dates, exclude exhibition games, and sort chronologically
+    for idx, df in enumerate([skater_df, goalie_df, goals_df, penalties_df, games_df, shootouts_df]):
         if not df.empty and "date" in df.columns:
             df["date"] = df["date"].apply(standardize_date)
+            if exhibition_dates:
+                keep_mask = ~df["date"].isin(exhibition_dates)
+                if not keep_mask.all():
+                    df.drop(df.index[~keep_mask], inplace=True)
             if "season" not in df.columns:
                 df["season"] = df["date"].apply(date_to_season)
             df.sort_values("date", kind="mergesort", inplace=True)
